@@ -61,27 +61,43 @@ function assertSafeRemoteUrl(input) {
   return url;
 }
 
-async function safeFetchJson(input, fetchImpl = fetch, lookupImpl = dns.lookup) {
+async function safeFetchRemote(input, fetchImpl, lookupImpl, accept) {
   let target = assertSafeRemoteUrl(input);
   for (let redirects = 0; redirects <= 3; redirects += 1) {
     await assertPublicHost(target, lookupImpl);
     const response = await fetchImpl(target, {
-      headers: { accept: 'application/json', 'user-agent': 'Locadora/0.1' },
+      headers: { accept, 'user-agent': 'Locadora/0.1' },
       redirect: 'manual',
-      signal: AbortSignal.timeout(3500),
+      signal: AbortSignal.timeout(5000),
     });
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers && response.headers.get ? response.headers.get('location') : null;
-      if (!location || redirects === 3) throw new Error('Add-on returned too many redirects');
+      if (!location || redirects === 3) throw new Error('Remote source returned too many redirects');
       target = assertSafeRemoteUrl(new URL(location, target));
       continue;
     }
-    if (!response.ok) throw new Error(`Add-on request failed (${response.status})`);
-    const contentType = response.headers && response.headers.get ? response.headers.get('content-type') : null;
-    if (contentType && !contentType.includes('json')) throw new Error('Add-on did not return JSON');
-    return response.json();
+    if (!response.ok) throw new Error(`Remote request failed (${response.status})`);
+    return response;
   }
-  throw new Error('Add-on returned too many redirects');
+  throw new Error('Remote source returned too many redirects');
+}
+
+async function safeFetchJson(input, fetchImpl = fetch, lookupImpl = dns.lookup) {
+  const response = await safeFetchRemote(input, fetchImpl, lookupImpl, 'application/json');
+  const contentType = response.headers && response.headers.get ? response.headers.get('content-type') : null;
+  if (contentType && !contentType.includes('json')) throw new Error('Add-on did not return JSON');
+  return response.json();
+}
+
+async function safeFetchImage(input, fetchImpl = fetch, lookupImpl = dns.lookup) {
+  const response = await safeFetchRemote(input, fetchImpl, lookupImpl, 'image/*');
+  const contentType = response.headers && response.headers.get ? response.headers.get('content-type') : '';
+  const contentLength = Number(response.headers && response.headers.get ? response.headers.get('content-length') : 0);
+  if (!contentType || !contentType.toLowerCase().startsWith('image/')) throw new Error('Remote source did not return an image');
+  if (contentLength > 8_000_000) throw new Error('Remote image is too large');
+  const body = Buffer.from(await response.arrayBuffer());
+  if (body.length > 8_000_000) throw new Error('Remote image is too large');
+  return { contentType: contentType.split(';')[0], body };
 }
 
 function discoverCatalogs(manifest) {
@@ -259,5 +275,5 @@ class CatalogueStore {
 }
 
 module.exports = {
-  DEFAULT_SOURCES, CatalogueStore, assertSafeManifestUrl, buildResourceUrl, discoverCatalogs, discoverMetaResources, fetchStoreShelf, fetchTitleMeta, isPrivateAddress, safeFetchJson,
+  DEFAULT_SOURCES, CatalogueStore, assertSafeManifestUrl, buildResourceUrl, discoverCatalogs, discoverMetaResources, fetchStoreShelf, fetchTitleMeta, isPrivateAddress, safeFetchImage, safeFetchJson,
 };

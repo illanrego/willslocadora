@@ -42,6 +42,50 @@ test('server exposes validated rich title metadata', async (t) => {
   assert.equal(invalid.status, 400);
 });
 
+test('server exposes the installed Three.js browser module without exposing node_modules', async (t) => {
+  const server = createServer({ catalogue: { listSources: () => [] } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const { port } = server.address();
+
+  const response = await fetch(`http://127.0.0.1:${port}/vendor/three.module.js`);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type'), /text\/javascript/);
+  assert.match(await response.text(), /class WebGLRenderer/);
+
+  const core = await fetch(`http://127.0.0.1:${port}/vendor/three.core.js`);
+  assert.equal(core.status, 200);
+  assert.match(core.headers.get('content-type'), /text\/javascript/);
+
+  const viewer = await fetch(`http://127.0.0.1:${port}/vhs-3d.mjs`);
+  assert.equal(viewer.status, 200);
+  assert.match(viewer.headers.get('content-type'), /text\/javascript/);
+  assert.match(await viewer.text(), /createVhsViewer/);
+
+  const privateModule = await fetch(`http://127.0.0.1:${port}/node_modules/three/package.json`);
+  assert.equal(privateModule.status, 404);
+});
+
+test('server proxies validated poster bytes for WebGL textures', async (t) => {
+  const server = createServer({
+    catalogue: { listSources: () => [] },
+    posterFetcher: async (url) => {
+      assert.equal(url, 'https://images.example/poster.jpg');
+      return { contentType: 'image/jpeg', body: Buffer.from([1, 2, 3]) };
+    },
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const { port } = server.address();
+
+  const response = await fetch(`http://127.0.0.1:${port}/api/poster?url=${encodeURIComponent('https://images.example/poster.jpg')}`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'image/jpeg');
+  assert.deepEqual([...new Uint8Array(await response.arrayBuffer())], [1, 2, 3]);
+});
+
 test('server rejects non-GET API methods by default', async (t) => {
   const server = createServer({ catalogue: { listSources: () => [] } });
   server.listen(0, '127.0.0.1');

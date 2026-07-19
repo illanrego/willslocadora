@@ -9,6 +9,7 @@ const {
   discoverMetaResources,
   fetchTitleMeta,
   fetchStoreShelf,
+  safeFetchImage,
   safeFetchJson,
 } = require('../src/catalogue.js');
 
@@ -88,6 +89,24 @@ test('safeFetchJson revalidates a public redirect before following it', async ()
   const result = await safeFetchJson(new URL('https://addon.example/catalog.json'), fakeFetch, fakeLookup);
   assert.deepEqual(result, { metas: [] });
   assert.deepEqual(calls, ['https://addon.example/catalog.json', 'https://catalog.example/data.json']);
+});
+
+test('safeFetchImage returns bounded public image data and rejects other content', async () => {
+  const fakeLookup = async () => [{ address: '203.0.113.10' }];
+  const image = await safeFetchImage('https://images.example/poster.jpg', async () => ({
+    status: 200,
+    ok: true,
+    headers: { get: (name) => name === 'content-type' ? 'image/jpeg' : name === 'content-length' ? '3' : null },
+    arrayBuffer: async () => Uint8Array.from([1, 2, 3]).buffer,
+  }), fakeLookup);
+  assert.equal(image.contentType, 'image/jpeg');
+  assert.deepEqual([...image.body], [1, 2, 3]);
+
+  await assert.rejects(() => safeFetchImage('https://images.example/not-image', async () => ({
+    status: 200,
+    ok: true,
+    headers: { get: (name) => name === 'content-type' ? 'text/html' : null },
+  }), fakeLookup), /image/);
 });
 
 test('fetchStoreShelf aggregates year catalogues then applies the aisle', async () => {

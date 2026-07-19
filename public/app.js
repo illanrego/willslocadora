@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { createStremioUri, createVhsLabel } = window.LocadoraCore;
+  const { createStremioUri } = window.LocadoraCore;
   const genres = [
     { label: 'Action & Adventure', api: 'Action' },
     { label: 'Comedy', api: 'Comedy' },
@@ -28,6 +28,8 @@
   const titleDialog = $('#title-dialog');
   const counterDialog = $('#counter-dialog');
   const sourcesDialog = $('#sources-dialog');
+  let activeVhsViewer = null;
+  let viewerToken = 0;
 
   function loadCounter() {
     try {
@@ -48,10 +50,6 @@
     return body;
   }
 
-  function people(value, limit) {
-    const list = Array.isArray(value) ? value : (typeof value === 'string' ? value.split(',') : []);
-    return list.map((item) => item.trim()).filter(Boolean).slice(0, limit).join(', ');
-  }
 
   function setYear(value) {
     state.year = Math.max(1987, Math.min(1999, Number(value)));
@@ -126,7 +124,7 @@
       node.querySelector('.case-label strong').textContent = title.name;
       node.querySelector('.case-label small').textContent = `${title.year || 'Year unknown'} · ${title.type}`;
       button.setAttribute('aria-label', `Inspect ${title.name}, ${title.year || 'year unknown'}`);
-      button.addEventListener('click', () => openTitle(title));
+      button.addEventListener('click', () => openTitle(title, true, posterTextureUrl(image.currentSrc || image.src)));
       article.dataset.titleId = title.id;
       grid.append(node);
     });
@@ -137,6 +135,11 @@
   function posterFallback(title) {
     const label = encodeURIComponent(title.name.slice(0, 28));
     return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%23291e18'/%3E%3Crect x='20' y='20' width='260' height='410' fill='none' stroke='%23f2c744' stroke-width='5'/%3E%3Ctext x='150' y='205' text-anchor='middle' fill='%23f5e8c8' font-family='sans-serif' font-weight='bold' font-size='22'%3E${label}%3C/text%3E%3Ctext x='150' y='245' text-anchor='middle' fill='%23d7432f' font-family='monospace' font-size='16'%3ELOCADORA%3C/text%3E%3C/svg%3E`;
+  }
+
+  function posterTextureUrl(source) {
+    if (!source || source.startsWith('data:') || source.startsWith(location.origin)) return source;
+    return `/api/poster?${new URLSearchParams({ url: source })}`;
   }
 
   async function loadShelf(stand = 0, append = false) {
@@ -202,93 +205,47 @@
     if (isAtCounter(title)) state.counter = state.counter.filter((item) => item.id !== title.id || item.type !== title.type);
     else state.counter.push(title);
     saveCounter();
-    if (titleDialog.open) openTitle(title);
     renderCounter();
   }
 
-  function openTitle(title, hydrate = true, playVhs = true) {
-    const atCounter = isAtCounter(title);
+  async function openTitle(title, hydrate = true, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
     const detail = $('#title-detail');
+    const token = ++viewerToken;
+    activeVhsViewer?.dispose();
+    activeVhsViewer = null;
     detail.className = 'title-detail';
     detail.dataset.titleKey = `${title.type}:${title.id}`;
-    detail.innerHTML = '';
-
+    detail.replaceChildren();
     const stage = document.createElement('div');
     stage.className = 'vhs-stage';
-    const tape = document.createElement('div');
-    tape.className = 'vhs-case-3d';
-    const label = createVhsLabel(title);
-    const front = document.createElement('div');
-    front.className = 'vhs-case-face vhs-case-front';
-    const cover = document.createElement('img');
-    cover.src = title.poster || posterFallback(title);
-    cover.alt = '';
-    cover.addEventListener('error', () => { cover.src = posterFallback(title); }, { once: true });
-    const labelText = document.createElement('span');
-    labelText.className = 'vhs-front-label';
-    const labelTitle = document.createElement('strong');
-    labelTitle.textContent = label.title;
-    const labelSubtitle = document.createElement('small');
-    labelSubtitle.textContent = label.subtitle;
-    labelText.append(labelTitle, labelSubtitle);
-    front.append(cover, labelText);
-    const back = document.createElement('div');
-    back.className = 'vhs-case-face vhs-case-back';
-    const backInner = document.createElement('div');
-    backInner.className = 'vhs-back-label';
-    const kicker = document.createElement('p');
-    kicker.className = 'eyebrow';
-    kicker.textContent = `${title.type === 'movie' ? 'Feature presentation' : 'Television series'} · ${title.source}`;
-    const heading = document.createElement('h2');
-    heading.textContent = title.name;
-    const meta = document.createElement('p');
-    meta.className = 'detail-meta';
-    meta.textContent = [title.year, ...title.genres.slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`].filter(Boolean).join(' · ');
-    const credits = document.createElement('dl');
-    credits.className = 'detail-credits';
-    credits.innerHTML = `<div><dt>Director</dt><dd></dd></div><div><dt>Writers</dt><dd></dd></div><div><dt>Starring</dt><dd></dd></div>`;
-    const values = [people(title.director, 4), people(title.writer, 4), people(title.cast, 6)];
-    credits.querySelectorAll('dd').forEach((item, index) => { item.textContent = values[index] || 'Not listed'; });
-    const description = document.createElement('p');
-    description.className = 'detail-description';
-    description.textContent = title.description || 'No synopsis was included by this catalogue source.';
-    const actions = document.createElement('div');
-    actions.className = 'detail-actions';
-    const counterButton = document.createElement('button');
-    counterButton.type = 'button';
-    counterButton.textContent = atCounter ? 'Return to shelf' : 'Take to counter';
-    counterButton.addEventListener('click', () => toggleCounter(title));
-    const watch = document.createElement('a');
-    watch.className = 'watch-button';
-    watch.href = createStremioUri(title);
-    watch.textContent = 'Watch in Stremio →';
-    watch.addEventListener('click', () => { watch.textContent = 'Opening Stremio…'; });
-    actions.append(counterButton, watch);
-    const rewind = document.createElement('small');
-    rewind.className = 'rewind-sticker';
-    rewind.textContent = 'Be kind · Rewind';
-    backInner.append(kicker, heading, meta, credits, description, actions, rewind);
-    back.append(backInner);
-    tape.append(front, back);
-
-    const flip = document.createElement('button');
-    flip.className = 'flip-tape';
-    flip.type = 'button';
-    const setFlipped = (flipped) => {
-      tape.classList.toggle('is-flipped', flipped);
-      flip.textContent = flipped ? 'See front ↶' : 'See back ↷';
-      flip.setAttribute('aria-label', `${flipped ? 'Show the front of' : 'Show information on the back of'} ${title.name}`);
-    };
-    flip.addEventListener('click', () => setFlipped(!tape.classList.contains('is-flipped')));
-    front.addEventListener('click', () => setFlipped(true));
-    stage.append(tape, flip);
     detail.append(stage);
     if (!titleDialog.open) titleDialog.showModal();
-    if (playVhs) requestAnimationFrame(() => requestAnimationFrame(() => setFlipped(true)));
-    else setFlipped(true);
+
+    try {
+      const { createVhsViewer } = await import('./vhs-3d.mjs');
+      if (token !== viewerToken || !titleDialog.open) return;
+      activeVhsViewer = createVhsViewer({
+        container: stage,
+        title,
+        posterUrl,
+        atCounter: isAtCounter(title),
+        onCounter: () => {
+          toggleCounter(title);
+          activeVhsViewer?.update(title, isAtCounter(title));
+        },
+        onWatch: () => { window.location.href = createStremioUri(title); },
+        onClose: () => titleDialog.close(),
+      });
+    } catch (error) {
+      if (token !== viewerToken) return;
+      stage.classList.add('vhs-stage-error');
+      stage.textContent = `The 3D tape could not be loaded: ${error.message}`;
+      return;
+    }
+
     if (hydrate) {
       loadTitleMetadata(title).then(() => {
-        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) openTitle(title, false, false);
+        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title));
       }).catch(() => {});
     }
   }
@@ -366,7 +323,12 @@
       button.classList.toggle('is-active', button.dataset.type === state.type);
       button.addEventListener('click', () => selectType(button.dataset.type));
     });
-    $('[data-close="title-dialog"]').addEventListener('click', () => titleDialog.close());
+    titleDialog.addEventListener('close', () => {
+      viewerToken += 1;
+      activeVhsViewer?.dispose();
+      activeVhsViewer = null;
+      $('#title-detail').replaceChildren();
+    });
     $('#counter-open').addEventListener('click', () => { renderCounter(); counterDialog.showModal(); });
     $('#sources-open').addEventListener('click', () => { renderSources(); sourcesDialog.showModal(); });
     $('#retry-shelf').addEventListener('click', loadShelf);

@@ -3,9 +3,15 @@
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
+const { safeFetchImage } = require('./catalogue.js');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-const MIME = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+const THREE_BUILD = path.dirname(require.resolve('three'));
+const THREE_FILES = Object.freeze({
+  '/vendor/three.module.js': path.join(THREE_BUILD, 'three.module.js'),
+  '/vendor/three.core.js': path.join(THREE_BUILD, 'three.core.js'),
+});
+const MIME = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
 
 function sendJson(response, status, value) {
   response.writeHead(status, { 'content-type': MIME['.json'], 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
@@ -38,11 +44,28 @@ function serveStatic(requestPath, response) {
   });
 }
 
-function createServer({ catalogue }) {
+function serveThree(requestPath, response) {
+  fs.readFile(THREE_FILES[requestPath], (error, content) => {
+    if (error) return sendJson(response, 500, { error: 'Three.js is unavailable' });
+    response.writeHead(200, {
+      'content-type': MIME['.js'],
+      'cache-control': 'no-cache',
+      'content-security-policy': "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'",
+      'x-content-type-options': 'nosniff',
+    });
+    response.end(content);
+  });
+}
+
+function createServer({ catalogue, posterFetcher = safeFetchImage }) {
   if (!catalogue) throw new Error('Catalogue service is required');
   return http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
     try {
+      if (Object.hasOwn(THREE_FILES, url.pathname)) {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        return serveThree(url.pathname, response);
+      }
       if (url.pathname === '/api/health') {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
         return sendJson(response, 200, { ok: true, service: 'locadora' });
@@ -73,6 +96,19 @@ function createServer({ catalogue }) {
         if (!['movie', 'series'].includes(type) || !/^[a-zA-Z0-9:_-]+$/.test(id)) return sendJson(response, 400, { error: 'Invalid title metadata request' });
         const meta = await catalogue.titleMeta({ type, id });
         return sendJson(response, 200, { meta });
+      }
+      if (url.pathname === '/api/poster') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        const source = url.searchParams.get('url') || '';
+        if (!source || source.length > 2_048) return sendJson(response, 400, { error: 'Invalid poster URL' });
+        const { contentType, body } = await posterFetcher(source);
+        response.writeHead(200, {
+          'content-type': contentType,
+          'cache-control': 'private, max-age=86400',
+          'content-length': body.length,
+          'x-content-type-options': 'nosniff',
+        });
+        return response.end(body);
       }
       if (request.method !== 'GET' && request.method !== 'HEAD') return sendJson(response, 405, { error: 'Method not allowed' });
       return serveStatic(url.pathname, response);

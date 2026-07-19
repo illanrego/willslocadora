@@ -3,7 +3,6 @@ const assert = require('node:assert/strict');
 
 const {
   createStremioUri,
-  createVhsLabel,
   deduplicateTitles,
   filterByStore,
   normalizeTitle,
@@ -61,9 +60,3 @@ test('createStremioUri builds native detail routes without stream data', () => {
   assert.throws(() => createStremioUri({ type: 'movie', id: 'bad/id' }), /Invalid title/);
 });
 
-test('createVhsLabel turns a title into a cassette-label model', () => {
-  assert.deepEqual(createVhsLabel({ name: 'The Matrix', year: 1999, type: 'movie' }), {
-    title: 'The Matrix',
-    subtitle: '1999 · Movie',
-  });
-});

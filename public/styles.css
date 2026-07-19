@@ -108,36 +108,7 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .dialog-close { width: 44px; height: 44px; border: 1px solid #6a5547; background: #17110e; cursor: pointer; font-size: 1.5rem; }
 .title-dialog { width: min(920px, calc(100% - 2rem)); max-height: 90vh; padding: 0; overflow: auto; }
 .title-dialog > .dialog-close { position: absolute; z-index: 3; top: 1rem; right: 1rem; }
-.title-detail { min-height: 700px; overflow: hidden; }
-.vhs-stage { position: relative; display: grid; min-height: 700px; place-items: center; padding: 2.5rem 3rem 4.5rem; perspective: 1500px; background: radial-gradient(circle at 50% 44%, #775c4f, #211713 58%, #0d0a08); }
-.vhs-case-3d { position: relative; width: min(430px, 64vw); aspect-ratio: 2 / 3; cursor: grab; transform: rotateY(-10deg) rotateX(2deg) translateZ(0); transform-style: preserve-3d; transition: transform .9s cubic-bezier(.2,.8,.2,1); }
-.vhs-case-3d.is-flipped { transform: rotateY(-180deg) rotateX(0deg) translateZ(0); }
-.vhs-case-face { position: absolute; inset: 0; border: 13px solid #151312; border-radius: 8px 13px 13px 8px; backface-visibility: hidden; box-shadow: inset 0 0 0 3px #4e4640, -12px 18px 35px rgba(0,0,0,.58); }
-.vhs-case-face::after { position: absolute; content: ""; inset: 8px; border: 1px solid rgba(255,255,255,.13); border-radius: 3px 8px 8px 3px; pointer-events: none; }
-.vhs-case-front { overflow: hidden; background: #191614; }
-.vhs-case-front img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.vhs-front-label { position: absolute; inset: auto 1rem 1rem; padding: .65rem .75rem; color: #1d1712; background: rgba(241,225,184,.94); border-top: 5px solid var(--red); box-shadow: 4px 5px 0 rgba(0,0,0,.75); font-family: "Courier New", monospace; text-transform: uppercase; }
-.vhs-front-label strong, .vhs-front-label small { display: block; }
-.vhs-front-label strong { font-size: .9rem; }
-.vhs-front-label small { margin-top: .2rem; color: #665741; font-size: .62rem; }
-.vhs-case-back { padding: 1rem; color: #292017; background: repeating-linear-gradient(90deg, #1a1816 0 5px, #292522 5px 8px); transform: rotateY(180deg); }
-.vhs-back-label { position: relative; height: 100%; overflow: auto; padding: clamp(1.4rem, 4vw, 2.2rem); background: #eee0b8; border: 3px solid #a89164; box-shadow: inset 0 0 0 5px #dac99c; }
-.vhs-back-label::before { display: block; width: 74px; height: 7px; margin: 0 0 1rem; content: ""; background: var(--red); box-shadow: 82px 0 0 var(--yellow), 164px 0 0 var(--cyan); }
-.vhs-case-back .eyebrow { color: #8d3528; }
-.vhs-case-back h2 { margin: 0; font: 900 clamp(2rem, 5vw, 3.5rem)/.88 Impact, sans-serif; text-transform: uppercase; }
-.detail-meta { color: var(--yellow); font: 700 .75rem/1.5 "Courier New", monospace; text-transform: uppercase; }
-.vhs-case-back .detail-meta { color: #8d3528; }
-.detail-credits { display: grid; gap: .45rem; margin: 1rem 0; font-size: .8rem; }
-.detail-credits div { display: grid; grid-template-columns: 72px 1fr; gap: .7rem; }
-.detail-credits dt { color: var(--cyan); font-weight: 900; text-transform: uppercase; }
-.vhs-case-back .detail-credits dt { color: #33747a; }
-.detail-credits dd { margin: 0; color: #514533; }
-.detail-description { color: #4b4031; font: .9rem/1.5 Georgia, serif; }
-.detail-actions { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 1.7rem; }
-.detail-actions button, .detail-actions a { min-height: 44px; display: inline-flex; align-items: center; padding: .65rem .8rem; border: 1px solid #715641; color: #392d22; background: transparent; text-decoration: none; cursor: pointer; font-weight: 900; }
-.detail-actions .watch-button { color: #16110d; background: var(--yellow); border-color: var(--yellow); }
-.rewind-sticker { display: block; width: max-content; margin: 1.5rem 0 0 auto; padding: .35rem .5rem; color: #f6eac7; background: var(--red); font: 800 .62rem "Courier New", monospace; text-transform: uppercase; transform: rotate(-2deg); }
-.flip-tape { position: absolute; bottom: 1.2rem; min-height: 42px; padding: .55rem .8rem; border: 1px solid #8b715c; color: var(--yellow); background: #17110e; cursor: pointer; font: 800 .68rem "Courier New", monospace; text-transform: uppercase; }
+
 .panel-dialog { width: min(680px, calc(100% - 2rem)); max-height: 85vh; padding: 0 1.4rem 1.5rem; overflow: auto; }
 .panel-header { position: sticky; z-index: 2; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 1.4rem 0 1rem; background: #211914; border-bottom: 1px solid #564236; }
 .panel-header h2 { margin: 0; font: 900 2.5rem/1 Impact, sans-serif; text-transform: uppercase; }
@@ -187,14 +158,7 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
   .shelf-heading { align-items: start; }
   #shelf-status { display: none; }
   .shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-inline: .8rem; }
-  .title-detail, .vhs-stage { min-height: 610px; }
-  .vhs-stage { padding: 3.5rem .75rem 4rem; }
-  .vhs-case-3d { width: min(330px, 82vw); }
-  .vhs-back-label { padding: 1rem; }
-  .vhs-case-back h2 { font-size: clamp(1.7rem, 9vw, 2.5rem); }
-  .detail-credits { margin: .65rem 0; font-size: .7rem; }
-  .detail-description { font-size: .78rem; line-height: 1.35; }
-  .detail-actions { margin-top: .8rem; }
+
   .source-form div { flex-direction: column; }
   footer { flex-direction: column; }
 }
@@ -202,3 +166,13 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
+
+/* The title view is only a transparent Three.js stage; the VHS is the interface. */
+.title-dialog { inset: 0; width: 100vw; max-width: none; height: 100vh; max-height: none; margin: 0; padding: 0; overflow: hidden; border: 0; color: var(--ink); background: transparent; box-shadow: none; }
+.title-dialog::backdrop { background: rgba(8, 6, 5, .76); backdrop-filter: blur(2px); }
+.title-detail, .vhs-stage { width: 100%; height: 100%; min-height: 0; }
+.vhs-stage { position: relative; display: block; padding: 0; background: transparent; perspective: none; }
+.vhs-canvas { width: 100%; height: 100%; display: block; cursor: grab; outline: none; touch-action: none; }
+.vhs-canvas.is-dragging { cursor: grabbing; }
+.vhs-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--cyan); }
+.vhs-stage-error { display: grid; place-items: center; padding: 2rem; color: #ffd9cf; font: 700 .8rem/1.5 "Courier New", monospace; text-align: center; }
