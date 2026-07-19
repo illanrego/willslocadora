@@ -65,5 +65,12 @@
     return `stremio:///detail/${title.type}/${title.id}`;
   }
 
-  return { createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear };
+  function createVhsLabel(title) {
+    return {
+      title: String(title.name || 'Untitled'),
+      subtitle: `${title.year || 'Year unknown'} · ${title.type === 'series' ? 'Series' : 'Movie'}`,
+    };
+  }
+
+  return { createStremioUri, createVhsLabel, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear };
 }));

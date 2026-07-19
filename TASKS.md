@@ -17,6 +17,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Added click-loaded catalogue stands: each keeps existing tapes open, loads a non-duplicate next 48 when available, and resets on aisle/year/type changes.
 - [x] Added on-demand Stremio metadata to title details: IMDb score, director, writers, and main cast, without adding that data to shelf cards.
 - [x] Renamed the local presentation to Will's Locadora with one compact red/yellow top-bar mark.
+- [x] Replaced the separate detail panel with a reduced-motion-safe 3D VHS case: poster on the front; metadata, synopsis, counter, and Stremio actions printed directly on its back.
 - [x] Added canonical `npm test`; 14 tests pass as of the broadened-catalogue verification.
 - [x] Exercised the real server, live Cinemeta catalogue, browser UI, detail dialog, counter action, and year refresh without browser console errors.
 

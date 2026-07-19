@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { createStremioUri } = window.LocadoraCore;
+  const { createStremioUri, createVhsLabel } = window.LocadoraCore;
   const genres = [
     { label: 'Action & Adventure', api: 'Action' },
     { label: 'Comedy', api: 'Comedy' },
@@ -206,19 +206,36 @@
     renderCounter();
   }
 
-  function openTitle(title, hydrate = true) {
+  function openTitle(title, hydrate = true, playVhs = true) {
     const atCounter = isAtCounter(title);
     const detail = $('#title-detail');
     detail.className = 'title-detail';
     detail.dataset.titleKey = `${title.type}:${title.id}`;
     detail.innerHTML = '';
 
-    const art = document.createElement('div');
-    art.className = 'detail-art';
-    art.style.backgroundImage = `linear-gradient(to top, rgba(14,10,8,.35), transparent), url("${title.poster || posterFallback(title)}")`;
-
-    const copy = document.createElement('div');
-    copy.className = 'detail-copy';
+    const stage = document.createElement('div');
+    stage.className = 'vhs-stage';
+    const tape = document.createElement('div');
+    tape.className = 'vhs-case-3d';
+    const label = createVhsLabel(title);
+    const front = document.createElement('div');
+    front.className = 'vhs-case-face vhs-case-front';
+    const cover = document.createElement('img');
+    cover.src = title.poster || posterFallback(title);
+    cover.alt = '';
+    cover.addEventListener('error', () => { cover.src = posterFallback(title); }, { once: true });
+    const labelText = document.createElement('span');
+    labelText.className = 'vhs-front-label';
+    const labelTitle = document.createElement('strong');
+    labelTitle.textContent = label.title;
+    const labelSubtitle = document.createElement('small');
+    labelSubtitle.textContent = label.subtitle;
+    labelText.append(labelTitle, labelSubtitle);
+    front.append(cover, labelText);
+    const back = document.createElement('div');
+    back.className = 'vhs-case-face vhs-case-back';
+    const backInner = document.createElement('div');
+    backInner.className = 'vhs-back-label';
     const kicker = document.createElement('p');
     kicker.className = 'eyebrow';
     kicker.textContent = `${title.type === 'movie' ? 'Feature presentation' : 'Television series'} · ${title.source}`;
@@ -247,12 +264,31 @@
     watch.textContent = 'Watch in Stremio →';
     watch.addEventListener('click', () => { watch.textContent = 'Opening Stremio…'; });
     actions.append(counterButton, watch);
-    copy.append(kicker, heading, meta, credits, description, actions);
-    detail.append(art, copy);
+    const rewind = document.createElement('small');
+    rewind.className = 'rewind-sticker';
+    rewind.textContent = 'Be kind · Rewind';
+    backInner.append(kicker, heading, meta, credits, description, actions, rewind);
+    back.append(backInner);
+    tape.append(front, back);
+
+    const flip = document.createElement('button');
+    flip.className = 'flip-tape';
+    flip.type = 'button';
+    const setFlipped = (flipped) => {
+      tape.classList.toggle('is-flipped', flipped);
+      flip.textContent = flipped ? 'See front ↶' : 'See back ↷';
+      flip.setAttribute('aria-label', `${flipped ? 'Show the front of' : 'Show information on the back of'} ${title.name}`);
+    };
+    flip.addEventListener('click', () => setFlipped(!tape.classList.contains('is-flipped')));
+    front.addEventListener('click', () => setFlipped(true));
+    stage.append(tape, flip);
+    detail.append(stage);
     if (!titleDialog.open) titleDialog.showModal();
+    if (playVhs) requestAnimationFrame(() => requestAnimationFrame(() => setFlipped(true)));
+    else setFlipped(true);
     if (hydrate) {
       loadTitleMetadata(title).then(() => {
-        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) openTitle(title, false);
+        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) openTitle(title, false, false);
       }).catch(() => {});
     }
   }
