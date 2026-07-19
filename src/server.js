@@ -1,0 +1,86 @@
+'use strict';
+
+const fs = require('node:fs');
+const http = require('node:http');
+const path = require('node:path');
+
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const MIME = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+
+function sendJson(response, status, value) {
+  response.writeHead(status, { 'content-type': MIME['.json'], 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+  response.end(JSON.stringify(value));
+}
+
+async function readJson(request) {
+  let body = '';
+  for await (const chunk of request) {
+    body += chunk;
+    if (body.length > 16_384) throw new Error('Request body is too large');
+  }
+  try { return JSON.parse(body || '{}'); } catch { throw new Error('Invalid JSON body'); }
+}
+
+function serveStatic(requestPath, response) {
+  const relative = requestPath === '/' ? 'index.html' : requestPath.replace(/^\/+/, '');
+  const file = path.resolve(PUBLIC_DIR, relative);
+  if (!file.startsWith(`${PUBLIC_DIR}${path.sep}`)) return sendJson(response, 404, { error: 'Not found' });
+  fs.readFile(file, (error, content) => {
+    if (error) return sendJson(response, error.code === 'ENOENT' ? 404 : 500, { error: 'Not found' });
+    response.writeHead(200, {
+      'content-type': MIME[path.extname(file)] || 'application/octet-stream',
+      'cache-control': 'no-cache',
+      'content-security-policy': "default-src 'self'; img-src 'self' https: data:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+      'referrer-policy': 'no-referrer',
+      'x-content-type-options': 'nosniff',
+    });
+    response.end(content);
+  });
+}
+
+function createServer({ catalogue }) {
+  if (!catalogue) throw new Error('Catalogue service is required');
+  return http.createServer(async (request, response) => {
+    const url = new URL(request.url, 'http://127.0.0.1');
+    try {
+      if (url.pathname === '/api/health') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        return sendJson(response, 200, { ok: true, service: 'locadora' });
+      }
+      if (url.pathname === '/api/sources') {
+        if (request.method === 'GET') return sendJson(response, 200, { sources: catalogue.listSources() });
+        if (request.method === 'POST') {
+          const body = await readJson(request);
+          const source = await catalogue.addSource(body.manifestUrl);
+          return sendJson(response, 201, { source });
+        }
+        return sendJson(response, 405, { error: 'Method not allowed' });
+      }
+      if (url.pathname === '/api/shelf') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        const year = Number(url.searchParams.get('year'));
+        const genre = url.searchParams.get('genre') || '';
+        const type = url.searchParams.get('type') === 'series' ? 'series' : 'movie';
+        const stand = Number(url.searchParams.get('stand') || 0);
+        if (!Number.isInteger(year) || year < 1920 || year > 2100 || !genre || genre.length > 40 || !Number.isInteger(stand) || stand < 0 || stand > 20) return sendJson(response, 400, { error: 'Invalid shelf filters' });
+        const titles = await catalogue.shelf({ year, genre, type, page: stand, sourceId: url.searchParams.get('source') || '' });
+        return sendJson(response, 200, { titles, year, genre, type, stand });
+      }
+      if (url.pathname === '/api/meta') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        const type = url.searchParams.get('type');
+        const id = url.searchParams.get('id') || '';
+        if (!['movie', 'series'].includes(type) || !/^[a-zA-Z0-9:_-]+$/.test(id)) return sendJson(response, 400, { error: 'Invalid title metadata request' });
+        const meta = await catalogue.titleMeta({ type, id });
+        return sendJson(response, 200, { meta });
+      }
+      if (request.method !== 'GET' && request.method !== 'HEAD') return sendJson(response, 405, { error: 'Method not allowed' });
+      return serveStatic(url.pathname, response);
+    } catch (error) {
+      const message = error && error.message ? error.message : 'Unexpected error';
+      return sendJson(response, /Invalid|must|allowed|too large|credentials|private/i.test(message) ? 400 : 502, { error: message });
+    }
+  });
+}
+
+module.exports = { createServer };

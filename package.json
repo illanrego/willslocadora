@@ -1,0 +1,13 @@
+{
+  "name": "locadora",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local 1990s video-rental GUI for Stremio",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

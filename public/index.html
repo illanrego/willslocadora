@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17120f">
+  <title>Will's Locadora — Pick a year. Find a tape.</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#shelf">Skip to shelf</a>
+  <div class="store-shell">
+    <header class="store-header">
+      <a class="brand" href="/" aria-label="Will's Locadora home">
+        <strong>WILL'S LOCADORA</strong>
+        <span class="brand-tag">Be kind. Rewind.</span>
+      </a>
+
+      <div class="year-machine" aria-label="Store year">
+        <span class="year-label">Store year</span>
+        <button class="year-step" id="year-back" type="button" aria-label="Previous store year">−</button>
+        <output id="store-year" aria-live="polite">1999</output>
+        <button class="year-step" id="year-forward" type="button" aria-label="Next store year">+</button>
+        <input id="year-range" type="range" min="1987" max="1999" step="1" value="1999" aria-label="Select store year">
+      </div>
+
+      <nav class="header-actions" aria-label="Store actions">
+        <button class="counter-button" id="counter-open" type="button">
+          Counter <span id="counter-count" aria-label="items at counter">0</span>
+        </button>
+        <button class="utility-button" id="sources-open" type="button">Sources</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="shop-floor" aria-label="Video store aisles">
+        <aside class="aisle-directory">
+          <div class="directory-sign"><span>Aisle</span><strong id="aisle-number">01</strong></div>
+          <nav id="genre-nav" aria-label="Genres"></nav>
+          <div class="format-switch" role="group" aria-label="Title format">
+            <button class="is-active" data-type="movie" type="button">Movies</button>
+            <button data-type="series" type="button">Series</button>
+          </div>
+        </aside>
+
+        <div class="shelf-room">
+          <div class="fluorescent" aria-hidden="true"></div>
+          <header class="shelf-heading">
+            <div>
+              <p id="shelf-caption">Aisle 01 · Store year 1999</p>
+              <h2 id="shelf-title">Action & Adventure</h2>
+            </div>
+            <p id="shelf-status" role="status" aria-live="polite">Opening the boxes…</p>
+          </header>
+
+          <div id="shelf" class="shelves" tabindex="-1" aria-busy="true"></div>
+          <button id="load-more-shelf" class="load-more-shelf" type="button" hidden>Load another stand</button>
+
+          <div id="empty-state" class="empty-state" hidden>
+            <span class="empty-tape" aria-hidden="true"></span>
+            <h3>This shelf came back empty.</h3>
+            <p>Try another aisle, year, format, or catalogue source.</p>
+            <button id="retry-shelf" type="button">Check the back room</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Will's Locadora No. 01</span>
+      <span>Catalogue titles are not a promise of an available stream.</span>
+      <span>Playback by your Stremio setup</span>
+    </footer>
+  </div>
+
+  <dialog id="title-dialog" class="title-dialog">
+    <button class="dialog-close" data-close="title-dialog" type="button" aria-label="Close title details">×</button>
+    <div id="title-detail"></div>
+  </dialog>
+
+  <dialog id="counter-dialog" class="panel-dialog">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow">Checkout desk</span><h2>Your counter</h2></div>
+      <button class="dialog-close" value="close" aria-label="Close counter">×</button>
+    </form>
+    <div id="counter-list" class="counter-list"></div>
+  </dialog>
+
+  <dialog id="sources-dialog" class="panel-dialog sources-dialog">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow">Back room</span><h2>Catalogue sources</h2></div>
+      <button class="dialog-close" value="close" aria-label="Close sources">×</button>
+    </form>
+    <p class="panel-copy">Locadora starts with Cinemeta. Add any catalogue-capable Stremio add-on by its HTTPS <code>manifest.json</code> URL. Configuration stays in this local bridge and is never echoed into the page.</p>
+    <div id="source-list" class="source-list"></div>
+    <form id="source-form" class="source-form">
+      <label for="manifest-url">Add-on manifest URL</label>
+      <div><input id="manifest-url" name="manifestUrl" type="url" required placeholder="https://addon.example/manifest.json" autocomplete="off"><button type="submit">Add source</button></div>
+      <p id="source-message" role="status"></p>
+    </form>
+  </dialog>
+
+  <template id="case-template">
+    <article class="vhs-item">
+      <button class="vhs-case" type="button">
+        <span class="case-spine"><span class="case-year"></span></span>
+        <img alt="" loading="lazy">
+        <span class="case-label"><strong></strong><small></small></span>
+      </button>
+
+    </article>
+  </template>
+
+  <script src="/app-core.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
