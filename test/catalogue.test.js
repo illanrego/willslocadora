@@ -13,6 +13,7 @@ const {
   safeFetchImage,
   safeFetchJson,
 } = require('../src/catalogue.js');
+const { createTmdbClient } = require('../src/tmdb.js');
 
 test('CatalogueStore returns one 4 by 10 stand at a time', async () => {
   const store = new CatalogueStore({
@@ -103,6 +104,54 @@ test('fetchTitleMeta returns normalized rich metadata from a compatible source',
   assert.deepEqual(meta.director, ['Lana Wachowski']);
   assert.deepEqual(meta.writer, ['Lilly Wachowski']);
   assert.deepEqual(meta.cast, ['Keanu Reeves']);
+});
+
+test('TMDB enrichment adds Brazil availability, classification, images, and expanded credits', async () => {
+  const requests = [];
+  const client = createTmdbClient({
+    apiKey: 'test-key',
+    fetchImpl: async (url) => {
+      requests.push(String(url));
+      if (String(url).includes('/find/tt0133093')) return { ok: true, json: async () => ({ movie_results: [{ id: 603 }] }) };
+      if (String(url).includes('/movie/603?')) return { ok: true, json: async () => ({
+        backdrop_path: '/matrix-backdrop.jpg',
+        credits: {
+          cast: [{ name: 'Keanu Reeves' }, { name: 'Laurence Fishburne' }],
+          crew: [{ job: 'Director', name: 'Lana Wachowski' }, { job: 'Writer', name: 'Lilly Wachowski' }],
+        },
+        images: { logos: [{ file_path: '/matrix-logo.png', iso_639_1: 'en' }] },
+        release_dates: { results: [{ iso_3166_1: 'BR', release_dates: [{ certification: '14' }] }] },
+        'watch/providers': { results: { BR: { link: 'https://www.justwatch.com/br/filme/matrix', flatrate: [{ provider_name: 'Netflix' }] } } },
+      }) };
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  });
+
+  const result = await client.enrich({ id: 'tt0133093', type: 'movie', cast: [], director: [], writer: [] });
+
+  assert.match(requests[0], /api_key=test-key/);
+  assert.equal(result.background, 'https://image.tmdb.org/t/p/w1280/matrix-backdrop.jpg');
+  assert.equal(result.logo, 'https://image.tmdb.org/t/p/w500/matrix-logo.png');
+  assert.equal(result.certificationBR, '14');
+  assert.deepEqual(result.availabilityBR, { link: 'https://www.justwatch.com/br/filme/matrix', providers: ['Netflix'] });
+  assert.deepEqual(result.director, ['Lana Wachowski']);
+  assert.deepEqual(result.writer, ['Lilly Wachowski']);
+  assert.deepEqual(result.cast, ['Keanu Reeves', 'Laurence Fishburne']);
+});
+
+test('CatalogueStore enriches compatible Stremio metadata with TMDB details when configured', async () => {
+  const store = new CatalogueStore({
+    tmdbClient: { enrich: async (title) => ({ ...title, certificationBR: '14', availabilityBR: { link: 'https://example.test/watch', providers: ['Netflix'] } }) },
+    fetchImpl: async () => ({ ok: true, json: async () => ({ meta: { id: 'tt0133093', type: 'movie', name: 'The Matrix' } }) }),
+  });
+  store.sources = [{
+    id: 'cinemeta', manifestUrl: 'https://addon.example/manifest.json', metaResources: [{ types: ['movie'], idPrefixes: ['tt'] }],
+  }];
+
+  const result = await store.titleMeta({ type: 'movie', id: 'tt0133093' });
+
+  assert.equal(result.certificationBR, '14');
+  assert.deepEqual(result.availabilityBR.providers, ['Netflix']);
 });
 
 test('safeFetchJson revalidates a public redirect before following it', async () => {

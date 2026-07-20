@@ -3,8 +3,9 @@ import * as THREE from '/vendor/three.module.js';
 const TEXTURE_WIDTH = 1024;
 const TEXTURE_HEIGHT = 1536;
 const ACTIONS = {
-  counter: { x: 72, y: 1328, width: 410, height: 104 },
-  watch: { x: 506, y: 1328, width: 446, height: 104 },
+  counter: { x: 72, y: 1328, width: 276, height: 104 },
+  availability: { x: 374, y: 1328, width: 276, height: 104 },
+  watch: { x: 676, y: 1328, width: 276, height: 104 },
 };
 const LOCADORA_PALETTE = {
   ink: '#080d17',
@@ -71,7 +72,7 @@ function drawButton(context, rect, label, fill, ink) {
   context.lineWidth = 5;
   context.strokeRect(rect.x, rect.y, rect.width, rect.height);
   context.fillStyle = ink;
-  context.font = '900 29px Courier New, monospace';
+  context.font = '900 22px Courier New, monospace';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillText(label, rect.x + rect.width / 2, rect.y + rect.height / 2);
@@ -120,7 +121,7 @@ function drawBarcode(context, value, x, y, width, height) {
   context.textAlign = 'left';
 }
 
-function drawBack(context, title, atCounter, image = null) {
+function drawBack(context, title, atCounter, posterImage = null, backdropImage = null) {
   context.fillStyle = LOCADORA_PALETTE.ink;
   context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
   context.fillStyle = LOCADORA_PALETTE.navy;
@@ -143,11 +144,11 @@ function drawBack(context, title, atCounter, image = null) {
   wrappedText(context, title.name, 72, 250, 880, 75, 2);
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '800 23px Arial Narrow, sans-serif';
-  const meta = [...(title.genres || []).slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`].filter(Boolean).join('  ·  ');
+  const meta = [...(title.genres || []).slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`, title.certificationBR && `BR ${title.certificationBR}`].filter(Boolean).join('  ·  ');
   context.fillText(meta || 'CATALOGUE EDITION', 72, 365);
 
-  drawImageFrame(context, image, 72, 405, 348, 285, 0.18);
-  drawImageFrame(context, image, 448, 405, 504, 285, 0.78);
+  drawImageFrame(context, posterImage, 72, 405, 348, 285, 0.18);
+  drawImageFrame(context, backdropImage || posterImage, 448, 405, 504, 285, 0.5);
 
   context.fillStyle = LOCADORA_PALETTE.red;
   context.fillRect(72, 720, 880, 8);
@@ -156,7 +157,15 @@ function drawBack(context, title, atCounter, image = null) {
   context.fillText('THE STORY', 72, 750);
   context.fillStyle = LOCADORA_PALETTE.white;
   context.font = '25px Arial, sans-serif';
-  wrappedText(context, title.description || 'No synopsis was included by this catalogue source.', 72, 790, 880, 34, 8);
+  wrappedText(context, title.description || 'No synopsis was included by this catalogue source.', 72, 790, 880, 34, 6);
+
+  const providers = title.availabilityBR?.providers || [];
+  context.fillStyle = LOCADORA_PALETTE.yellow;
+  context.font = '900 20px Arial Narrow, sans-serif';
+  context.fillText('WHERE TO WATCH · BRAZIL', 72, 1015);
+  context.fillStyle = LOCADORA_PALETTE.cream;
+  context.font = '700 20px Arial, sans-serif';
+  context.fillText(providers.join(' · ') || 'No provider listing returned', 326, 1015);
 
   context.strokeStyle = LOCADORA_PALETTE.red;
   context.lineWidth = 3;
@@ -168,7 +177,7 @@ function drawBack(context, title, atCounter, image = null) {
   const credits = [
     ['DIRECTED BY', names(title.director, 4)],
     ['WRITTEN BY', names(title.writer, 4)],
-    ['STARRING', names(title.cast, 6)],
+    ['STARRING', names(title.cast, 10)],
   ];
   let y = 1105;
   for (const [label, value] of credits) {
@@ -183,8 +192,9 @@ function drawBack(context, title, atCounter, image = null) {
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '16px Courier New, monospace';
   context.fillText('CATALOGUE LISTING ONLY · PLAYBACK AND AVAILABILITY BY YOUR STREMIO SETUP', 72, 1288);
-  drawButton(context, ACTIONS.counter, atCounter ? 'RETURN TO SHELF' : 'TAKE TO COUNTER', LOCADORA_PALETTE.cream, LOCADORA_PALETTE.ink);
-  drawButton(context, ACTIONS.watch, 'WATCH IN STREMIO →', LOCADORA_PALETTE.yellow, LOCADORA_PALETTE.ink);
+  drawButton(context, ACTIONS.counter, atCounter ? 'RETURN TAPE' : 'TO COUNTER', LOCADORA_PALETTE.cream, LOCADORA_PALETTE.ink);
+  drawButton(context, ACTIONS.availability, 'WATCH OPTIONS ↗', LOCADORA_PALETTE.red, LOCADORA_PALETTE.white);
+  drawButton(context, ACTIONS.watch, 'STREMIO →', LOCADORA_PALETTE.yellow, LOCADORA_PALETTE.ink);
 
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '900 18px Courier New, monospace';
@@ -211,7 +221,7 @@ function names(value, limit) {
   return values.map((item) => item.trim()).filter(Boolean).slice(0, limit).join(', ') || 'Not listed';
 }
 
-function drawPoster(context, image) {
+function drawPoster(context, image, title, logoImage = null) {
   const width = context.canvas.width;
   const height = context.canvas.height;
   const imageWidth = image.naturalWidth || image.width;
@@ -223,9 +233,26 @@ function drawPoster(context, image) {
   context.fillStyle = '#171310';
   context.fillRect(0, 0, width, height);
   context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+  context.fillStyle = 'rgba(8, 13, 23, .84)';
+  context.fillRect(56, 1180, width - 112, 218);
+  if (logoImage) {
+    const logoWidth = logoImage.naturalWidth || logoImage.width;
+    const logoHeight = logoImage.naturalHeight || logoImage.height;
+    const logoScale = Math.min(760 / logoWidth, 130 / logoHeight);
+    const fittedWidth = logoWidth * logoScale;
+    const fittedHeight = logoHeight * logoScale;
+    context.drawImage(logoImage, (width - fittedWidth) / 2, 1216 + (130 - fittedHeight) / 2, fittedWidth, fittedHeight);
+  } else {
+    context.fillStyle = LOCADORA_PALETTE.cream;
+    context.font = '900 64px Impact, sans-serif';
+    wrappedText(context, title.name, 96, 1270, width - 192, 70, 2);
+  }
+  context.fillStyle = LOCADORA_PALETTE.yellow;
+  context.font = '700 24px Courier New, monospace';
+  context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 92, 1366);
 }
 
-export function createVhsViewer({ container, title, posterUrl, atCounter, onCounter, onWatch, onClose }) {
+export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, onCounter, onAvailability, onWatch, onClose }) {
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -260,9 +287,11 @@ export function createVhsViewer({ container, title, posterUrl, atCounter, onCoun
   front.userData.surface = 'front';
   group.add(front);
 
-  let backImage = null;
+  let posterImage = null;
+  let backdropImage = null;
+  let logoImage = null;
   let currentAtCounter = atCounter;
-  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, backImage));
+  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage));
   const backMaterial = new THREE.MeshStandardMaterial({ map: backCanvas.texture, roughness: 0.72 });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(3.82, 5.82), backMaterial);
   back.position.z = -0.236;
@@ -279,17 +308,30 @@ export function createVhsViewer({ container, title, posterUrl, atCounter, onCoun
 
   let disposed = false;
   const loader = new THREE.TextureLoader();
-  if (posterUrl) {
-    loader.load(posterUrl, (texture) => {
-      if (disposed) return texture.dispose();
-      backImage = texture.image;
-      drawPoster(frontCanvas.canvas.getContext('2d'), texture.image);
-      frontCanvas.texture.needsUpdate = true;
-      drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, backImage);
-      backCanvas.texture.needsUpdate = true;
+  const assetUrls = {};
+  function redraw() {
+    const frontContext = frontCanvas.canvas.getContext('2d');
+    if (posterImage) drawPoster(frontContext, posterImage, title, logoImage);
+    else drawFront(frontContext, title);
+    frontCanvas.texture.needsUpdate = true;
+    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage);
+    backCanvas.texture.needsUpdate = true;
+  }
+  function loadAsset(name, url) {
+    if (!url || assetUrls[name] === url) return;
+    assetUrls[name] = url;
+    loader.load(url, (texture) => {
+      if (disposed || assetUrls[name] !== url) return texture.dispose();
+      if (name === 'poster') posterImage = texture.image;
+      if (name === 'backdrop') backdropImage = texture.image;
+      if (name === 'logo') logoImage = texture.image;
+      redraw();
       texture.dispose();
     }, undefined, () => {});
   }
+  loadAsset('poster', posterUrl);
+  loadAsset('backdrop', backdropUrl);
+  loadAsset('logo', logoUrl);
 
   let targetX = -0.06;
   let targetY = -0.32;
@@ -358,6 +400,7 @@ export function createVhsViewer({ container, title, posterUrl, atCounter, onCoun
       const x = hit.uv.x * TEXTURE_WIDTH;
       const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
       if (inside(ACTIONS.counter, x, y)) return onCounter();
+      if (inside(ACTIONS.availability, x, y)) return onAvailability();
       if (inside(ACTIONS.watch, x, y)) return onWatch();
     }
   }
@@ -368,7 +411,7 @@ export function createVhsViewer({ container, title, posterUrl, atCounter, onCoun
     if (hit.object.userData.surface === 'back' && hit.uv) {
       const x = hit.uv.x * TEXTURE_WIDTH;
       const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
-      if (inside(ACTIONS.counter, x, y) || inside(ACTIONS.watch, x, y)) return;
+      if (inside(ACTIONS.counter, x, y) || inside(ACTIONS.availability, x, y) || inside(ACTIONS.watch, x, y)) return;
     }
     targetY += Math.PI;
   }
@@ -404,11 +447,13 @@ export function createVhsViewer({ container, title, posterUrl, atCounter, onCoun
   renderer.domElement.focus({ preventScroll: true });
 
   return {
-    update(nextTitle, nextAtCounter) {
+    update(nextTitle, nextAtCounter, assets = {}) {
       title = nextTitle;
       currentAtCounter = nextAtCounter;
-      drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, backImage);
-      backCanvas.texture.needsUpdate = true;
+      redraw();
+      loadAsset('poster', assets.posterUrl);
+      loadAsset('backdrop', assets.backdropUrl);
+      loadAsset('logo', assets.logoUrl);
     },
     dispose() {
       disposed = true;

@@ -173,6 +173,14 @@
     return `/api/poster?${new URLSearchParams({ url: source })}`;
   }
 
+  function vhsAssets(title, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
+    return {
+      posterUrl,
+      backdropUrl: posterTextureUrl(title.background),
+      logoUrl: posterTextureUrl(title.logo),
+    };
+  }
+
   function immersiveTitles() {
     return state.titles.map((title) => ({
       ...title,
@@ -405,11 +413,15 @@
       activeVhsViewer = createVhsViewer({
         container: stage,
         title,
-        posterUrl,
+        ...vhsAssets(title, posterUrl),
         atCounter: isAtCounter(title),
         onCounter: () => {
           toggleCounter(title);
-          activeVhsViewer?.update(title, isAtCounter(title));
+          activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
+        },
+        onAvailability: () => {
+          const url = title.availabilityBR?.link;
+          if (url) window.open(url, '_blank', 'noopener,noreferrer');
         },
         onWatch: () => { window.location.href = createStremioUri(title); },
         onClose: () => titleDialog.close(),
@@ -423,7 +435,7 @@
 
     if (hydrate) {
       loadTitleMetadata(title).then(() => {
-        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title));
+        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
       }).catch(() => {});
     }
   }

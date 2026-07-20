@@ -28,6 +28,24 @@ npm start
 
 Open <http://127.0.0.1:4173>.
 
+### Optional TMDB enrichment
+
+Create a free non-commercial TMDB API key at <https://www.themoviedb.org/settings/api>. Keep it local — never put it in browser code, source control, or a public static host. Copy the supplied example, then put the key only in `.env`:
+
+```bash
+cp .env.example .env
+```
+
+```dotenv
+TMDB_API_KEY=your-local-key
+```
+
+`npm start` now reads `.env` locally. An explicit shell variable still wins when present.
+
+With a key, title inspection supplements the existing Stremio metadata with TMDB backdrops, title logos, expanded credits, Brazilian certification, and Brazil-region provider listings. **Watch options** opens the Brazil link returned by TMDB (often a JustWatch result page); it is not a playback guarantee or necessarily a direct Netflix/Prime link. Trailers and clips are deliberately out of scope.
+
+> This product uses the TMDB API but is not endorsed or certified by TMDB.
+
 Run verification:
 
 ```bash
@@ -58,6 +76,7 @@ Security boundaries:
 - HTTP, embedded credentials, localhost/private-network hosts, and unsafe redirects are rejected;
 - each redirect host is DNS-checked before following;
 - browser code never receives configured manifest URLs;
+- browser code never receives the `TMDB_API_KEY`;
 - no Stremio account tokens or private Flatpak files are read.
 
 ## Project documents

@@ -218,10 +218,11 @@ async function fetchTitleMeta({ sources, type, id, fetchImpl = fetch }) {
 }
 
 class CatalogueStore {
-  constructor({ dataDir = path.join(process.cwd(), '.locadora'), fetchImpl = fetch } = {}) {
+  constructor({ dataDir = path.join(process.cwd(), '.locadora'), fetchImpl = fetch, tmdbClient = null } = {}) {
     this.dataDir = dataDir;
     this.file = path.join(dataDir, 'sources.json');
     this.fetchImpl = fetchImpl;
+    this.tmdbClient = tmdbClient;
     this.sources = [];
     this.metaCache = new Map();
   }
@@ -273,7 +274,11 @@ class CatalogueStore {
 
   async titleMeta({ type, id }) {
     const key = `${type}:${id}`;
-    if (!this.metaCache.has(key)) this.metaCache.set(key, fetchTitleMeta({ sources: this.sources, type, id, fetchImpl: this.fetchImpl }));
+    if (!this.metaCache.has(key)) this.metaCache.set(key, (async () => {
+      const meta = await fetchTitleMeta({ sources: this.sources, type, id, fetchImpl: this.fetchImpl });
+      if (!this.tmdbClient) return meta;
+      try { return await this.tmdbClient.enrich(meta); } catch { return meta; }
+    })());
     try { return await this.metaCache.get(key); } catch (error) {
       this.metaCache.delete(key);
       throw error;

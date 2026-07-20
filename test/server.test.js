@@ -105,7 +105,12 @@ test('server exposes the installed Three.js browser module without exposing node
   const viewer = await fetch(`http://127.0.0.1:${port}/vhs-3d.mjs`);
   assert.equal(viewer.status, 200);
   assert.match(viewer.headers.get('content-type'), /text\/javascript/);
-  assert.match(await viewer.text(), /createVhsViewer/);
+  const viewerSource = await viewer.text();
+  assert.match(viewerSource, /createVhsViewer/);
+  assert.match(viewerSource, /certificationBR/);
+  assert.match(viewerSource, /availabilityBR/);
+  assert.match(viewerSource, /backdropUrl/);
+  assert.match(viewerSource, /logoUrl/);
 
   const immersive = await fetch(`http://127.0.0.1:${port}/immersive-shelf.mjs`);
   assert.equal(immersive.status, 200);

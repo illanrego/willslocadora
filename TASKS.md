@@ -24,6 +24,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Added two warm amber lamps above the immersive genre sign, with physical fixtures and focused light pools across the tapes.
 - [x] Added a second, pointer-focused section zoom after the immersive shelf reaches its whole-stand zoom limit; zooming out unwinds section focus before whole-stand zoom.
 - [x] Added independent opt-in music and ambience/effects controls, shared ambience scheduling, decade-based selectable music tracks, and safe missing-file feedback in `docs/ambience.md`.
+- [x] Added optional server-only TMDB enrichment for Brazil watch-provider listings/certification, backdrops, title logos, expanded credits, and the returned watch-options link; trailers and clips remain excluded.
 - [x] Added canonical `npm test`; 26 tests pass after the immersive stand paging and layout work.
 - [x] Exercised the real server, live Cinemeta catalogue, browser UI, detail dialog, counter action, and year refresh without browser console errors.
 
@@ -39,6 +40,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 
 ## Next — quality after playtest
 
+- [ ] With the user's TMDB key, live-check Brazil provider coverage, classification accuracy, image/logo quality, and returned Watch Options links across movies and series.
 - [ ] Add source health/removal controls and clearer per-source errors.
 
 - [ ] Add director browse, New This Year, and staff picks only if the core aisle loop works.
