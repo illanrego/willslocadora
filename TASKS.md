@@ -22,6 +22,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Added an auto-hidden immersive header with a minimal in-scene reveal tab; immersive mode remains full-viewport.
 - [x] Added immersive stand browsing with 4-row × 10-column stands, cached previous/next controls, 40-title batches, and sideways stand-change animations while keeping one stand visible at a time.
 - [x] Added two warm amber lamps above the immersive genre sign, with physical fixtures and focused light pools across the tapes.
+- [x] Added a second, pointer-focused section zoom after the immersive shelf reaches its whole-stand zoom limit; zooming out unwinds section focus before whole-stand zoom.
 - [x] Added independent opt-in music and ambience/effects controls, shared ambience scheduling, decade-based selectable music tracks, and safe missing-file feedback in `docs/ambience.md`.
 - [x] Added canonical `npm test`; 26 tests pass after the immersive stand paging and layout work.
 - [x] Exercised the real server, live Cinemeta catalogue, browser UI, detail dialog, counter action, and year refresh without browser console errors.

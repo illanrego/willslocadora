@@ -3,6 +3,9 @@ import * as THREE from '/vendor/three.module.js';
 const COLUMNS = 10;
 const ROWS = 4;
 const MAX_TAPES = COLUMNS * ROWS;
+const MIN_ZOOM = 0.72;
+const MAX_ZOOM = 1.75;
+const MAX_SECTION_ZOOM = 0.8;
 
 function canvasTexture(width, height, draw) {
   const canvas = document.createElement('canvas');
@@ -202,10 +205,14 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let baseCameraDistance = 18.2;
   let targetCameraDistance = 18.2;
   let zoomLevel = 1;
+  let sectionZoom = 0;
   let activeStand = stand;
   let standTransition = null;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
+  const homeLookAt = new THREE.Vector3(0, 0.25, 0);
+  const sectionFocus = new THREE.Vector3(0, 0.25, 0);
+  const cameraLookAt = homeLookAt.clone();
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function clearTapes() {
@@ -268,25 +275,43 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     renderer.domElement.setAttribute('aria-label', `${nextGenre} rental shelf. Use arrow keys to choose a tape and Enter to inspect it.`);
   }
 
-  function pick(event) {
+  function updatePointer(event) {
     const bounds = renderer.domElement.getBoundingClientRect();
     pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
     pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+    pointerTargetX = pointer.x * 0.275;
+    pointerTargetY = 0.55 + pointer.y * 0.175;
+    sectionFocus.set(pointer.x * 5.15, 0.25 + pointer.y * 3.6, 0);
+  }
+
+  function pick(event) {
+    updatePointer(event);
     raycaster.setFromCamera(pointer, camera);
     return raycaster.intersectObjects(tapeRecords.flatMap(({ caseMesh, front }) => [caseMesh, front]), false)[0] || null;
   }
 
+  function updateCameraDistance() {
+    targetCameraDistance = baseCameraDistance / (zoomLevel * (1 + sectionZoom * 0.6));
+  }
+
   function adjustZoom(amount) {
-    zoomLevel = THREE.MathUtils.clamp(zoomLevel + amount, 0.72, 1.75);
-    targetCameraDistance = baseCameraDistance / zoomLevel;
+    if (amount > 0) {
+      const globalIncrease = Math.min(amount, MAX_ZOOM - zoomLevel);
+      zoomLevel += globalIncrease;
+      sectionZoom = THREE.MathUtils.clamp(sectionZoom + amount - globalIncrease, 0, MAX_SECTION_ZOOM);
+    } else {
+      const zoomOut = -amount;
+      const sectionDecrease = Math.min(zoomOut, sectionZoom);
+      sectionZoom -= sectionDecrease;
+      zoomLevel = THREE.MathUtils.clamp(zoomLevel - (zoomOut - sectionDecrease), MIN_ZOOM, MAX_ZOOM);
+    }
+    updateCameraDistance();
     if (reducedMotion) camera.position.z = targetCameraDistance;
-    return zoomLevel;
+    return zoomLevel + sectionZoom;
   }
 
   function wheel(event) {
-    const bounds = renderer.domElement.getBoundingClientRect();
-    pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
-    pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+    updatePointer(event);
     raycaster.setFromCamera(pointer, camera);
     if (!raycaster.intersectObject(room, true).length) return;
     event.preventDefault();
@@ -294,9 +319,6 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   }
 
   function pointerMove(event) {
-    const bounds = renderer.domElement.getBoundingClientRect();
-    pointerTargetX = ((event.clientX - bounds.left) / bounds.width - 0.5) * 0.55;
-    pointerTargetY = 0.55 - ((event.clientY - bounds.top) / bounds.height - 0.5) * 0.35;
     const hit = pick(event);
     hovered = hit ? hit.object.userData.index : -1;
     renderer.domElement.style.cursor = hovered >= 0 ? 'pointer' : 'default';
@@ -342,7 +364,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const fitHeight = 6.05 / verticalTangent;
     const fitWidth = 6.45 / (verticalTangent * camera.aspect);
     baseCameraDistance = Math.max(fitHeight, fitWidth) * 1.18;
-    targetCameraDistance = baseCameraDistance / zoomLevel;
+    updateCameraDistance();
     if (!frame || reducedMotion) camera.position.z = targetCameraDistance;
     scene.fog.near = baseCameraDistance * 0.82;
     scene.fog.far = baseCameraDistance + 14;
@@ -367,7 +389,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     } else {
       camera.position.z = targetCameraDistance;
     }
-    camera.lookAt(0, 0.25, 0);
+    cameraLookAt.lerp(sectionZoom ? sectionFocus : homeLookAt, reducedMotion ? 1 : 0.12);
+    camera.lookAt(cameraLookAt);
     if (standTransition) {
       const targetX = standTransition.phase === 'out' ? -standTransition.direction * 14 : 0;
       room.position.x += (targetX - room.position.x) * 0.16;

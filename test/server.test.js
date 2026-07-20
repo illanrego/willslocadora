@@ -113,6 +113,8 @@ test('server exposes the installed Three.js browser module without exposing node
   const immersiveSource = await immersive.text();
   assert.match(immersiveSource, /const COLUMNS = 10;/);
   assert.match(immersiveSource, /const ROWS = 4;/);
+  assert.match(immersiveSource, /const MAX_SECTION_ZOOM = 0\.8;/);
+  assert.match(immersiveSource, /function updateCameraDistance\(\)/);
   assert.match(immersiveSource, /const lampPositions = \[-3\.2, 3\.2\];/);
   assert.match(immersiveSource, /new THREE\.SpotLight\(0xffb15c, 32, 13/);
   assert.match(immersiveSource, /new THREE\.SphereGeometry\(0\.12, 16, 12\)/);
