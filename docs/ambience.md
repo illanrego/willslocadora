@@ -36,7 +36,7 @@ public/audio/
 
 The ambience folder is shared for every store year. Its two loops play continuously while ambience is enabled. The fluorescent-light effect is scheduled often (about every 12–28 seconds), the VHS eject is occasional (about every 35–80 seconds), and the door bell is rare (about every 110–220 seconds). All three effects belong only to the ambience toggle.
 
-Music changes by selected decade and the user can choose a tape from the three named tracks. Use the same names in every decade folder; each decade gets its own composition. If an asset is absent, its control reports the missing shared ambience pack or selected decade instead of pretending audio is playing.
+Music changes by selected decade and the user can choose a tape from the three named tracks. Use the same names in every decade folder; each decade gets its own composition. When a selected-decade tape is absent, Locadora tries the matching **1990s** tape before reporting a music error. Shared ambience still reports its missing pack directly.
 
 The music files are for the user-authored Suno tracks. Keep the downloaded source file and the applicable Suno usage-rights record outside the browser bundle.
 

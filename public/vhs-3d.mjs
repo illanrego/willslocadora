@@ -6,6 +6,14 @@ const ACTIONS = {
   counter: { x: 72, y: 1328, width: 410, height: 104 },
   watch: { x: 506, y: 1328, width: 446, height: 104 },
 };
+const LOCADORA_PALETTE = {
+  ink: '#080d17',
+  navy: '#101827',
+  red: '#9e3634',
+  yellow: '#c99a2e',
+  cream: '#e7d8b1',
+  white: '#f7edcf',
+};
 
 function canvasTexture(draw) {
   const canvas = document.createElement('canvas');
@@ -59,7 +67,7 @@ function drawFront(context, title) {
 function drawButton(context, rect, label, fill, ink) {
   context.fillStyle = fill;
   context.fillRect(rect.x, rect.y, rect.width, rect.height);
-  context.strokeStyle = '#3a2d22';
+  context.strokeStyle = LOCADORA_PALETTE.red;
   context.lineWidth = 5;
   context.strokeRect(rect.x, rect.y, rect.width, rect.height);
   context.fillStyle = ink;
@@ -72,7 +80,7 @@ function drawButton(context, rect, label, fill, ink) {
 }
 
 function drawImageFrame(context, image, x, y, width, height, focus = 0.5) {
-  context.fillStyle = '#071a31';
+  context.fillStyle = LOCADORA_PALETTE.ink;
   context.fillRect(x, y, width, height);
   if (image) {
     context.save();
@@ -87,7 +95,7 @@ function drawImageFrame(context, image, x, y, width, height, focus = 0.5) {
     context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) * focus, drawWidth, drawHeight);
     context.restore();
   }
-  context.strokeStyle = '#e6dfbd';
+  context.strokeStyle = LOCADORA_PALETTE.yellow;
   context.lineWidth = 7;
   context.strokeRect(x, y, width, height);
 }
@@ -113,25 +121,27 @@ function drawBarcode(context, value, x, y, width, height) {
 }
 
 function drawBack(context, title, atCounter, image = null) {
-  context.fillStyle = '#0d477f';
+  context.fillStyle = LOCADORA_PALETTE.ink;
   context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
-  context.fillStyle = '#0a3768';
+  context.fillStyle = LOCADORA_PALETTE.navy;
   context.fillRect(32, 32, 960, 1472);
-  context.strokeStyle = '#e0bc35';
+  context.fillStyle = LOCADORA_PALETTE.red;
+  context.fillRect(32, 32, 960, 142);
+  context.strokeStyle = LOCADORA_PALETTE.yellow;
   context.lineWidth = 10;
   context.strokeRect(44, 44, 936, 1448);
 
-  context.fillStyle = '#f2e9cc';
+  context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '900 24px Arial Narrow, sans-serif';
-  context.fillText(String(title.source || "WILL'S LOCADORA").toUpperCase(), 72, 92);
+  context.fillText("WILL'S LOCADORA · VIDEO ARCHIVE", 72, 92);
   context.font = '700 18px Courier New, monospace';
-  context.fillText(`${title.type === 'series' ? 'HOME VIDEO SERIES' : 'FEATURE PRESENTATION'} · ${title.year || 'YEAR UNKNOWN'}`, 72, 126);
+  context.fillText(`${title.type === 'series' ? 'HOME VIDEO SERIES' : 'FEATURE PRESENTATION'} · ${title.year || 'YEAR UNKNOWN'}`, 72, 130);
   drawBarcode(context, title.id, 596, 68, 356, 126);
 
-  context.fillStyle = '#f4cf38';
+  context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 74px Impact, Arial Narrow, sans-serif';
   wrappedText(context, title.name, 72, 250, 880, 75, 2);
-  context.fillStyle = '#f4f0df';
+  context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '800 23px Arial Narrow, sans-serif';
   const meta = [...(title.genres || []).slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`].filter(Boolean).join('  ·  ');
   context.fillText(meta || 'CATALOGUE EDITION', 72, 365);
@@ -139,14 +149,16 @@ function drawBack(context, title, atCounter, image = null) {
   drawImageFrame(context, image, 72, 405, 348, 285, 0.18);
   drawImageFrame(context, image, 448, 405, 504, 285, 0.78);
 
-  context.fillStyle = '#f4cf38';
+  context.fillStyle = LOCADORA_PALETTE.red;
+  context.fillRect(72, 720, 880, 8);
+  context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 29px Arial Narrow, sans-serif';
   context.fillText('THE STORY', 72, 750);
-  context.fillStyle = '#f4f0df';
+  context.fillStyle = LOCADORA_PALETTE.white;
   context.font = '25px Arial, sans-serif';
   wrappedText(context, title.description || 'No synopsis was included by this catalogue source.', 72, 790, 880, 34, 8);
 
-  context.strokeStyle = '#7aa2c8';
+  context.strokeStyle = LOCADORA_PALETTE.red;
   context.lineWidth = 3;
   context.beginPath();
   context.moveTo(72, 1058);
@@ -160,21 +172,21 @@ function drawBack(context, title, atCounter, image = null) {
   ];
   let y = 1105;
   for (const [label, value] of credits) {
-    context.fillStyle = '#f4cf38';
+    context.fillStyle = LOCADORA_PALETTE.yellow;
     context.font = '900 20px Arial Narrow, sans-serif';
     context.fillText(label, 72, y);
-    context.fillStyle = '#f4f0df';
+    context.fillStyle = LOCADORA_PALETTE.cream;
     context.font = '700 20px Arial, sans-serif';
     y = wrappedText(context, value, 242, y, 710, 27, 2) + 12;
   }
 
-  context.fillStyle = '#a9c3da';
+  context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '16px Courier New, monospace';
   context.fillText('CATALOGUE LISTING ONLY · PLAYBACK AND AVAILABILITY BY YOUR STREMIO SETUP', 72, 1288);
-  drawButton(context, ACTIONS.counter, atCounter ? 'RETURN TO SHELF' : 'TAKE TO COUNTER', '#f4f0df', '#0b3472');
-  drawButton(context, ACTIONS.watch, 'WATCH IN STREMIO →', '#f4cf38', '#0b3472');
+  drawButton(context, ACTIONS.counter, atCounter ? 'RETURN TO SHELF' : 'TAKE TO COUNTER', LOCADORA_PALETTE.cream, LOCADORA_PALETTE.ink);
+  drawButton(context, ACTIONS.watch, 'WATCH IN STREMIO →', LOCADORA_PALETTE.yellow, LOCADORA_PALETTE.ink);
 
-  context.fillStyle = '#dfe8ef';
+  context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '900 18px Courier New, monospace';
   context.fillText('VHS  ·  BE KIND, REWIND  ·  DRAG TO INSPECT', 72, 1480);
   context.globalAlpha = 0.13;

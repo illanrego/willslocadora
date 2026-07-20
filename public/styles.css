@@ -123,21 +123,22 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-next-stand { right: 4.8rem; }
 .immersive-stand-button:hover, .immersive-stand-button:focus-visible { color: var(--blue-deep); background: var(--yellow); }
 .immersive-stand-button:disabled { opacity: .55; cursor: wait; }
-.immersive-hud { position: absolute; z-index: 5; top: 0; left: 0; width: 100%; color: var(--cream); background: rgba(16, 24, 39, .96); border-bottom: 3px solid var(--red); box-shadow: 0 5px 20px rgba(0,0,0,.55); }
-.immersive-hud-strip { display: grid; grid-template-columns: minmax(220px, 1fr) 100px auto auto auto auto; align-items: stretch; min-height: 42px; }
-.immersive-hud button, .immersive-format button { min-height: 42px; border: 0; border-right: 1px solid rgba(246,235,204,.24); color: var(--cream); background: transparent; cursor: pointer; font-size: .68rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.immersive-hud { position: absolute; z-index: 5; top: 0; left: 0; width: 100%; padding: .35rem .5rem .45rem; color: var(--cream); background: rgba(16, 24, 39, .96); border-bottom: 3px solid var(--red); box-shadow: 0 5px 20px rgba(0,0,0,.55); }
+.immersive-hud-strip { display: grid; grid-template-columns: minmax(220px, 1fr) 100px auto auto auto auto; gap: .35rem; align-items: stretch; min-height: 42px; }
+.immersive-hud-strip > button, .immersive-format button { min-height: 42px; padding-inline: .75rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); background: transparent; cursor: pointer; font-size: .68rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .immersive-hud button:hover, .immersive-hud button:focus-visible, .immersive-hud button[aria-pressed="true"] { color: var(--blue-deep); background: var(--yellow); outline: 0; }
 #immersive-filter-go { color: var(--blue-deep); background: var(--yellow); }
-.immersive-picker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .45rem; min-width: 0; padding: 0 .75rem; border-right: 1px solid rgba(246,235,204,.24); color: var(--cream); font: 900 .6rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; }
+.immersive-picker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .45rem; min-width: 0; padding: .35rem .7rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); font: 900 .6rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; }
 .immersive-picker select, .immersive-picker input { min-width: 0; height: 30px; border: 1px solid rgba(246,235,204,.42); color: var(--cream); background: rgba(158, 54, 52, .88); font: 900 .68rem/1 "Courier New", monospace; text-transform: uppercase; }
 .immersive-picker select { padding-inline: .4rem; }
 .immersive-year-picker { grid-template-columns: 1fr; gap: .15rem; }
 .immersive-year-picker input { width: 100%; padding-inline: .4rem; }
-.immersive-format { display: grid; grid-template-columns: 1fr 1fr; }
+.immersive-format { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgba(246,235,204,.24); }
+.immersive-format button { border: 0; }
 .immersive-format .is-active { color: var(--blue-deep); background: var(--yellow); }
 .immersive-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; border-top: 1px solid rgba(246,235,204,.24); background: rgba(246,235,204,.24); }
 .audio-setting { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; padding: .7rem 1rem; background: rgba(16, 24, 39, .98); color: var(--cream); font: 900 .62rem/1 "Courier New", monospace; letter-spacing: .04em; text-transform: uppercase; }
-.audio-setting button { padding-inline: .7rem; border: 1px solid rgba(246,235,204,.4); }
+.audio-setting button { min-height: 32px; padding-inline: .7rem; border: 1px solid rgba(246,235,204,.4); }
 .music-track-picker { display: flex; align-items: center; gap: .35rem; white-space: nowrap; }
 .music-track-picker select { min-height: 32px; border: 1px solid rgba(246,235,204,.4); color: var(--cream); background: var(--red); font: 900 .65rem/1 "Courier New", monospace; text-transform: uppercase; }
 .audio-setting input[type="range"] { flex: 1 1 110px; min-width: 110px; accent-color: var(--yellow); }

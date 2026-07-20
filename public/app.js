@@ -183,8 +183,8 @@
   function refreshImmersive(direction = 0) {
     if (!immersiveShelf) return;
     const genre = genres[state.genreIndex];
-    if (direction) immersiveShelf.transition(immersiveTitles(), genre.label, state.year, state.type, direction);
-    else immersiveShelf.update(immersiveTitles(), genre.label, state.year, state.type);
+    if (direction) immersiveShelf.transition(immersiveTitles(), genre.label, state.year, state.type, state.stand, direction);
+    else immersiveShelf.update(immersiveTitles(), genre.label, state.year, state.type, state.stand);
     $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} tapes` : 'This display is empty';
   }
 
@@ -227,6 +227,7 @@
         genre: genre.label,
         year: state.year,
         type: state.type,
+        stand: state.stand,
         onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
       });
       stage.querySelector('.immersive-canvas')?.focus();
@@ -314,7 +315,7 @@
     $('#immersive-status').textContent = append ? 'Opening another display…' : 'Opening the boxes…';
     $('#immersive-previous-stand').disabled = true;
     $('#immersive-next-stand').disabled = true;
-    immersiveShelf?.setLoading(genre.label, state.year, state.type);
+    immersiveShelf?.setLoading(genre.label, state.year, state.type, stand);
     shelf.hidden = false;
     shelf.setAttribute('aria-busy', 'true');
     emptyState.hidden = true;

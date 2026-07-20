@@ -65,7 +65,25 @@ function drawSign(context, genre, year, type, loading = false) {
   context.fillText(loading ? 'OPENING THE BOXES…' : `${year}  •  ${type === 'series' ? 'SERIES' : 'MOVIES'}`, width / 2, 196);
 }
 
-export function createImmersiveShelf({ container, titles = [], genre, year, type, onSelect }) {
+function drawStandMarker(context, stand) {
+  const { width, height } = context.canvas;
+  context.fillStyle = '#101827';
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = '#9e3634';
+  context.fillRect(0, 0, width, 38);
+  context.strokeStyle = '#c99a2e';
+  context.lineWidth = 10;
+  context.strokeRect(5, 5, width - 10, height - 10);
+  context.fillStyle = '#e7d8b1';
+  context.textAlign = 'center';
+  context.font = '900 26px Courier New, monospace';
+  context.fillText('STAND', width / 2, 31);
+  context.fillStyle = '#c99a2e';
+  context.font = '900 78px Impact, Arial Narrow, sans-serif';
+  context.fillText(String(stand + 1).padStart(2, '0'), width / 2, 126);
+}
+
+export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, onSelect }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -127,6 +145,15 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   sign.castShadow = true;
   room.add(sign);
 
+  const standCanvas = canvasTexture(320, 160, (context) => drawStandMarker(context, stand));
+  const standMarker = new THREE.Mesh(
+    new THREE.BoxGeometry(1.36, 0.9, 0.16),
+    [edge, edge, edge, edge, new THREE.MeshStandardMaterial({ map: standCanvas.texture, roughness: 0.58 }), edge],
+  );
+  standMarker.position.set(4.88, 4.88, 0.18);
+  standMarker.castShadow = true;
+  room.add(standMarker);
+
   const lampPositions = [-3.2, 3.2];
   const lampShade = new THREE.MeshStandardMaterial({ color: 0x6b321d, metalness: 0.65, roughness: 0.32, side: THREE.DoubleSide });
   const lampBulb = new THREE.MeshStandardMaterial({ color: 0xffc06b, emissive: 0xff7a28, emissiveIntensity: 3.5, roughness: 0.3 });
@@ -175,6 +202,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let baseCameraDistance = 18.2;
   let targetCameraDistance = 18.2;
   let zoomLevel = 1;
+  let activeStand = stand;
   let standTransition = null;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
@@ -231,9 +259,12 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     selected = Math.min(selected, Math.max(tapeRecords.length - 1, 0));
   }
 
-  function updateSign(nextGenre, nextYear, nextType, loading = false) {
+  function updateSign(nextGenre, nextYear, nextType, loading = false, nextStand = activeStand) {
+    activeStand = nextStand;
     drawSign(signCanvas.canvas.getContext('2d'), nextGenre, nextYear, nextType, loading);
     signCanvas.texture.needsUpdate = true;
+    drawStandMarker(standCanvas.canvas.getContext('2d'), activeStand);
+    standCanvas.texture.needsUpdate = true;
     renderer.domElement.setAttribute('aria-label', `${nextGenre} rental shelf. Use arrow keys to choose a tape and Enter to inspect it.`);
   }
 
@@ -341,7 +372,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       const targetX = standTransition.phase === 'out' ? -standTransition.direction * 14 : 0;
       room.position.x += (targetX - room.position.x) * 0.16;
       if (standTransition.phase === 'out' && Math.abs(targetX - room.position.x) < 0.08) {
-        updateSign(standTransition.genre, standTransition.year, standTransition.type);
+        updateSign(standTransition.genre, standTransition.year, standTransition.type, false, standTransition.stand);
         renderTapes(standTransition.titles);
         room.position.x = standTransition.direction * 14;
         standTransition.phase = 'in';
@@ -370,18 +401,18 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     zoomOut() {
       return adjustZoom(-0.12);
     },
-    setLoading(nextGenre, nextYear, nextType) {
-      updateSign(nextGenre, nextYear, nextType, true);
+    setLoading(nextGenre, nextYear, nextType, nextStand) {
+      updateSign(nextGenre, nextYear, nextType, true, nextStand);
     },
-    update(nextTitles, nextGenre, nextYear, nextType) {
+    update(nextTitles, nextGenre, nextYear, nextType, nextStand) {
       standTransition = null;
       room.position.x = 0;
-      updateSign(nextGenre, nextYear, nextType);
+      updateSign(nextGenre, nextYear, nextType, false, nextStand);
       renderTapes(nextTitles);
     },
-    transition(nextTitles, nextGenre, nextYear, nextType, direction) {
+    transition(nextTitles, nextGenre, nextYear, nextType, nextStand, direction) {
       if (reducedMotion || !direction) {
-        this.update(nextTitles, nextGenre, nextYear, nextType);
+        this.update(nextTitles, nextGenre, nextYear, nextType, nextStand);
         return;
       }
       hovered = -1;
@@ -393,6 +424,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
         genre: nextGenre,
         year: nextYear,
         type: nextType,
+        stand: nextStand,
       };
     },
     dispose() {
@@ -405,6 +437,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       renderer.domElement.removeEventListener('wheel', wheel);
       clearTapes();
       signCanvas.texture.dispose();
+      standCanvas.texture.dispose();
       const geometries = new Set();
       const materials = new Set();
       room.traverse((object) => {

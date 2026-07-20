@@ -6,7 +6,7 @@
     { url: '/audio/ambience/store-room-tone.mp3', volume: 0.2 },
   ];
   const effects = {
-    light: { url: '/audio/ambience/fluorescent-light-flicker.mp3', volume: 0.2, minDelay: 12_000, maxDelay: 28_000 },
+    light: { url: '/audio/ambience/fluorescent-light-flicker.mp3', volume: 0.13, minDelay: 12_000, maxDelay: 28_000 },
     vhs: { url: '/audio/ambience/vhs-eject.mp3', volume: 0.24, minDelay: 35_000, maxDelay: 80_000 },
     bell: { url: '/audio/ambience/shop-door-bell.mp3', volume: 0.28, minDelay: 110_000, maxDelay: 220_000 },
   };
@@ -18,6 +18,12 @@
 
   function musicUrlForYear(year, trackId) {
     return `/audio/music/${decadeForYear(year)}/${trackId}.mp3`;
+  }
+
+  function musicUrlsForYear(year, trackId) {
+    const preferred = musicUrlForYear(year, trackId);
+    const fallback = `/audio/music/1990s/${trackId}.mp3`;
+    return preferred === fallback ? [preferred] : [preferred, fallback];
   }
 
   function createTrack({ url, volume }) {
@@ -62,11 +68,25 @@
       Object.keys(effects).forEach(scheduleEffect);
     }
 
-    function musicTracks() {
+    function musicTracks(url) {
       loops.music.forEach((track) => track.pause());
-      loops.music = [createTrack({ url: musicUrlForYear(storeYear, musicTrackId), volume: 0.18 })];
+      loops.music = [createTrack({ url, volume: 0.18 })];
       loops.music.forEach((track) => applyTrackVolume(track, 'music'));
       return loops.music;
+    }
+
+    async function startMusic() {
+      for (const url of musicUrlsForYear(storeYear, musicTrackId)) {
+        const tracks = musicTracks(url);
+        try {
+          await Promise.all(tracks.map((track) => track.play()));
+          active.add('music');
+          return true;
+        } catch {
+          tracks.forEach((track) => track.pause());
+        }
+      }
+      throw new Error(`Add the ${decadeForYear(storeYear)} or 1990s music files before turning this on.`);
     }
 
     function stopEffects() {
@@ -75,12 +95,13 @@
     }
 
     async function start(channel) {
-      const tracks = channel === 'music' ? musicTracks() : loops.ambience;
+      if (channel === 'music') return startMusic();
+      const tracks = loops.ambience;
       try {
         await Promise.all(tracks.map((track) => track.play()));
       } catch {
         tracks.forEach((track) => track.pause());
-        throw new Error(`Add the ${channel === 'music' ? decadeForYear(storeYear) : 'shared ambience'} files before turning this on.`);
+        throw new Error('Add the shared ambience files before turning this on.');
       }
       active.add(channel);
       if (channel === 'ambience') scheduleEffects();

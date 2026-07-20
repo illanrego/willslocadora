@@ -36,9 +36,12 @@ test('server binds to loopback and serves health plus static app', async (t) => 
   assert.match(page, /script src="\/store-ambience\.js"/);
   const audioPlayer = await fetch(`http://127.0.0.1:${address.port}/store-ambience.js`).then((response) => response.text());
   assert.match(audioPlayer, /function musicUrlForYear\(year, trackId\)/);
+  assert.match(audioPlayer, /function musicUrlsForYear\(year, trackId\)/);
   assert.match(audioPlayer, /\/audio\/music\/\$\{decadeForYear\(year\)\}\/\$\{trackId\}\.mp3/);
+  assert.match(audioPlayer, /\/audio\/music\/1990s\/\$\{trackId\}\.mp3/);
   assert.match(audioPlayer, /\/audio\/ambience\/store-room-tone\.mp3/);
   assert.match(audioPlayer, /fluorescent-hum-loop\.mp3', volume: 0\.08/);
+  assert.match(audioPlayer, /fluorescent-light-flicker\.mp3', volume: 0\.13/);
   assert.match(audioPlayer, /function setVolume\(channel, value\)/);
   assert.match(audioPlayer, /fluorescent-light-flicker\.mp3/);
 });
@@ -113,7 +116,8 @@ test('server exposes the installed Three.js browser module without exposing node
   assert.match(immersiveSource, /const lampPositions = \[-3\.2, 3\.2\];/);
   assert.match(immersiveSource, /new THREE\.SpotLight\(0xffb15c, 32, 13/);
   assert.match(immersiveSource, /new THREE\.SphereGeometry\(0\.12, 16, 12\)/);
-  assert.match(immersiveSource, /transition\(nextTitles, nextGenre, nextYear, nextType, direction\)/);
+  assert.match(immersiveSource, /function drawStandMarker\(context, stand\)/);
+  assert.match(immersiveSource, /transition\(nextTitles, nextGenre, nextYear, nextType, nextStand, direction\)/);
 
   const app = await fetch(`http://127.0.0.1:${port}/app.js`);
   const appSource = await app.text();
