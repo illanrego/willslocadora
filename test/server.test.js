@@ -22,11 +22,25 @@ test('server binds to loopback and serves health plus static app', async (t) => 
   assert.match(page, /Will's Locadora/);
   assert.match(page, /id="store-year-input"[^>]+type="number"/);
   assert.match(page, /id="year-go"[^>]*>Go<\/button>/);
-  assert.match(page, /id="immersive-header-toggle"[^>]+aria-expanded="false"/);
+  assert.match(page, /id="immersive-settings-toggle"[^>]+aria-controls="immersive-settings"[^>]+aria-expanded="false"/);
+  assert.match(page, /id="immersive-settings"[^>]+hidden/);
   assert.match(page, /id="immersive-zoom-out"[^>]+aria-label="Zoom out"/);
   assert.match(page, /id="immersive-zoom-in"[^>]+aria-label="Zoom in"/);
   assert.match(page, /id="immersive-previous-stand"[^>]+hidden[^>]*>← Previous stand/);
   assert.match(page, /id="immersive-next-stand"[^>]+hidden[^>]*>Next stand/);
+  assert.match(page, /id="ambience-toggle"[^>]+aria-pressed="false"[^>]*>Store ambience<\/button>/);
+  assert.match(page, /id="music-toggle"[^>]+aria-pressed="false"[^>]*>Store music<\/button>/);
+  assert.match(page, /<label class="music-track-picker"[^>]*>\s*<span>Music tape<\/span>\s*<select id="music-track"/);
+  assert.match(page, /id="ambience-volume"[^>]+type="range"[^>]+value="100"/);
+  assert.match(page, /id="music-volume"[^>]+type="range"[^>]+value="100"/);
+  assert.match(page, /script src="\/store-ambience\.js"/);
+  const audioPlayer = await fetch(`http://127.0.0.1:${address.port}/store-ambience.js`).then((response) => response.text());
+  assert.match(audioPlayer, /function musicUrlForYear\(year, trackId\)/);
+  assert.match(audioPlayer, /\/audio\/music\/\$\{decadeForYear\(year\)\}\/\$\{trackId\}\.mp3/);
+  assert.match(audioPlayer, /\/audio\/ambience\/store-room-tone\.mp3/);
+  assert.match(audioPlayer, /fluorescent-hum-loop\.mp3', volume: 0\.08/);
+  assert.match(audioPlayer, /function setVolume\(channel, value\)/);
+  assert.match(audioPlayer, /fluorescent-light-flicker\.mp3/);
 });
 
 test('shelf accepts catalogue years through 2026 and rejects later years', async (t) => {
@@ -96,6 +110,9 @@ test('server exposes the installed Three.js browser module without exposing node
   const immersiveSource = await immersive.text();
   assert.match(immersiveSource, /const COLUMNS = 10;/);
   assert.match(immersiveSource, /const ROWS = 4;/);
+  assert.match(immersiveSource, /const lampPositions = \[-3\.2, 3\.2\];/);
+  assert.match(immersiveSource, /new THREE\.SpotLight\(0xffb15c, 32, 13/);
+  assert.match(immersiveSource, /new THREE\.SphereGeometry\(0\.12, 16, 12\)/);
   assert.match(immersiveSource, /transition\(nextTitles, nextGenre, nextYear, nextType, direction\)/);
 
   const app = await fetch(`http://127.0.0.1:${port}/app.js`);

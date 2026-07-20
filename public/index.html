@@ -67,24 +67,54 @@
       </section>
 
       <section id="immersive-room" class="immersive-room" aria-label="Immersive video shelf" hidden>
-        <button id="immersive-header-toggle" class="immersive-header-tab" type="button" aria-controls="store-header" aria-expanded="false">Header</button>
         <div class="immersive-zoom" role="group" aria-label="Immersive shelf zoom">
           <button id="immersive-zoom-in" type="button" aria-label="Zoom in">+</button>
           <button id="immersive-zoom-out" type="button" aria-label="Zoom out">−</button>
         </div>
         <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" hidden>← Previous stand</button>
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
-        <div class="immersive-hud">
-          <button id="immersive-genre-back" type="button" aria-label="Previous genre">←</button>
-          <output id="immersive-genre" aria-live="polite">Action &amp; Adventure</output>
-          <button id="immersive-genre-forward" type="button" aria-label="Next genre">→</button>
-          <div class="immersive-format" role="group" aria-label="Immersive shelf format">
-            <button data-type="movie" type="button">Movies</button>
-            <button data-type="series" type="button">Series</button>
+        <header class="immersive-hud">
+          <div class="immersive-hud-strip">
+            <label class="immersive-picker" for="immersive-genre-select">
+              <span>Genre</span>
+              <select id="immersive-genre-select" aria-label="Immersive genre"></select>
+            </label>
+            <label class="immersive-picker immersive-year-picker" for="immersive-year-input">
+              <span>Year</span>
+              <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
+            </label>
+            <button id="immersive-filter-go" type="button">Go</button>
+            <div class="immersive-format" role="group" aria-label="Immersive shelf format">
+              <button data-type="movie" type="button">Movies</button>
+              <button data-type="series" type="button">Series</button>
+            </div>
+            <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false">Sound</button>
+            <button id="normal-mode-return" type="button">Return</button>
           </div>
-          <button id="normal-mode-return" type="button">Return to normal mode</button>
-          <span id="immersive-status" role="status" aria-live="polite">Opening the boxes…</span>
-        </div>
+          <div id="immersive-settings" class="immersive-settings" hidden>
+            <div class="audio-setting">
+              <button id="ambience-toggle" type="button" aria-pressed="false">Store ambience</button>
+              <label for="ambience-volume">Ambience level</label>
+              <input id="ambience-volume" type="range" min="0" max="100" value="100" step="1">
+              <output id="ambience-volume-value">100%</output>
+            </div>
+            <div class="audio-setting">
+              <button id="music-toggle" type="button" aria-pressed="false">Store music</button>
+              <label class="music-track-picker">
+                <span>Music tape</span>
+                <select id="music-track">
+                  <option value="night-drive">Night drive</option>
+                  <option value="late-fee-dreams">Late-fee dreams</option>
+                  <option value="closing-time">Closing time</option>
+                </select>
+              </label>
+              <label for="music-volume">Music level</label>
+              <input id="music-volume" type="range" min="0" max="100" value="100" step="1">
+              <output id="music-volume-value">100%</output>
+            </div>
+            <span id="immersive-status" role="status" aria-live="polite">Opening the boxes…</span>
+          </div>
+        </header>
         <div id="immersive-stage" class="immersive-stage"></div>
       </section>
     </main>
@@ -134,6 +164,7 @@
   </template>
 
   <script src="/app-core.js"></script>
+  <script src="/store-ambience.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

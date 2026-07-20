@@ -38,6 +38,7 @@
   let viewerToken = 0;
   let immersiveShelf = null;
   let immersiveToken = 0;
+  const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
 
   function loadCounter() {
     try {
@@ -59,11 +60,17 @@
   }
 
 
-  function setYear(value) {
+  function setYear(value, reload = true) {
     state.year = clampStoreYear(value);
     localStorage.setItem('locadora.year', state.year);
     $('#store-year-input').value = state.year;
-    loadShelf();
+    $('#immersive-year-input').value = state.year;
+    storeAudio?.setYear(state.year).catch((error) => {
+      $('#music-toggle').setAttribute('aria-pressed', 'false');
+      $('#music-toggle').textContent = 'Store music';
+      $('#immersive-status').textContent = error.message;
+    });
+    if (reload) loadShelf();
   }
 
   function stepYear(offset) {
@@ -71,7 +78,7 @@
     input.value = clampStoreYear(Number(input.value || state.year) + offset);
   }
 
-  function selectGenre(index) {
+  function selectGenre(index, reload = true) {
     state.genreIndex = index;
     localStorage.setItem('locadora.genre', index);
     document.querySelectorAll('.genre-button').forEach((button, buttonIndex) => {
@@ -79,7 +86,18 @@
       button.setAttribute('aria-current', buttonIndex === index ? 'page' : 'false');
     });
     $('#aisle-number').textContent = String(index + 1).padStart(2, '0');
-    $('#immersive-genre').textContent = genres[index].label;
+    $('#immersive-genre-select').value = String(index);
+    if (reload) loadShelf();
+  }
+
+  function applyImmersiveFilters() {
+    const year = $('#immersive-year-input').value;
+    const genreIndex = Number($('#immersive-genre-select').value);
+    const yearChanged = clampStoreYear(year) !== state.year;
+    const genreChanged = genreIndex !== state.genreIndex;
+    if (!yearChanged && !genreChanged) return;
+    if (yearChanged) setYear(year, false);
+    if (genreChanged) selectGenre(genreIndex, false);
     loadShelf();
   }
 
@@ -220,12 +238,44 @@
     }
   }
 
-  function setImmersiveHeader(open) {
+  function setImmersiveSettings(open) {
     const expanded = state.mode === 'immersive' && Boolean(open);
-    document.body.classList.toggle('immersive-header-open', expanded);
-    const toggle = $('#immersive-header-toggle');
+    $('#immersive-settings').hidden = !expanded;
+    const toggle = $('#immersive-settings-toggle');
     toggle.setAttribute('aria-expanded', String(expanded));
-    toggle.textContent = expanded ? 'Hide header' : 'Header';
+    toggle.textContent = expanded ? 'Close sound' : 'Sound';
+  }
+
+  async function toggleStoreAudio(channel, buttonId, enabledLabel, disabledLabel) {
+    const button = $(buttonId);
+    try {
+      if (!storeAudio) throw new Error('This browser cannot play store audio.');
+      const active = await storeAudio.toggle(channel);
+      button.setAttribute('aria-pressed', String(Boolean(active)));
+      button.textContent = active ? enabledLabel : disabledLabel;
+    } catch (error) {
+      button.textContent = 'Audio unavailable';
+      $('#immersive-status').textContent = error.message;
+    }
+  }
+
+  async function selectMusicTrack() {
+    try {
+      const active = await storeAudio?.setMusicTrack($('#music-track').value);
+      if (!active) return;
+      $('#music-toggle').setAttribute('aria-pressed', 'true');
+      $('#music-toggle').textContent = 'Music on';
+    } catch (error) {
+      $('#music-toggle').setAttribute('aria-pressed', 'false');
+      $('#music-toggle').textContent = 'Store music';
+      $('#immersive-status').textContent = error.message;
+    }
+  }
+
+  function setStoreAudioVolume(channel, inputId, valueId) {
+    const percent = Number($(inputId).value);
+    storeAudio?.setVolume(channel, percent / 100);
+    $(valueId).textContent = `${percent}%`;
   }
 
   function setMode(mode) {
@@ -234,7 +284,7 @@
     $('#normal-mode').hidden = immersive;
     $('#immersive-room').hidden = !immersive;
     document.body.classList.toggle('is-immersive', immersive);
-    setImmersiveHeader(false);
+    setImmersiveSettings(false);
     $('#immersive-toggle').textContent = immersive ? 'Normal mode' : 'Immersive mode';
     $('#immersive-toggle').setAttribute('aria-pressed', String(immersive));
     if (immersive) mountImmersive();
@@ -242,6 +292,11 @@
       immersiveToken += 1;
       immersiveShelf?.dispose();
       immersiveShelf = null;
+      storeAudio?.stopAll();
+      $('#ambience-toggle').setAttribute('aria-pressed', 'false');
+      $('#ambience-toggle').textContent = 'Store ambience';
+      $('#music-toggle').setAttribute('aria-pressed', 'false');
+      $('#music-toggle').textContent = 'Store music';
       $('#immersive-stage').replaceChildren();
       $('#immersive-toggle').focus();
     }
@@ -429,6 +484,7 @@
 
   function wireEvents() {
     const genreNav = $('#genre-nav');
+    const immersiveGenreSelect = $('#immersive-genre-select');
     genres.forEach((genre, index) => {
       const button = document.createElement('button');
       button.className = `genre-button${index === state.genreIndex ? ' is-active' : ''}`;
@@ -437,24 +493,35 @@
       button.setAttribute('aria-current', index === state.genreIndex ? 'page' : 'false');
       button.addEventListener('click', () => selectGenre(index));
       genreNav.append(button);
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = genre.label;
+      immersiveGenreSelect.append(option);
     });
+    immersiveGenreSelect.value = String(state.genreIndex);
+    $('#immersive-year-input').value = state.year;
     $('#year-back').addEventListener('click', () => stepYear(-1));
     $('#year-forward').addEventListener('click', () => stepYear(1));
     $('#year-form').addEventListener('submit', (event) => {
       event.preventDefault();
       setYear($('#store-year-input').value);
     });
+    $('#immersive-filter-go').addEventListener('click', applyImmersiveFilters);
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
-    $('#immersive-header-toggle').addEventListener('click', () => {
-      setImmersiveHeader(!document.body.classList.contains('immersive-header-open'));
+    $('#immersive-settings-toggle').addEventListener('click', () => {
+      setImmersiveSettings($('#immersive-settings').hidden);
     });
     $('#immersive-zoom-in').addEventListener('click', () => immersiveShelf?.zoomIn());
     $('#immersive-zoom-out').addEventListener('click', () => immersiveShelf?.zoomOut());
+    $('#ambience-toggle').addEventListener('click', () => toggleStoreAudio('ambience', '#ambience-toggle', 'Ambience on', 'Store ambience'));
+    $('#music-toggle').addEventListener('click', () => toggleStoreAudio('music', '#music-toggle', 'Music on', 'Store music'));
+    $('#music-track').addEventListener('change', selectMusicTrack);
+    $('#ambience-volume').addEventListener('input', () => setStoreAudioVolume('ambience', '#ambience-volume', '#ambience-volume-value'));
+    $('#music-volume').addEventListener('input', () => setStoreAudioVolume('music', '#music-volume', '#music-volume-value'));
     $('#immersive-previous-stand').addEventListener('click', goToPreviousStand);
     $('#immersive-next-stand').addEventListener('click', goToNextStand);
-    $('#immersive-genre-back').addEventListener('click', () => selectGenre((state.genreIndex - 1 + genres.length) % genres.length));
-    $('#immersive-genre-forward').addEventListener('click', () => selectGenre((state.genreIndex + 1) % genres.length));
+
     document.querySelectorAll('[data-type]').forEach((button) => {
       button.classList.toggle('is-active', button.dataset.type === state.type);
       button.addEventListener('click', () => selectType(button.dataset.type));

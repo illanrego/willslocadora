@@ -127,6 +127,32 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   sign.castShadow = true;
   room.add(sign);
 
+  const lampPositions = [-3.2, 3.2];
+  const lampShade = new THREE.MeshStandardMaterial({ color: 0x6b321d, metalness: 0.65, roughness: 0.32, side: THREE.DoubleSide });
+  const lampBulb = new THREE.MeshStandardMaterial({ color: 0xffc06b, emissive: 0xff7a28, emissiveIntensity: 3.5, roughness: 0.3 });
+  for (const x of lampPositions) {
+    const fixture = new THREE.Group();
+    fixture.position.set(x, 6.05, 0.62);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.45, 12), lampShade);
+    stem.position.y = 0.22;
+    fixture.add(stem);
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.34, 24, 1, true), lampShade);
+    shade.position.y = -0.1;
+    shade.rotation.x = Math.PI;
+    fixture.add(shade);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), lampBulb);
+    bulb.position.y = -0.2;
+    fixture.add(bulb);
+    room.add(fixture);
+
+    const lamp = new THREE.SpotLight(0xffb15c, 32, 13, 0.58, 0.6, 1.5);
+    lamp.position.set(x, 5.82, 0.7);
+    lamp.castShadow = true;
+    lamp.shadow.mapSize.set(512, 512);
+    lamp.target.position.set(x, 0.2, 0.25);
+    room.add(lamp, lamp.target);
+  }
+
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(30, 18),
     new THREE.MeshStandardMaterial({ color: 0x242936, roughness: 0.9 }),

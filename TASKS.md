@@ -21,6 +21,8 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Added an optional immersive Three.js mode with one reusable steel-blue shelf, a physical genre/year tag, 40 clickable tapes, responsive whole-stand camera fitting, and a return to the normal shelves.
 - [x] Added an auto-hidden immersive header with a minimal in-scene reveal tab; immersive mode remains full-viewport.
 - [x] Added immersive stand browsing with 4-row × 10-column stands, cached previous/next controls, 40-title batches, and sideways stand-change animations while keeping one stand visible at a time.
+- [x] Added two warm amber lamps above the immersive genre sign, with physical fixtures and focused light pools across the tapes.
+- [x] Added independent opt-in music and ambience/effects controls, shared ambience scheduling, decade-based selectable music tracks, and safe missing-file feedback in `docs/ambience.md`.
 - [x] Added canonical `npm test`; 26 tests pass after the immersive stand paging and layout work.
 - [x] Exercised the real server, live Cinemeta catalogue, browser UI, detail dialog, counter action, and year refresh without browser console errors.
 
@@ -32,6 +34,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [ ] Decide whether five-year shelves are the right amount of period depth.
 - [ ] Review mobile behavior on the user's phone or a real narrow browser window.
 - [ ] Playtest the immersive shelf composition, tape readability, hover/pick behavior, and normal-mode return before expanding the 3D store.
+- [ ] Add the shared ambience pack and each decade's music tracks to `public/audio/`, then live-playtest music alone, ambience/effects alone, and both together.
 
 ## Next — quality after playtest
 
@@ -58,6 +61,8 @@ Status legend: [ ] todo · [~] in progress · [x] done
 
 - Verified the live 4 × 10 immersive stand, next 40-title batch, sideways transition, and centered Stand 2 without browser JavaScript errors.
 - Verified cached reverse navigation from Stand 2 back to Stand 1 with one immersive canvas and a reverse sideways transition.
+- Verified the live immersive shelf's warm twin-lamp lighting with no browser JavaScript errors.
+- Verified separate music and ambience controls render in immersive mode; missing assets report the exact 1990s pack required instead of falsely reporting playback.
 
 ## Next session start here
 
