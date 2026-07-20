@@ -169,20 +169,20 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
 
   const providers = title.availabilityBR?.providers || [];
   const loadedProviderImages = providerImages.filter(Boolean);
-  const hasLocalProviderLogo = providers.some((provider) => PROVIDER_LOGOS[provider]);
+  const providerLogoUrls = new Map((title.availabilityBR?.providerLogos || []).map((provider) => [provider.name, provider.logo]));
+  const hasProviderLogo = providers.some((provider) => providerLogoUrls.has(provider) || PROVIDER_LOGOS[provider]);
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 20px Arial Narrow, sans-serif';
   context.fillText(copy.whereToWatchBrazil, 72, 1015);
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '700 20px Arial, sans-serif';
-  if (loadedProviderImages.length || hasLocalProviderLogo) {
-    const height = 30;
-    const gap = 12;
+  if (loadedProviderImages.length || hasProviderLogo) {
+    const height = 38;
+    const gap = 14;
     const widths = loadedProviderImages.map((image) => Math.min(118, Math.max(54, image.width * (height / Math.max(image.height, 1)))));
-    const totalWidth = widths.reduce((total, width) => total + width, 0) + Math.max(0, widths.length - 1) * gap;
-    let x = 326 + Math.max(0, (626 - totalWidth) / 2);
+    let x = 326;
     loadedProviderImages.forEach((image, index) => {
-      context.drawImage(image, x, 982, widths[index], height);
+      context.drawImage(image, x, 976, widths[index], height);
       x += widths[index] + gap;
     });
   } else {
@@ -358,7 +358,8 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   loadAsset('backdrop', backdropUrl);
   loadAsset('logo', logoUrl);
   for (const [index, provider] of (title.availabilityBR?.providers || []).entries()) {
-    loadAsset(`provider-${index}`, PROVIDER_LOGOS[provider] || '');
+    const tmdbLogo = (title.availabilityBR?.providerLogos || []).find((entry) => entry.name === provider)?.logo;
+    loadAsset(`provider-${index}`, tmdbLogo || PROVIDER_LOGOS[provider] || '');
   }
 
   let targetX = -0.06;

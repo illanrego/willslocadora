@@ -16,6 +16,17 @@ function uniqueNames(values) {
   return [...new Set(values.filter(Boolean).map((value) => String(value)))];
 }
 
+function providerLogoEntries(groups) {
+  const entries = new Map();
+  for (const provider of groups.flatMap((group) => group || [])) {
+    const logo = imageUrl(provider?.logo_path, 'w92');
+    if (provider?.provider_name && logo && !entries.has(provider.provider_name)) {
+      entries.set(provider.provider_name, { name: String(provider.provider_name), logo });
+    }
+  }
+  return [...entries.values()];
+}
+
 function crewNames(crew, jobs) {
   return uniqueNames((Array.isArray(crew) ? crew : [])
     .filter((person) => jobs.includes(person.job))
@@ -38,6 +49,7 @@ function brazilAvailability(details) {
   return {
     link: typeof offers.link === 'string' ? offers.link : '',
     providers: uniqueNames(groupedProviders.flatMap((group) => group.map((provider) => provider.provider_name))),
+    providerLogos: providerLogoEntries(groupedProviders),
     subscriptionProviders: uniqueNames((offers.flatrate || []).map((provider) => provider.provider_name)),
   };
 }

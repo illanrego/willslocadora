@@ -121,7 +121,7 @@ test('TMDB enrichment adds Brazil availability, classification, images, and expa
         },
         images: { logos: [{ file_path: '/matrix-logo.png', iso_639_1: 'en' }] },
         release_dates: { results: [{ iso_3166_1: 'BR', release_dates: [{ certification: '14' }] }] },
-        'watch/providers': { results: { BR: { link: 'https://www.justwatch.com/br/filme/matrix', flatrate: [{ provider_name: 'Netflix' }], rent: [{ provider_name: 'Amazon Prime Video' }] } } },
+        'watch/providers': { results: { BR: { link: 'https://www.justwatch.com/br/filme/matrix', flatrate: [{ provider_name: 'Netflix', logo_path: '/netflix-logo.png' }], rent: [{ provider_name: 'Amazon Prime Video' }] } } },
       }) };
       throw new Error(`Unexpected request: ${url}`);
     },
@@ -134,7 +134,7 @@ test('TMDB enrichment adds Brazil availability, classification, images, and expa
   assert.equal(result.background, 'https://image.tmdb.org/t/p/w1280/matrix-backdrop.jpg');
   assert.equal(result.logo, 'https://image.tmdb.org/t/p/w500/matrix-logo.png');
   assert.equal(result.certificationBR, '14');
-  assert.deepEqual(result.availabilityBR, { link: 'https://www.justwatch.com/br/filme/matrix', providers: ['Netflix', 'Amazon Prime Video'], subscriptionProviders: ['Netflix'] });
+  assert.deepEqual(result.availabilityBR, { link: 'https://www.justwatch.com/br/filme/matrix', providers: ['Netflix', 'Amazon Prime Video'], providerLogos: [{ name: 'Netflix', logo: 'https://image.tmdb.org/t/p/w92/netflix-logo.png' }], subscriptionProviders: ['Netflix'] });
   assert.deepEqual(result.director, ['Lana Wachowski']);
   assert.deepEqual(result.writer, ['Lilly Wachowski']);
   assert.deepEqual(result.cast, ['Keanu Reeves', 'Laurence Fishburne']);
