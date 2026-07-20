@@ -218,18 +218,6 @@ async function fetchTitleMeta({ sources, type, id, fetchImpl = fetch }) {
   throw new Error('Title metadata is unavailable');
 }
 
-async function mapWithConcurrency(items, mapper, concurrency = 8) {
-  const results = new Array(items.length);
-  let nextIndex = 0;
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, async () => {
-    while (nextIndex < items.length) {
-      const index = nextIndex++;
-      try { results[index] = await mapper(items[index]); } catch { results[index] = null; }
-    }
-  }));
-  return results;
-}
-
 class CatalogueStore {
   constructor({ dataDir = path.join(process.cwd(), '.locadora'), fetchImpl = fetch, tmdbClient = null } = {}) {
     this.dataDir = dataDir;
@@ -279,6 +267,15 @@ class CatalogueStore {
     const providerName = BRAZIL_PROVIDER_FILTERS[options.provider] || '';
     if (options.provider && !providerName) throw new Error('Invalid Brazil streaming provider filter');
     if (providerName && !this.tmdbClient?.enabled) throw new Error('Netflix and Prime Video filters require TMDB_API_KEY in .env');
+    if (providerName) {
+      return this.tmdbClient.discoverProviderShelf({
+        year: options.year,
+        genres: options.genres,
+        type: options.type,
+        providerName,
+        page: options.page,
+      });
+    }
     const sources = options.sourceId ? this.sources.filter((source) => source.id === options.sourceId) : this.sources;
     const yearWindow = providerName ? 20 : 5;
     const results = await Promise.allSettled(sources.map((source) => fetchStoreShelf({ ...options, source, yearWindow, fetchImpl: this.fetchImpl })));
@@ -286,12 +283,7 @@ class CatalogueStore {
     if (!titles.length && results.some((result) => result.status === 'rejected')) {
       throw new Error('Catalogue sources could not fill this shelf');
     }
-    if (!providerName) return titles.slice(0, 40);
-    const checked = await mapWithConcurrency(titles.slice(0, 160), (title) => this.titleMeta(title));
-    return checked
-      .filter(Boolean)
-      .filter((title) => title.availabilityBR?.subscriptionProviders?.some((provider) => provider.toLowerCase() === providerName.toLowerCase()))
-      .slice(0, 40);
+    return titles.slice(0, 40);
   }
 
   async titleMeta({ type, id, locale = 'pt-BR' }) {

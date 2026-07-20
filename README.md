@@ -43,7 +43,7 @@ TMDB_API_KEY=your-local-key
 
 `npm start` now reads `.env` locally. An explicit shell variable still wins when present.
 
-With a key, title inspection supplements the existing Stremio metadata with TMDB backdrops, title logos, expanded credits, Brazilian certification, and Brazil-region provider listings. The **Brazil streaming** filter can limit a shelf to TMDB-confirmed Netflix or Prime Video subscription availability in Brazil; this expands that shelf from five years to the selected year plus its previous nineteen years. **Watch options** opens the Brazil link returned by TMDB (often a JustWatch result page); it is not a playback guarantee or necessarily a direct Netflix/Prime link. Trailers and clips are deliberately out of scope.
+With a key, title inspection supplements the existing Stremio metadata with TMDB backdrops, title logos, expanded credits, Brazilian certification, and Brazil-region provider listings. The **Brazil streaming** filter queries TMDB's Brazil subscription catalogue first for Netflix or Prime Video, then resolves compatible IMDb/Stremio IDs; it covers the selected year plus its previous nineteen years. **Watch options** opens the Brazil link returned by TMDB (often a JustWatch result page); it is not a playback guarantee or necessarily a direct Netflix/Prime link. Trailers and clips are deliberately out of scope.
 
 The site starts in Brazilian Portuguese. Use the **Idioma / Language** selector in the header to switch between Portuguese (`pt-BR`) and English (`en-US`). TMDB metadata requests follow the selected locale and fall back to the catalogue/original value when a localized field is unavailable. Person names and provider identities are not machine-translated.
 

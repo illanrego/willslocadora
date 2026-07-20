@@ -25,9 +25,9 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Added a second, pointer-focused section zoom after the immersive shelf reaches its whole-stand zoom limit; zooming out unwinds section focus before whole-stand zoom.
 - [x] Added independent opt-in music and ambience/effects controls, shared ambience scheduling, decade-based selectable music tracks, and safe missing-file feedback in `docs/ambience.md`.
 - [x] Added optional server-only TMDB enrichment for Brazil watch-provider listings/certification, backdrops, title logos, expanded credits, and the returned watch-options link; trailers and clips remain excluded.
-- [x] Added Brazil subscription filters for Netflix and Prime Video. Provider-filtered shelves use TMDB `flatrate` availability only and expand from five to twenty years.
+- [x] Added Brazil subscription filters for Netflix and Prime Video. Provider-filtered shelves query TMDB's Brazil `flatrate` catalogue first, resolve compatible IMDb/Stremio IDs, and cover twenty years.
 - [x] Added a persistent PT/EN site toggle, locale-aware TMDB title/synopsis enrichment, locale-safe metadata caching, and localized VHS detail labels.
-- [x] Added canonical `npm test`; 31 tests pass after the Brazil provider-filter work.
+- [x] Added canonical `npm test`; 35 tests pass after TMDB-first Brazil provider discovery.
 - [x] Exercised the real server, live Cinemeta catalogue, browser UI, detail dialog, counter action, and year refresh without browser console errors.
 
 ## Now — playtest the rental loop
@@ -68,6 +68,8 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - Verified cached reverse navigation from Stand 2 back to Stand 1 with one immersive canvas and a reverse sideways transition.
 - Verified the live immersive shelf's warm twin-lamp lighting with no browser JavaScript errors.
 - Verified separate music and ambience controls render in immersive mode; missing assets report the exact 1990s pack required instead of falsely reporting playback.
+- Switched Netflix/Prime shelves from Stremio-candidate post-filtering to TMDB Brazil subscription discovery first; a live Netflix Horror/1999 query returned seven compatible titles.
+- Corrected Prime Video's duplicate TMDB provider-name lookup to use Brazil-searchable provider ID 119; a live Action/Adventure 1999 query returned 40 titles.
 
 ## Next session start here
 

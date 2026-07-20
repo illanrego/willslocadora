@@ -158,6 +158,58 @@ test('TMDB enrichment uses the requested locale and returns localized display fa
   assert.equal(result.displayDescription, 'Resumo localizado');
 });
 
+test('TMDB discovers Brazil subscription titles before resolving their IMDb IDs', async () => {
+  const requests = [];
+  const client = createTmdbClient({
+    apiKey: 'test-key',
+    fetchImpl: async (url) => {
+      const value = String(url);
+      requests.push(value);
+      if (value.includes('/watch/providers/movie')) return { ok: true, json: async () => ({ results: [{ provider_id: 8, provider_name: 'Netflix' }] }) };
+      if (value.includes('/discover/movie') && value.includes('page=1')) return { ok: true, json: async () => ({ results: [{ id: 603, title: 'The Matrix', release_date: '1999-03-31', genre_ids: [27], poster_path: '/matrix.jpg', overview: 'A test film.' }] }) };
+      if (value.includes('/discover/movie') && value.includes('page=2')) return { ok: true, json: async () => ({ results: [{ id: 604, title: 'The Matrix Reloaded', release_date: '1999-04-01', genre_ids: [27], poster_path: '/reloaded.jpg', overview: 'Another test film.' }] }) };
+      if (value.includes('/movie/603/external_ids')) return { ok: true, json: async () => ({ imdb_id: 'tt0133093' }) };
+      if (value.includes('/movie/604/external_ids')) return { ok: true, json: async () => ({ imdb_id: 'tt0234215' }) };
+      throw new Error(`Unexpected request: ${value}`);
+    },
+  });
+
+  const titles = await client.discoverProviderShelf({ year: 1999, genres: ['Horror'], type: 'movie', providerName: 'Netflix', page: 0 });
+
+  assert.deepEqual(titles.map((title) => title.id), ['tt0133093', 'tt0234215']);
+  const firstDiscover = requests.find((url) => url.includes('/discover/movie') && url.includes('page=1'));
+  assert.match(firstDiscover, /watch_region=BR/);
+  assert.match(firstDiscover, /with_watch_monetization_types=flatrate/);
+  assert.match(firstDiscover, /with_watch_providers=8/);
+  assert.match(firstDiscover, /with_genres=27/);
+  assert.match(firstDiscover, /primary_release_date.gte=1980-01-01/);
+  assert.match(firstDiscover, /primary_release_date.lte=1999-12-31/);
+});
+
+test('TMDB uses Prime Video’s Brazil-searchable provider record when provider names are duplicated', async () => {
+  const requests = [];
+  const client = createTmdbClient({
+    apiKey: 'test-key',
+    fetchImpl: async (url) => {
+      const value = String(url);
+      requests.push(value);
+      if (value.includes('/watch/providers/movie')) return { ok: true, json: async () => ({ results: [
+        { provider_id: 9, provider_name: 'Amazon Prime Video' },
+        { provider_id: 119, provider_name: 'Amazon Prime Video' },
+      ] }) };
+      if (value.includes('/discover/movie') && value.includes('with_watch_providers=119') && value.includes('page=1')) return { ok: true, json: async () => ({ results: [{ id: 603, title: 'The Matrix', release_date: '1999-03-31' }] }) };
+      if (value.includes('/discover/movie') && value.includes('page=2')) return { ok: true, json: async () => ({ results: [] }) };
+      if (value.includes('/movie/603/external_ids')) return { ok: true, json: async () => ({ imdb_id: 'tt0133093' }) };
+      throw new Error(`Unexpected request: ${value}`);
+    },
+  });
+
+  const titles = await client.discoverProviderShelf({ year: 1999, genres: ['Horror'], type: 'movie', providerName: 'Amazon Prime Video' });
+
+  assert.deepEqual(titles.map((title) => title.id), ['tt0133093']);
+  assert.match(requests.find((url) => url.includes('/discover/movie')), /with_watch_providers=119/);
+});
+
 test('CatalogueStore enriches compatible Stremio metadata with TMDB details when configured', async () => {
   const store = new CatalogueStore({
     tmdbClient: { enrich: async (title) => ({ ...title, certificationBR: '14', availabilityBR: { link: 'https://example.test/watch', providers: ['Netflix'] } }) },
@@ -173,37 +225,23 @@ test('CatalogueStore enriches compatible Stremio metadata with TMDB details when
   assert.deepEqual(result.availabilityBR.providers, ['Netflix']);
 });
 
-test('CatalogueStore returns only Brazil-provider matches from a twenty-year shelf window', async () => {
+test('CatalogueStore routes provider shelves through TMDB discovery before catalogue sources', async () => {
+  let options;
   const store = new CatalogueStore({
     tmdbClient: {
       enabled: true,
-      enrich: async (title) => ({
-        ...title,
-        availabilityBR: { subscriptionProviders: title.id === 'tt-netflix' ? ['Netflix'] : ['Amazon Prime Video'] },
-      }),
-    },
-    fetchImpl: async (url) => {
-      const value = String(url);
-      if (value.includes('/meta/')) {
-        const id = value.includes('tt-netflix') ? 'tt-netflix' : 'tt-prime';
-        return { ok: true, json: async () => ({ meta: { id, type: 'movie', name: id, releaseInfo: id === 'tt-netflix' ? '1980' : '1999' } }) };
-      }
-      return { ok: true, json: async () => ({ metas: [
-        { id: 'tt-netflix', type: 'movie', name: 'Netflix Title', releaseInfo: '1980', genres: ['Horror'] },
-        { id: 'tt-prime', type: 'movie', name: 'Prime Title', releaseInfo: '1999', genres: ['Horror'] },
-      ] }) };
+      discoverProviderShelf: async (value) => {
+        options = value;
+        return [{ id: 'tt0133093', type: 'movie', name: 'The Matrix', year: 1999 }];
+      },
     },
   });
-  store.sources = [{
-    id: 'cinemeta', manifestUrl: 'https://addon.example/manifest.json',
-    catalogs: [{ type: 'movie', id: 'year', name: 'Year', pageSize: 50, extras: ['genre', 'skip'], requiredExtras: [], options: {} }],
-    metaResources: [{ types: ['movie'], idPrefixes: ['tt'] }],
-  }];
+  store.sources = [];
 
-  const titles = await store.shelf({ year: 1999, genre: 'Horror', genres: ['Horror'], type: 'movie', provider: 'netflix' });
+  const titles = await store.shelf({ year: 1999, genre: 'Horror', genres: ['Horror'], type: 'movie', provider: 'netflix', page: 1 });
 
-  assert.deepEqual(titles.map((title) => title.id), ['tt-netflix']);
-  assert.equal(titles[0].year, 1980);
+  assert.deepEqual(titles.map((title) => title.id), ['tt0133093']);
+  assert.deepEqual(options, { year: 1999, genres: ['Horror'], type: 'movie', providerName: 'Netflix', page: 1 });
 });
 
 test('safeFetchJson revalidates a public redirect before following it', async () => {
