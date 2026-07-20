@@ -1,6 +1,6 @@
 # Locadora — live ship board
 
-Last updated: 2026-07-19  
+Last updated: 2026-07-20
 Status legend: [ ] todo · [~] in progress · [x] done
 
 ## Done
@@ -14,13 +14,14 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Implemented the VHS store presentation, title details, local counter persistence, empty/error states, responsive layout, and reduced-motion handling.
 - [x] Implemented native Stremio handoff and verified generated movie URI in the live UI.
 - [x] Broadened historical coverage with capability-aware multi-page catalogue fetching and partial source/page failure isolation.
-- [x] Added click-loaded catalogue stands: each keeps existing tapes open, loads a non-duplicate next 48 when available, and resets on aisle/year/type changes.
+- [x] Added click-loaded catalogue stands: each keeps existing tapes open, loads a non-duplicate next 40 when available, and resets on aisle/year/type changes.
 - [x] Added on-demand Stremio metadata to title details: IMDb score, director, writers, and main cast, without adding that data to shelf cards.
 - [x] Renamed the local presentation to Will's Locadora with one compact red/yellow top-bar mark.
 - [x] Replaced title-dialog chrome with an interactive Three.js VHS case: real depth/lighting, drag rotation, poster front, and metadata/counter/Stremio controls on its textured back; shelves remain 2D.
-- [x] Added an optional immersive Three.js mode with one reusable steel-blue shelf, a physical genre/year tag, 24 clickable tapes, responsive whole-stand camera fitting, and a return to the normal shelves.
+- [x] Added an optional immersive Three.js mode with one reusable steel-blue shelf, a physical genre/year tag, 40 clickable tapes, responsive whole-stand camera fitting, and a return to the normal shelves.
 - [x] Added an auto-hidden immersive header with a minimal in-scene reveal tab; immersive mode remains full-viewport.
-- [x] Added canonical `npm test`; 25 tests pass after the immersive-shelf, broad-genre, and 2026 year-range work.
+- [x] Added immersive stand browsing with 4-row × 10-column stands, cached previous/next controls, 40-title batches, and sideways stand-change animations while keeping one stand visible at a time.
+- [x] Added canonical `npm test`; 26 tests pass after the immersive stand paging and layout work.
 - [x] Exercised the real server, live Cinemeta catalogue, browser UI, detail dialog, counter action, and year refresh without browser console errors.
 
 ## Now — playtest the rental loop
@@ -41,7 +42,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 
 ## Explicitly later
 
-- [ ] Expand beyond the single immersive shelf only after its focused browsing loop is accepted.
+- [ ] Expand beyond focused one-stand-at-a-time immersive browsing only after its loop is accepted.
 - [ ] Debian desktop packaging only after the local web version is satisfying.
 
 ## Session log — 2026-07-19
@@ -52,6 +53,11 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - Live Horror/1999 shelf returned 17 titles; live Action/1999 UI rendered 32 titles across 1995–1999.
 - Native Flatpak processes received exact movie and series detail URIs.
 - Broadened Horror/1999 from the earlier 17-title sample to the 48-title shelf cap while enforcing the exact 1995–1999 window.
+
+## Session log — 2026-07-20
+
+- Verified the live 4 × 10 immersive stand, next 40-title batch, sideways transition, and centered Stand 2 without browser JavaScript errors.
+- Verified cached reverse navigation from Stand 2 back to Stand 1 with one immersive canvas and a reverse sideways transition.
 
 ## Next session start here
 

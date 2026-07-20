@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  CatalogueStore,
   DEFAULT_SOURCES,
   assertSafeManifestUrl,
   buildResourceUrl,
@@ -12,6 +13,33 @@ const {
   safeFetchImage,
   safeFetchJson,
 } = require('../src/catalogue.js');
+
+test('CatalogueStore returns one 4 by 10 stand at a time', async () => {
+  const store = new CatalogueStore({
+    fetchImpl: async (url) => {
+      const skip = Number(url.match(/skip=(\d+)/)?.[1] || 0);
+      return {
+        ok: true,
+        json: async () => ({ metas: Array.from({ length: 45 }, (_, index) => ({
+          id: `title-${skip + index}`,
+          type: 'movie',
+          name: `Title ${skip + index}`,
+          releaseInfo: '1999',
+          genres: ['Horror'],
+        })) }),
+      };
+    },
+  });
+  store.sources = [{
+    id: 'test',
+    manifestUrl: 'https://addon.example/manifest.json',
+    catalogs: [{ type: 'movie', id: 'horror', extras: ['genre', 'skip'], pageSize: 50 }],
+  }];
+
+  const titles = await store.shelf({ genre: 'Horror', genres: ['Horror'], year: 1999, type: 'movie', page: 0 });
+
+  assert.equal(titles.length, 40);
+});
 
 test('curated defaults cover the useful historical catalogue providers', () => {
   assert.deepEqual(DEFAULT_SOURCES.map(({ id }) => id), [

@@ -24,6 +24,8 @@
     metadata: new Map(),
     renderedTitleKeys: new Set(),
     mode: 'normal',
+    hasNextStand: false,
+    standCache: new Map(),
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -160,11 +162,36 @@
     }));
   }
 
-  function refreshImmersive() {
+  function refreshImmersive(direction = 0) {
     if (!immersiveShelf) return;
     const genre = genres[state.genreIndex];
-    immersiveShelf.update(immersiveTitles(), genre.label, state.year, state.type);
-    $('#immersive-status').textContent = state.titles.length ? `${Math.min(state.titles.length, 24)} tapes on this display` : 'This display is empty';
+    if (direction) immersiveShelf.transition(immersiveTitles(), genre.label, state.year, state.type, direction);
+    else immersiveShelf.update(immersiveTitles(), genre.label, state.year, state.type);
+    $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} tapes` : 'This display is empty';
+  }
+
+  function syncImmersiveStandControls() {
+    $('#immersive-previous-stand').hidden = state.stand === 0;
+    $('#immersive-next-stand').hidden = !state.hasNextStand;
+  }
+
+  function goToCachedStand(stand, direction) {
+    const cached = state.standCache.get(stand);
+    if (!cached) return false;
+    state.stand = stand;
+    state.titles = cached.titles;
+    state.hasNextStand = cached.hasNextStand;
+    refreshImmersive(direction);
+    syncImmersiveStandControls();
+    return true;
+  }
+
+  function goToPreviousStand() {
+    goToCachedStand(state.stand - 1, -1);
+  }
+
+  function goToNextStand() {
+    if (!goToCachedStand(state.stand + 1, 1)) loadShelf(state.stand + 1, true, 1);
   }
 
   async function mountImmersive() {
@@ -185,7 +212,8 @@
         onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
       });
       stage.querySelector('.immersive-canvas')?.focus();
-      $('#immersive-status').textContent = state.titles.length ? `${Math.min(state.titles.length, 24)} tapes on this display` : 'This display is empty';
+      $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} tapes` : 'This display is empty';
+      syncImmersiveStandControls();
     } catch (error) {
       if (token !== immersiveToken) return;
       $('#immersive-status').textContent = `The immersive shelf could not be loaded: ${error.message}`;
@@ -219,7 +247,7 @@
     }
   }
 
-  async function loadShelf(stand = 0, append = false) {
+  async function loadShelf(stand = 0, append = false, transitionDirection = 0) {
     if (state.request) state.request.abort();
     const controller = new AbortController();
     state.request = controller;
@@ -229,11 +257,16 @@
     $('#shelf-caption').textContent = `Aisle ${aisle} · Store year ${state.year} · ${state.type === 'movie' ? 'Movies' : 'Series'}`;
     $('#shelf-status').textContent = append ? 'Opening another stand…' : 'Opening the boxes…';
     $('#immersive-status').textContent = append ? 'Opening another display…' : 'Opening the boxes…';
+    $('#immersive-previous-stand').disabled = true;
+    $('#immersive-next-stand').disabled = true;
     immersiveShelf?.setLoading(genre.label, state.year, state.type);
     shelf.hidden = false;
     shelf.setAttribute('aria-busy', 'true');
     emptyState.hidden = true;
     if (!append) {
+      state.stand = 0;
+      state.hasNextStand = false;
+      state.standCache.clear();
       $('#load-more-shelf').hidden = true;
       renderSkeletons();
     }
@@ -243,7 +276,7 @@
       const body = await api(`/api/shelf?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
       if (!append) state.renderedTitleKeys = new Set();
-      const hasAnotherSourcePage = body.titles.length === 48;
+      const hasAnotherSourcePage = body.titles.length === 40;
       state.titles = body.titles.filter((title) => {
         const key = `${title.type}:${title.id}`;
         if (state.renderedTitleKeys.has(key)) return false;
@@ -259,10 +292,13 @@
         return;
       }
       state.stand = stand;
+      state.hasNextStand = hasAnotherSourcePage;
+      state.standCache.set(stand, { titles: state.titles, hasNextStand: hasAnotherSourcePage });
       renderShelf(state.titles, stand, append);
-      refreshImmersive();
+      refreshImmersive(transitionDirection);
       $('#shelf-status').textContent = append ? `${state.titles.length} more tapes loaded` : `${state.titles.length} tapes found`;
       $('#load-more-shelf').hidden = !hasAnotherSourcePage;
+      syncImmersiveStandControls();
     } catch (error) {
       if (error.name === 'AbortError') return;
       if (!append) state.titles = [];
@@ -272,6 +308,8 @@
     } finally {
       if (state.request === controller) state.request = null;
       shelf.setAttribute('aria-busy', 'false');
+      $('#immersive-previous-stand').disabled = false;
+      $('#immersive-next-stand').disabled = false;
     }
   }
 
@@ -413,6 +451,8 @@
     });
     $('#immersive-zoom-in').addEventListener('click', () => immersiveShelf?.zoomIn());
     $('#immersive-zoom-out').addEventListener('click', () => immersiveShelf?.zoomOut());
+    $('#immersive-previous-stand').addEventListener('click', goToPreviousStand);
+    $('#immersive-next-stand').addEventListener('click', goToNextStand);
     $('#immersive-genre-back').addEventListener('click', () => selectGenre((state.genreIndex - 1 + genres.length) % genres.length));
     $('#immersive-genre-forward').addEventListener('click', () => selectGenre((state.genreIndex + 1) % genres.length));
     document.querySelectorAll('[data-type]').forEach((button) => {
@@ -428,7 +468,7 @@
     $('#counter-open').addEventListener('click', () => { renderCounter(); counterDialog.showModal(); });
     $('#sources-open').addEventListener('click', () => { renderSources(); sourcesDialog.showModal(); });
     $('#retry-shelf').addEventListener('click', loadShelf);
-    $('#load-more-shelf').addEventListener('click', () => loadShelf(state.stand + 1, true));
+    $('#load-more-shelf').addEventListener('click', goToNextStand);
     $('#source-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const form = event.currentTarget;

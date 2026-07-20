@@ -25,6 +25,8 @@ test('server binds to loopback and serves health plus static app', async (t) => 
   assert.match(page, /id="immersive-header-toggle"[^>]+aria-expanded="false"/);
   assert.match(page, /id="immersive-zoom-out"[^>]+aria-label="Zoom out"/);
   assert.match(page, /id="immersive-zoom-in"[^>]+aria-label="Zoom in"/);
+  assert.match(page, /id="immersive-previous-stand"[^>]+hidden[^>]*>← Previous stand/);
+  assert.match(page, /id="immersive-next-stand"[^>]+hidden[^>]*>Next stand/);
 });
 
 test('shelf accepts catalogue years through 2026 and rejects later years', async (t) => {
@@ -91,7 +93,16 @@ test('server exposes the installed Three.js browser module without exposing node
   const immersive = await fetch(`http://127.0.0.1:${port}/immersive-shelf.mjs`);
   assert.equal(immersive.status, 200);
   assert.match(immersive.headers.get('content-type'), /text\/javascript/);
-  assert.match(await immersive.text(), /createImmersiveShelf/);
+  const immersiveSource = await immersive.text();
+  assert.match(immersiveSource, /const COLUMNS = 10;/);
+  assert.match(immersiveSource, /const ROWS = 4;/);
+  assert.match(immersiveSource, /transition\(nextTitles, nextGenre, nextYear, nextType, direction\)/);
+
+  const app = await fetch(`http://127.0.0.1:${port}/app.js`);
+  const appSource = await app.text();
+  assert.match(appSource, /function goToPreviousStand\(\)/);
+  assert.match(appSource, /goToCachedStand\(state\.stand - 1, -1\)/);
+  assert.match(appSource, /loadShelf\(state\.stand \+ 1, true, 1\)/);
 
   const privateModule = await fetch(`http://127.0.0.1:${port}/node_modules/three/package.json`);
   assert.equal(privateModule.status, 404);

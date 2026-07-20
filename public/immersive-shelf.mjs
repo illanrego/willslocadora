@@ -1,7 +1,7 @@
 import * as THREE from '/vendor/three.module.js';
 
-const COLUMNS = 8;
-const ROWS = 3;
+const COLUMNS = 10;
+const ROWS = 4;
 const MAX_TAPES = COLUMNS * ROWS;
 
 function canvasTexture(width, height, draw) {
@@ -80,7 +80,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   scene.background = new THREE.Color(0x06090f);
   scene.fog = new THREE.Fog(0x06090f, 15, 28);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 80);
-  camera.position.set(0, 1.15, 18.2);
+  camera.position.set(0, 0.55, 18.2);
 
   scene.add(new THREE.HemisphereLight(0xffefc2, 0x17150f, 2.1));
   const keyLight = new THREE.SpotLight(0xffe7ad, 75, 30, Math.PI / 4, 0.45, 1.3);
@@ -97,23 +97,23 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   const edge = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.72 });
   const backingMaterial = new THREE.MeshStandardMaterial({ color: 0x2f526b, roughness: 0.78 });
   const trim = new THREE.MeshStandardMaterial({ color: 0x527f9e, roughness: 0.72 });
-  const backing = new THREE.Mesh(new THREE.BoxGeometry(10.6, 7.55, 0.35), backingMaterial);
+  const backing = new THREE.Mesh(new THREE.BoxGeometry(12, 9.2, 0.35), backingMaterial);
   backing.position.z = -0.45;
   backing.receiveShadow = true;
   room.add(backing);
-  for (const x of [-5.35, 5.35]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.34, 8.2, 0.72), wood);
+  for (const x of [-6.05, 6.05]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.34, 9.85, 0.72), wood);
     post.position.set(x, -0.12, -0.02);
     post.castShadow = true;
     room.add(post);
   }
-  for (const y of [-3.62, -1.25, 1.12, 3.49]) {
-    const board = new THREE.Mesh(new THREE.BoxGeometry(11.05, 0.34, 1.05), wood);
+  for (const y of [-4.25, -2.2, -0.15, 1.9, 3.95]) {
+    const board = new THREE.Mesh(new THREE.BoxGeometry(12.4, 0.3, 1.05), wood);
     board.position.set(0, y, 0);
     board.castShadow = true;
     board.receiveShadow = true;
     room.add(board);
-    const lip = new THREE.Mesh(new THREE.BoxGeometry(11.08, 0.09, 1.08), trim);
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(12.42, 0.09, 1.08), trim);
     lip.position.set(0, y + 0.18, 0.02);
     room.add(lip);
   }
@@ -123,7 +123,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     new THREE.BoxGeometry(7.9, 1.58, 0.22),
     [edge, edge, edge, edge, new THREE.MeshStandardMaterial({ map: signCanvas.texture, roughness: 0.62 }), edge],
   );
-  sign.position.set(0, 4.52, 0.18);
+  sign.position.set(0, 5.15, 0.18);
   sign.castShadow = true;
   room.add(sign);
 
@@ -132,7 +132,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     new THREE.MeshStandardMaterial({ color: 0x242936, roughness: 0.9 }),
   );
   floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -4.05;
+  floor.position.y = -4.72;
   floor.receiveShadow = true;
   scene.add(floor);
 
@@ -145,10 +145,11 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let selected = 0;
   let frame = 0;
   let pointerTargetX = 0;
-  let pointerTargetY = 1.15;
+  let pointerTargetY = 0.55;
   let baseCameraDistance = 18.2;
   let targetCameraDistance = 18.2;
   let zoomLevel = 1;
+  let standTransition = null;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -171,20 +172,20 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       const row = Math.floor(index / COLUMNS);
       const column = index % COLUMNS;
       const group = new THREE.Group();
-      group.position.set(-4.35 + column * 1.24, 2.22 - row * 2.37, 0.34);
+      group.position.set(-5 + column * 1.11, 2.9 - row * 2.05, 0.34);
       group.userData.baseZ = 0.34;
-      group.rotation.y = (column - 3.5) * -0.008;
+      group.rotation.y = (column - 4.5) * -0.007;
       group.userData.index = index;
 
       const caseMaterial = new THREE.MeshStandardMaterial({ color: 0x171310, roughness: 0.7 });
-      const caseMesh = new THREE.Mesh(new THREE.BoxGeometry(0.96, 1.72, 0.28), caseMaterial);
+      const caseMesh = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.45, 0.28), caseMaterial);
       caseMesh.castShadow = true;
       caseMesh.userData.index = index;
       group.add(caseMesh);
 
       const cover = canvasTexture(256, 384, (context) => drawPlaceholder(context, title));
       const material = new THREE.MeshStandardMaterial({ map: cover.texture, roughness: 0.64 });
-      const front = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 1.5), material);
+      const front = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 1.27), material);
       front.position.z = 0.145;
       front.userData.index = index;
       group.add(front);
@@ -238,7 +239,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   function pointerMove(event) {
     const bounds = renderer.domElement.getBoundingClientRect();
     pointerTargetX = ((event.clientX - bounds.left) / bounds.width - 0.5) * 0.55;
-    pointerTargetY = 1.15 - ((event.clientY - bounds.top) / bounds.height - 0.5) * 0.35;
+    pointerTargetY = 0.55 - ((event.clientY - bounds.top) / bounds.height - 0.5) * 0.35;
     const hit = pick(event);
     hovered = hit ? hit.object.userData.index : -1;
     renderer.domElement.style.cursor = hovered >= 0 ? 'pointer' : 'default';
@@ -281,8 +282,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     const verticalTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const fitHeight = 5.3 / verticalTangent;
-    const fitWidth = 5.7 / (verticalTangent * camera.aspect);
+    const fitHeight = 6.05 / verticalTangent;
+    const fitWidth = 6.45 / (verticalTangent * camera.aspect);
     baseCameraDistance = Math.max(fitHeight, fitWidth) * 1.18;
     targetCameraDistance = baseCameraDistance / zoomLevel;
     if (!frame || reducedMotion) camera.position.z = targetCameraDistance;
@@ -309,7 +310,20 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     } else {
       camera.position.z = targetCameraDistance;
     }
-    camera.lookAt(0, 0.1, 0);
+    camera.lookAt(0, 0.25, 0);
+    if (standTransition) {
+      const targetX = standTransition.phase === 'out' ? -standTransition.direction * 14 : 0;
+      room.position.x += (targetX - room.position.x) * 0.16;
+      if (standTransition.phase === 'out' && Math.abs(targetX - room.position.x) < 0.08) {
+        updateSign(standTransition.genre, standTransition.year, standTransition.type);
+        renderTapes(standTransition.titles);
+        room.position.x = standTransition.direction * 14;
+        standTransition.phase = 'in';
+      } else if (standTransition.phase === 'in' && Math.abs(room.position.x) < 0.08) {
+        room.position.x = 0;
+        standTransition = null;
+      }
+    }
     tapeRecords.forEach((record, index) => {
       const active = index === hovered || index === selected;
       const z = record.group.userData.baseZ + (active ? 0.3 : 0);
@@ -334,8 +348,26 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       updateSign(nextGenre, nextYear, nextType, true);
     },
     update(nextTitles, nextGenre, nextYear, nextType) {
+      standTransition = null;
+      room.position.x = 0;
       updateSign(nextGenre, nextYear, nextType);
       renderTapes(nextTitles);
+    },
+    transition(nextTitles, nextGenre, nextYear, nextType, direction) {
+      if (reducedMotion || !direction) {
+        this.update(nextTitles, nextGenre, nextYear, nextType);
+        return;
+      }
+      hovered = -1;
+      selected = 0;
+      standTransition = {
+        phase: 'out',
+        direction: Math.sign(direction),
+        titles: nextTitles,
+        genre: nextGenre,
+        year: nextYear,
+        type: nextType,
+      };
     },
     dispose() {
       disposed = true;

@@ -268,7 +268,7 @@ class CatalogueStore {
     if (!titles.length && results.some((result) => result.status === 'rejected')) {
       throw new Error('Catalogue sources could not fill this shelf');
     }
-    return titles.slice(0, 48);
+    return titles.slice(0, 40);
   }
 
   async titleMeta({ type, id }) {
