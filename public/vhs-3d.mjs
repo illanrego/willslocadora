@@ -50,7 +50,7 @@ function wrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
   return y;
 }
 
-function drawFront(context, title) {
+function drawFront(context, title, copy) {
   context.fillStyle = '#171310';
   context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
   context.fillStyle = '#eadcae';
@@ -59,10 +59,10 @@ function drawFront(context, title) {
   context.fillRect(64, 1100, 896, 22);
   context.fillStyle = '#211914';
   context.font = '900 70px Impact, sans-serif';
-  wrappedText(context, title.name, 108, 1210, 800, 76, 2);
+  wrappedText(context, title.displayTitle || title.name, 108, 1210, 800, 76, 2);
   context.fillStyle = '#66583f';
   context.font = '700 30px Courier New, monospace';
-  context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 108, 1350);
+  context.fillText(`${title.year || copy.yearUnknown} · ${String(title.type || copy.video).toUpperCase()}`, 108, 1350);
 }
 
 function drawButton(context, rect, label, fill, ink) {
@@ -121,7 +121,7 @@ function drawBarcode(context, value, x, y, width, height) {
   context.textAlign = 'left';
 }
 
-function drawBack(context, title, atCounter, posterImage = null, backdropImage = null) {
+function drawBack(context, title, atCounter, posterImage = null, backdropImage = null, copy = {}) {
   context.fillStyle = LOCADORA_PALETTE.ink;
   context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
   context.fillStyle = LOCADORA_PALETTE.navy;
@@ -136,16 +136,16 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   context.font = '900 24px Arial Narrow, sans-serif';
   context.fillText("WILL'S LOCADORA · VIDEO ARCHIVE", 72, 92);
   context.font = '700 18px Courier New, monospace';
-  context.fillText(`${title.type === 'series' ? 'HOME VIDEO SERIES' : 'FEATURE PRESENTATION'} · ${title.year || 'YEAR UNKNOWN'}`, 72, 130);
+  context.fillText(`${title.type === 'series' ? copy.homeVideoSeries : copy.featurePresentation} · ${title.year || copy.yearUnknown}`, 72, 130);
   drawBarcode(context, title.id, 596, 68, 356, 126);
 
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 74px Impact, Arial Narrow, sans-serif';
-  wrappedText(context, title.name, 72, 250, 880, 75, 2);
+  wrappedText(context, title.displayTitle || title.name, 72, 250, 880, 75, 2);
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '800 23px Arial Narrow, sans-serif';
   const meta = [...(title.genres || []).slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`, title.certificationBR && `BR ${title.certificationBR}`].filter(Boolean).join('  ·  ');
-  context.fillText(meta || 'CATALOGUE EDITION', 72, 365);
+  context.fillText(meta || copy.catalogueEdition, 72, 365);
 
   drawImageFrame(context, posterImage, 72, 405, 348, 285, 0.18);
   drawImageFrame(context, backdropImage || posterImage, 448, 405, 504, 285, 0.5);
@@ -154,18 +154,18 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   context.fillRect(72, 720, 880, 8);
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 29px Arial Narrow, sans-serif';
-  context.fillText('THE STORY', 72, 750);
+  context.fillText(copy.theStory, 72, 750);
   context.fillStyle = LOCADORA_PALETTE.white;
   context.font = '25px Arial, sans-serif';
-  wrappedText(context, title.description || 'No synopsis was included by this catalogue source.', 72, 790, 880, 34, 6);
+  wrappedText(context, title.displayDescription || title.description || copy.noSynopsis, 72, 790, 880, 34, 6);
 
   const providers = title.availabilityBR?.providers || [];
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 20px Arial Narrow, sans-serif';
-  context.fillText('WHERE TO WATCH · BRAZIL', 72, 1015);
+  context.fillText(copy.whereToWatchBrazil, 72, 1015);
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '700 20px Arial, sans-serif';
-  context.fillText(providers.join(' · ') || 'No provider listing returned', 326, 1015);
+  context.fillText(providers.join(' · ') || copy.noProviderListing, 326, 1015);
 
   context.strokeStyle = LOCADORA_PALETTE.red;
   context.lineWidth = 3;
@@ -175,9 +175,9 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   context.stroke();
 
   const credits = [
-    ['DIRECTED BY', names(title.director, 4)],
-    ['WRITTEN BY', names(title.writer, 4)],
-    ['STARRING', names(title.cast, 10)],
+    [copy.directedBy, names(title.director, 4, copy.notListed)],
+    [copy.writtenBy, names(title.writer, 4, copy.notListed)],
+    [copy.starring, names(title.cast, 10, copy.notListed)],
   ];
   let y = 1105;
   for (const [label, value] of credits) {
@@ -191,14 +191,14 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
 
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '16px Courier New, monospace';
-  context.fillText('CATALOGUE LISTING ONLY · PLAYBACK AND AVAILABILITY BY YOUR STREMIO SETUP', 72, 1288);
-  drawButton(context, ACTIONS.counter, atCounter ? 'RETURN TAPE' : 'TO COUNTER', LOCADORA_PALETTE.cream, LOCADORA_PALETTE.ink);
-  drawButton(context, ACTIONS.availability, 'WATCH OPTIONS ↗', LOCADORA_PALETTE.red, LOCADORA_PALETTE.white);
-  drawButton(context, ACTIONS.watch, 'STREMIO →', LOCADORA_PALETTE.yellow, LOCADORA_PALETTE.ink);
+  context.fillText(copy.catalogueOnly, 72, 1288);
+  drawButton(context, ACTIONS.counter, atCounter ? copy.returnTape : copy.toCounter, LOCADORA_PALETTE.cream, LOCADORA_PALETTE.ink);
+  drawButton(context, ACTIONS.availability, copy.watchOptions, LOCADORA_PALETTE.red, LOCADORA_PALETTE.white);
+  drawButton(context, ACTIONS.watch, copy.stremio, LOCADORA_PALETTE.yellow, LOCADORA_PALETTE.ink);
 
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '900 18px Courier New, monospace';
-  context.fillText('VHS  ·  BE KIND, REWIND  ·  DRAG TO INSPECT', 72, 1480);
+  context.fillText(copy.vhsFooter, 72, 1480);
   context.globalAlpha = 0.13;
   context.strokeStyle = '#fff';
   context.lineWidth = 2;
@@ -216,9 +216,9 @@ function inside(rect, x, y) {
   return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height;
 }
 
-function names(value, limit) {
+function names(value, limit, fallback = 'Not listed') {
   const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [];
-  return values.map((item) => item.trim()).filter(Boolean).slice(0, limit).join(', ') || 'Not listed';
+  return values.map((item) => item.trim()).filter(Boolean).slice(0, limit).join(', ') || fallback;
 }
 
 function drawPoster(context, image, title, logoImage = null) {
@@ -252,7 +252,8 @@ function drawPoster(context, image, title, logoImage = null) {
   context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 92, 1366);
 }
 
-export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, onCounter, onAvailability, onWatch, onClose }) {
+export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, onCounter, onAvailability, onWatch, onClose, copy }) {
+  const labels = { noSynopsis: 'No synopsis was included by this catalogue source.', ...copy };
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -280,7 +281,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   const shell = new THREE.Mesh(new THREE.BoxGeometry(4.08, 6.08, 0.46), shellMaterial);
   group.add(shell);
 
-  const frontCanvas = canvasTexture((context) => drawFront(context, title));
+  const frontCanvas = canvasTexture((context) => drawFront(context, title, labels));
   const frontMaterial = new THREE.MeshStandardMaterial({ map: frontCanvas.texture, roughness: 0.62 });
   const front = new THREE.Mesh(new THREE.PlaneGeometry(3.82, 5.82), frontMaterial);
   front.position.z = 0.236;
@@ -291,7 +292,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   let backdropImage = null;
   let logoImage = null;
   let currentAtCounter = atCounter;
-  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage));
+  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage, labels));
   const backMaterial = new THREE.MeshStandardMaterial({ map: backCanvas.texture, roughness: 0.72 });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(3.82, 5.82), backMaterial);
   back.position.z = -0.236;
@@ -312,9 +313,9 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   function redraw() {
     const frontContext = frontCanvas.canvas.getContext('2d');
     if (posterImage) drawPoster(frontContext, posterImage, title, logoImage);
-    else drawFront(frontContext, title);
+    else drawFront(frontContext, title, labels);
     frontCanvas.texture.needsUpdate = true;
-    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage);
+    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels);
     backCanvas.texture.needsUpdate = true;
   }
   function loadAsset(name, url) {

@@ -2,21 +2,24 @@
   'use strict';
 
   const { clampStoreYear, createStremioUri } = window.LocadoraCore;
+  const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const genres = [
-    { label: 'Action & Adventure', genres: ['Action', 'Adventure'] },
-    { label: 'Comedy', genres: ['Comedy'] },
-    { label: 'Horror', genres: ['Horror'] },
-    { label: 'Sci-Fi & Fantasy', genres: ['Sci-Fi', 'Fantasy'] },
-    { label: 'Drama', genres: ['Drama'] },
-    { label: 'Crime & Thriller', genres: ['Crime', 'Thriller', 'Mystery'] },
-    { label: 'Romance', genres: ['Romance'] },
-    { label: 'Family & Animation', genres: ['Family', 'Animation'] },
-    { label: 'Documentary', genres: ['Documentary'] },
+    { labelKey: 'genreAction', genres: ['Action', 'Adventure'] },
+    { labelKey: 'genreComedy', genres: ['Comedy'] },
+    { labelKey: 'genreHorror', genres: ['Horror'] },
+    { labelKey: 'genreSciFi', genres: ['Sci-Fi', 'Fantasy'] },
+    { labelKey: 'genreDrama', genres: ['Drama'] },
+    { labelKey: 'genreCrime', genres: ['Crime', 'Thriller', 'Mystery'] },
+    { labelKey: 'genreRomance', genres: ['Romance'] },
+    { labelKey: 'genreFamily', genres: ['Family', 'Animation'] },
+    { labelKey: 'genreDocumentary', genres: ['Documentary'] },
   ];
   const state = {
+    locale: normalizeLocale(localStorage.getItem('locadora.locale') || 'pt-BR'),
     year: clampStoreYear(localStorage.getItem('locadora.year') || 1999),
     genreIndex: Number(localStorage.getItem('locadora.genre')) || 0,
     type: localStorage.getItem('locadora.type') === 'series' ? 'series' : 'movie',
+    provider: ['netflix', 'prime-video'].includes(localStorage.getItem('locadora.provider')) ? localStorage.getItem('locadora.provider') : '',
     titles: [],
     counter: loadCounter(),
     request: null,
@@ -38,7 +41,27 @@
   let viewerToken = 0;
   let immersiveShelf = null;
   let immersiveToken = 0;
+  let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
+
+  function genreLabel(genre) { return t(genre.labelKey); }
+
+  function applyLocale(refreshTitle = true) {
+    t = createTranslator(window.LocadoraI18n.COPY, state.locale);
+    document.documentElement.lang = state.locale === 'pt-BR' ? 'pt-BR' : 'en';
+    document.querySelectorAll('[data-i18n]').forEach((element) => { element.textContent = t(element.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-aria-label]').forEach((element) => { element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel)); });
+    $('#locale-select').value = state.locale;
+    document.querySelectorAll('.genre-button').forEach((button, index) => { button.textContent = genreLabel(genres[index]); });
+    document.querySelectorAll('#immersive-genre-select option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
+    $('#shelf-title').textContent = genreLabel(genres[state.genreIndex]);
+    state.metadata.clear();
+    if (refreshTitle && titleDialog.open) {
+      const key = $('#title-detail').dataset.titleKey;
+      const title = [...state.titles, ...state.counter].find((item) => `${item.type}:${item.id}` === key);
+      if (title) openTitle(title, true);
+    }
+  }
 
   function loadCounter() {
     try {
@@ -67,7 +90,7 @@
     $('#immersive-year-input').value = state.year;
     storeAudio?.setYear(state.year).catch((error) => {
       $('#music-toggle').setAttribute('aria-pressed', 'false');
-      $('#music-toggle').textContent = 'Store music';
+      $('#music-toggle').textContent = t('storeMusic');
       $('#immersive-status').textContent = error.message;
     });
     if (reload) loadShelf();
@@ -90,14 +113,25 @@
     if (reload) loadShelf();
   }
 
+  function setProvider(value, reload = true) {
+    state.provider = ['netflix', 'prime-video'].includes(value) ? value : '';
+    localStorage.setItem('locadora.provider', state.provider);
+    $('#provider-select').value = state.provider;
+    $('#immersive-provider-select').value = state.provider;
+    if (reload) loadShelf();
+  }
+
   function applyImmersiveFilters() {
     const year = $('#immersive-year-input').value;
     const genreIndex = Number($('#immersive-genre-select').value);
+    const provider = $('#immersive-provider-select').value;
     const yearChanged = clampStoreYear(year) !== state.year;
     const genreChanged = genreIndex !== state.genreIndex;
-    if (!yearChanged && !genreChanged) return;
+    const providerChanged = provider !== state.provider;
+    if (!yearChanged && !genreChanged && !providerChanged) return;
     if (yearChanged) setYear(year, false);
     if (genreChanged) selectGenre(genreIndex, false);
+    if (providerChanged) setProvider(provider, false);
     loadShelf();
   }
 
@@ -123,9 +157,9 @@
   }
 
   async function loadTitleMetadata(title) {
-    const key = `${title.type}:${title.id}`;
+    const key = `${state.locale}:${title.type}:${title.id}`;
     if (!state.metadata.has(key)) {
-      state.metadata.set(key, api(`/api/meta?${new URLSearchParams({ type: title.type, id: title.id })}`)
+      state.metadata.set(key, api(`/api/meta?${new URLSearchParams({ type: title.type, id: title.id, locale: state.locale })}`)
         .then(({ meta }) => Object.assign(title, meta))
         .catch((error) => { state.metadata.delete(key); throw error; }));
     }
@@ -191,9 +225,9 @@
   function refreshImmersive(direction = 0) {
     if (!immersiveShelf) return;
     const genre = genres[state.genreIndex];
-    if (direction) immersiveShelf.transition(immersiveTitles(), genre.label, state.year, state.type, state.stand, direction);
-    else immersiveShelf.update(immersiveTitles(), genre.label, state.year, state.type, state.stand);
-    $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} tapes` : 'This display is empty';
+    if (direction) immersiveShelf.transition(immersiveTitles(), genreLabel(genre), state.year, state.type, state.stand, direction);
+    else immersiveShelf.update(immersiveTitles(), genreLabel(genre), state.year, state.type, state.stand);
+    $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
   }
 
   function syncImmersiveStandControls() {
@@ -232,14 +266,14 @@
       immersiveShelf = createImmersiveShelf({
         container: stage,
         titles: immersiveTitles(),
-        genre: genre.label,
+        genre: genreLabel(genre),
         year: state.year,
         type: state.type,
         stand: state.stand,
         onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
       });
       stage.querySelector('.immersive-canvas')?.focus();
-      $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} tapes` : 'This display is empty';
+      $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
       syncImmersiveStandControls();
     } catch (error) {
       if (token !== immersiveToken) return;
@@ -252,7 +286,7 @@
     $('#immersive-settings').hidden = !expanded;
     const toggle = $('#immersive-settings-toggle');
     toggle.setAttribute('aria-expanded', String(expanded));
-    toggle.textContent = expanded ? 'Close sound' : 'Sound';
+    toggle.textContent = expanded ? t('return') : t('sound');
   }
 
   async function toggleStoreAudio(channel, buttonId, enabledLabel, disabledLabel) {
@@ -276,7 +310,7 @@
       $('#music-toggle').textContent = 'Music on';
     } catch (error) {
       $('#music-toggle').setAttribute('aria-pressed', 'false');
-      $('#music-toggle').textContent = 'Store music';
+      $('#music-toggle').textContent = t('storeMusic');
       $('#immersive-status').textContent = error.message;
     }
   }
@@ -294,7 +328,7 @@
     $('#immersive-room').hidden = !immersive;
     document.body.classList.toggle('is-immersive', immersive);
     setImmersiveSettings(false);
-    $('#immersive-toggle').textContent = immersive ? 'Normal mode' : 'Immersive mode';
+    $('#immersive-toggle').textContent = immersive ? t('return') : t('immersiveMode');
     $('#immersive-toggle').setAttribute('aria-pressed', String(immersive));
     if (immersive) mountImmersive();
     else {
@@ -303,9 +337,9 @@
       immersiveShelf = null;
       storeAudio?.stopAll();
       $('#ambience-toggle').setAttribute('aria-pressed', 'false');
-      $('#ambience-toggle').textContent = 'Store ambience';
+      $('#ambience-toggle').textContent = t('storeAmbience');
       $('#music-toggle').setAttribute('aria-pressed', 'false');
-      $('#music-toggle').textContent = 'Store music';
+      $('#music-toggle').textContent = t('storeMusic');
       $('#immersive-stage').replaceChildren();
       $('#immersive-toggle').focus();
     }
@@ -317,13 +351,14 @@
     state.request = controller;
     const genre = genres[state.genreIndex];
     const aisle = String(state.genreIndex + 1).padStart(2, '0');
-    $('#shelf-title').textContent = genre.label;
-    $('#shelf-caption').textContent = `Aisle ${aisle} · Store year ${state.year} · ${state.type === 'movie' ? 'Movies' : 'Series'}`;
-    $('#shelf-status').textContent = append ? 'Opening another stand…' : 'Opening the boxes…';
-    $('#immersive-status').textContent = append ? 'Opening another display…' : 'Opening the boxes…';
+    const providerLabel = state.provider === 'netflix' ? 'Netflix in Brazil' : state.provider === 'prime-video' ? 'Prime Video in Brazil' : '';
+    $('#shelf-title').textContent = genreLabel(genre);
+    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${state.year - 19}–${state.year} · ${providerLabel}` : `${t('storeYearCaption')} ${state.year}`} · ${state.type === 'movie' ? t('movies') : t('series')}`;
+    $('#shelf-status').textContent = append ? t('openingStand') : t('openingBoxes');
+    $('#immersive-status').textContent = append ? t('openingStand') : t('openingBoxes');
     $('#immersive-previous-stand').disabled = true;
     $('#immersive-next-stand').disabled = true;
-    immersiveShelf?.setLoading(genre.label, state.year, state.type, stand);
+    immersiveShelf?.setLoading(genreLabel(genre), state.year, state.type, stand);
     shelf.hidden = false;
     shelf.setAttribute('aria-busy', 'true');
     emptyState.hidden = true;
@@ -336,7 +371,7 @@
     }
 
     try {
-      const params = new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand });
+      const params = new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, provider: state.provider });
       const body = await api(`/api/shelf?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
       if (!append) state.renderedTitleKeys = new Set();
@@ -360,7 +395,7 @@
       state.standCache.set(stand, { titles: state.titles, hasNextStand: hasAnotherSourcePage });
       renderShelf(state.titles, stand, append);
       refreshImmersive(transitionDirection);
-      $('#shelf-status').textContent = append ? `${state.titles.length} more tapes loaded` : `${state.titles.length} tapes found`;
+      $('#shelf-status').textContent = append ? `${state.titles.length} ${t('moreTapes')}` : `${state.titles.length} ${t('tapesFound')}`;
       $('#load-more-shelf').hidden = !hasAnotherSourcePage;
       syncImmersiveStandControls();
     } catch (error) {
@@ -414,6 +449,7 @@
         container: stage,
         title,
         ...vhsAssets(title, posterUrl),
+        copy: getCopy(state.locale),
         atCounter: isAtCounter(title),
         onCounter: () => {
           toggleCounter(title);
@@ -502,17 +538,26 @@
       const button = document.createElement('button');
       button.className = `genre-button${index === state.genreIndex ? ' is-active' : ''}`;
       button.type = 'button';
-      button.textContent = genre.label;
+      button.textContent = genreLabel(genre);
       button.setAttribute('aria-current', index === state.genreIndex ? 'page' : 'false');
       button.addEventListener('click', () => selectGenre(index));
       genreNav.append(button);
       const option = document.createElement('option');
       option.value = index;
-      option.textContent = genre.label;
+      option.textContent = genreLabel(genre);
       immersiveGenreSelect.append(option);
     });
     immersiveGenreSelect.value = String(state.genreIndex);
+    $('#locale-select').addEventListener('change', (event) => {
+      state.locale = normalizeLocale(event.currentTarget.value);
+      localStorage.setItem('locadora.locale', state.locale);
+      applyLocale();
+      loadShelf();
+    });
+    applyLocale(false);
     $('#immersive-year-input').value = state.year;
+    $('#provider-select').value = state.provider;
+    $('#immersive-provider-select').value = state.provider;
     $('#year-back').addEventListener('click', () => stepYear(-1));
     $('#year-forward').addEventListener('click', () => stepYear(1));
     $('#year-form').addEventListener('submit', (event) => {
@@ -520,6 +565,7 @@
       setYear($('#store-year-input').value);
     });
     $('#immersive-filter-go').addEventListener('click', applyImmersiveFilters);
+    $('#provider-select').addEventListener('change', (event) => setProvider(event.currentTarget.value));
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
     $('#immersive-settings-toggle').addEventListener('click', () => {

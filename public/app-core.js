@@ -43,8 +43,9 @@
     const genres = (Array.isArray(options.genres) ? options.genres : [options.genre])
       .filter(Boolean).map((genre) => String(genre).toLowerCase());
     const year = Number(options.year);
+    const yearWindow = Number.isInteger(options.yearWindow) && options.yearWindow > 0 ? options.yearWindow : 5;
     return titles.filter((title) => {
-      if (!Number.isInteger(title.year) || title.year > year || title.year < year - 4) return false;
+      if (!Number.isInteger(title.year) || title.year > year || title.year < year - (yearWindow - 1)) return false;
       return !genres.length || title.genres.some((item) => genres.includes(item.toLowerCase()));
     });
   }

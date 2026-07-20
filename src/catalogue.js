@@ -23,6 +23,7 @@ const DEFAULT_SOURCES = Object.freeze([
     manifestUrl: 'https://1fe84bc728af-imdb-catalogs.baby-beamup.club/manifest.json',
   },
 ]);
+const BRAZIL_PROVIDER_FILTERS = Object.freeze({ netflix: 'Netflix', 'prime-video': 'Amazon Prime Video' });
 
 function isPrivateAddress(address) {
   const value = String(address).toLowerCase();
@@ -200,7 +201,7 @@ async function fetchStoreShelf({ source, genre, genres, year, type = 'movie', fe
   }
 
   const normalized = raw.map((meta) => normalizeTitle(meta, source.id)).filter((title) => title.id);
-  return filterByStore(deduplicateTitles(normalized), { genres: aisleGenres, year })
+  return filterByStore(deduplicateTitles(normalized), { genres: aisleGenres, year, yearWindow })
     .sort((a, b) => (b.year - a.year) || a.name.localeCompare(b.name));
 }
 
@@ -215,6 +216,18 @@ async function fetchTitleMeta({ sources, type, id, fetchImpl = fetch }) {
     } catch {}
   }
   throw new Error('Title metadata is unavailable');
+}
+
+async function mapWithConcurrency(items, mapper, concurrency = 8) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      try { results[index] = await mapper(items[index]); } catch { results[index] = null; }
+    }
+  }));
+  return results;
 }
 
 class CatalogueStore {
@@ -263,21 +276,31 @@ class CatalogueStore {
   }
 
   async shelf(options) {
+    const providerName = BRAZIL_PROVIDER_FILTERS[options.provider] || '';
+    if (options.provider && !providerName) throw new Error('Invalid Brazil streaming provider filter');
+    if (providerName && !this.tmdbClient?.enabled) throw new Error('Netflix and Prime Video filters require TMDB_API_KEY in .env');
     const sources = options.sourceId ? this.sources.filter((source) => source.id === options.sourceId) : this.sources;
-    const results = await Promise.allSettled(sources.map((source) => fetchStoreShelf({ ...options, source, fetchImpl: this.fetchImpl })));
+    const yearWindow = providerName ? 20 : 5;
+    const results = await Promise.allSettled(sources.map((source) => fetchStoreShelf({ ...options, source, yearWindow, fetchImpl: this.fetchImpl })));
     const titles = deduplicateTitles(results.filter((result) => result.status === 'fulfilled').flatMap((result) => result.value));
     if (!titles.length && results.some((result) => result.status === 'rejected')) {
       throw new Error('Catalogue sources could not fill this shelf');
     }
-    return titles.slice(0, 40);
+    if (!providerName) return titles.slice(0, 40);
+    const checked = await mapWithConcurrency(titles.slice(0, 160), (title) => this.titleMeta(title));
+    return checked
+      .filter(Boolean)
+      .filter((title) => title.availabilityBR?.subscriptionProviders?.some((provider) => provider.toLowerCase() === providerName.toLowerCase()))
+      .slice(0, 40);
   }
 
-  async titleMeta({ type, id }) {
-    const key = `${type}:${id}`;
+  async titleMeta({ type, id, locale = 'pt-BR' }) {
+    const requestedLocale = locale === 'en-US' ? 'en-US' : 'pt-BR';
+    const key = `${requestedLocale}:${type}:${id}`;
     if (!this.metaCache.has(key)) this.metaCache.set(key, (async () => {
       const meta = await fetchTitleMeta({ sources: this.sources, type, id, fetchImpl: this.fetchImpl });
       if (!this.tmdbClient) return meta;
-      try { return await this.tmdbClient.enrich(meta); } catch { return meta; }
+      try { return await this.tmdbClient.enrich(meta, requestedLocale); } catch { return meta; }
     })());
     try { return await this.metaCache.get(key); } catch (error) {
       this.metaCache.delete(key);
@@ -287,5 +310,5 @@ class CatalogueStore {
 }
 
 module.exports = {
-  DEFAULT_SOURCES, CatalogueStore, assertSafeManifestUrl, buildResourceUrl, discoverCatalogs, discoverMetaResources, fetchStoreShelf, fetchTitleMeta, isPrivateAddress, safeFetchImage, safeFetchJson,
+  BRAZIL_PROVIDER_FILTERS, DEFAULT_SOURCES, CatalogueStore, assertSafeManifestUrl, buildResourceUrl, discoverCatalogs, discoverMetaResources, fetchStoreShelf, fetchTitleMeta, isPrivateAddress, safeFetchImage, safeFetchJson,
 };

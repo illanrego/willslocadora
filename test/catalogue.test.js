@@ -121,7 +121,7 @@ test('TMDB enrichment adds Brazil availability, classification, images, and expa
         },
         images: { logos: [{ file_path: '/matrix-logo.png', iso_639_1: 'en' }] },
         release_dates: { results: [{ iso_3166_1: 'BR', release_dates: [{ certification: '14' }] }] },
-        'watch/providers': { results: { BR: { link: 'https://www.justwatch.com/br/filme/matrix', flatrate: [{ provider_name: 'Netflix' }] } } },
+        'watch/providers': { results: { BR: { link: 'https://www.justwatch.com/br/filme/matrix', flatrate: [{ provider_name: 'Netflix' }], rent: [{ provider_name: 'Amazon Prime Video' }] } } },
       }) };
       throw new Error(`Unexpected request: ${url}`);
     },
@@ -130,13 +130,32 @@ test('TMDB enrichment adds Brazil availability, classification, images, and expa
   const result = await client.enrich({ id: 'tt0133093', type: 'movie', cast: [], director: [], writer: [] });
 
   assert.match(requests[0], /api_key=test-key/);
+  assert.match(requests[0], /language=pt-BR/);
   assert.equal(result.background, 'https://image.tmdb.org/t/p/w1280/matrix-backdrop.jpg');
   assert.equal(result.logo, 'https://image.tmdb.org/t/p/w500/matrix-logo.png');
   assert.equal(result.certificationBR, '14');
-  assert.deepEqual(result.availabilityBR, { link: 'https://www.justwatch.com/br/filme/matrix', providers: ['Netflix'] });
+  assert.deepEqual(result.availabilityBR, { link: 'https://www.justwatch.com/br/filme/matrix', providers: ['Netflix', 'Amazon Prime Video'], subscriptionProviders: ['Netflix'] });
   assert.deepEqual(result.director, ['Lana Wachowski']);
   assert.deepEqual(result.writer, ['Lilly Wachowski']);
   assert.deepEqual(result.cast, ['Keanu Reeves', 'Laurence Fishburne']);
+});
+
+test('TMDB enrichment uses the requested locale and returns localized display fallbacks', async () => {
+  const requests = [];
+  const client = createTmdbClient({
+    apiKey: 'test-key',
+    fetchImpl: async (url) => {
+      requests.push(String(url));
+      if (String(url).includes('/find/tt1')) return { ok: true, json: async () => ({ movie_results: [{ id: 1 }] }) };
+      return { ok: true, json: async () => ({ title: 'Título localizado', overview: 'Resumo localizado', 'watch/providers': { results: {} } }) };
+    },
+  });
+
+  const result = await client.enrich({ id: 'tt1', type: 'movie', name: 'Source title', description: 'Source synopsis' }, 'en-US');
+
+  assert.match(requests[0], /language=en-US/);
+  assert.equal(result.displayTitle, 'Título localizado');
+  assert.equal(result.displayDescription, 'Resumo localizado');
 });
 
 test('CatalogueStore enriches compatible Stremio metadata with TMDB details when configured', async () => {
@@ -152,6 +171,39 @@ test('CatalogueStore enriches compatible Stremio metadata with TMDB details when
 
   assert.equal(result.certificationBR, '14');
   assert.deepEqual(result.availabilityBR.providers, ['Netflix']);
+});
+
+test('CatalogueStore returns only Brazil-provider matches from a twenty-year shelf window', async () => {
+  const store = new CatalogueStore({
+    tmdbClient: {
+      enabled: true,
+      enrich: async (title) => ({
+        ...title,
+        availabilityBR: { subscriptionProviders: title.id === 'tt-netflix' ? ['Netflix'] : ['Amazon Prime Video'] },
+      }),
+    },
+    fetchImpl: async (url) => {
+      const value = String(url);
+      if (value.includes('/meta/')) {
+        const id = value.includes('tt-netflix') ? 'tt-netflix' : 'tt-prime';
+        return { ok: true, json: async () => ({ meta: { id, type: 'movie', name: id, releaseInfo: id === 'tt-netflix' ? '1980' : '1999' } }) };
+      }
+      return { ok: true, json: async () => ({ metas: [
+        { id: 'tt-netflix', type: 'movie', name: 'Netflix Title', releaseInfo: '1980', genres: ['Horror'] },
+        { id: 'tt-prime', type: 'movie', name: 'Prime Title', releaseInfo: '1999', genres: ['Horror'] },
+      ] }) };
+    },
+  });
+  store.sources = [{
+    id: 'cinemeta', manifestUrl: 'https://addon.example/manifest.json',
+    catalogs: [{ type: 'movie', id: 'year', name: 'Year', pageSize: 50, extras: ['genre', 'skip'], requiredExtras: [], options: {} }],
+    metaResources: [{ types: ['movie'], idPrefixes: ['tt'] }],
+  }];
+
+  const titles = await store.shelf({ year: 1999, genre: 'Horror', genres: ['Horror'], type: 'movie', provider: 'netflix' });
+
+  assert.deepEqual(titles.map((title) => title.id), ['tt-netflix']);
+  assert.equal(titles[0].year, 1980);
 });
 
 test('safeFetchJson revalidates a public redirect before following it', async () => {

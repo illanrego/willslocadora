@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,28 +8,35 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#shelf">Skip to shelf</a>
+  <a class="skip-link" href="#shelf" data-i18n="skipShelf">Pular para a prateleira</a>
   <div class="store-shell">
     <header id="store-header" class="store-header">
       <a class="brand" href="/" aria-label="Will's Locadora home">
         <strong>WILL'S LOCADORA</strong>
-        <span class="brand-tag">Be kind. Rewind.</span>
+        <span class="brand-tag" data-i18n="brandTag">Seja gentil. Rebobine.</span>
       </a>
 
       <form id="year-form" class="year-machine" aria-label="Store year">
-        <label class="year-label" for="store-year-input">Store year</label>
-        <button class="year-step" id="year-back" type="button" aria-label="Previous store year">−</button>
+        <label class="year-label" for="store-year-input" data-i18n="storeYear">Ano da loja</label>
+        <button class="year-step" id="year-back" type="button" data-i18n-aria-label="previousYear" aria-label="Ano anterior">−</button>
         <input id="store-year-input" type="number" min="1920" max="2026" step="1" value="1999" inputmode="numeric" autocomplete="off" aria-label="Store year">
-        <button class="year-step" id="year-forward" type="button" aria-label="Next store year">+</button>
-        <button id="year-go" type="submit">Go</button>
+        <button class="year-step" id="year-forward" type="button" data-i18n-aria-label="nextYear" aria-label="Próximo ano">+</button>
+        <button id="year-go" type="submit" data-i18n="go">Ir</button>
       </form>
 
       <nav class="header-actions" aria-label="Store actions">
-        <button class="mode-button" id="immersive-toggle" type="button" aria-pressed="false">Immersive mode</button>
+        <button class="mode-button" id="immersive-toggle" type="button" aria-pressed="false" data-i18n="immersiveMode">Modo imersivo</button>
         <button class="counter-button" id="counter-open" type="button">
-          Counter <span id="counter-count" aria-label="items at counter">0</span>
+          <span data-i18n="counter">Balcão</span> <span id="counter-count" aria-label="items at counter">0</span>
         </button>
-        <button class="utility-button" id="sources-open" type="button">Sources</button>
+        <button class="utility-button" id="sources-open" type="button" data-i18n="sources">Fontes</button>
+        <label class="locale-picker" for="locale-select">
+          <span data-i18n="language">Idioma</span>
+          <select id="locale-select" aria-label="Idioma">
+            <option value="pt-BR" data-i18n="portuguese">Português</option>
+            <option value="en-US" data-i18n="english">English</option>
+          </select>
+        </label>
       </nav>
     </header>
 
@@ -39,9 +46,17 @@
           <div class="directory-sign"><span>Aisle</span><strong id="aisle-number">01</strong></div>
           <nav id="genre-nav" aria-label="Genres"></nav>
           <div class="format-switch" role="group" aria-label="Title format">
-            <button class="is-active" data-type="movie" type="button">Movies</button>
-            <button data-type="series" type="button">Series</button>
+            <button class="is-active" data-type="movie" type="button" data-i18n="movies">Filmes</button>
+            <button data-type="series" type="button" data-i18n="series">Séries</button>
           </div>
+          <label class="provider-picker" for="provider-select">
+            <span data-i18n="brazilStreaming">Streaming no Brasil</span>
+            <select id="provider-select">
+              <option value="" data-i18n="allServices">Todos os serviços</option>
+              <option value="netflix">Netflix</option>
+              <option value="prime-video">Prime Video</option>
+            </select>
+          </label>
         </aside>
 
         <div class="shelf-room">
@@ -55,13 +70,13 @@
           </header>
 
           <div id="shelf" class="shelves" tabindex="-1" aria-busy="true"></div>
-          <button id="load-more-shelf" class="load-more-shelf" type="button" hidden>Load another stand</button>
+          <button id="load-more-shelf" class="load-more-shelf" type="button" hidden data-i18n="loadStand">Carregar outra estante</button>
 
           <div id="empty-state" class="empty-state" hidden>
             <span class="empty-tape" aria-hidden="true"></span>
-            <h3>This shelf came back empty.</h3>
-            <p>Try another aisle, year, format, or catalogue source.</p>
-            <button id="retry-shelf" type="button">Check the back room</button>
+            <h3 data-i18n="emptyTitle">Esta prateleira voltou vazia.</h3>
+            <p data-i18n="emptyBody">Tente outro corredor, ano, formato ou fonte de catálogo.</p>
+            <button id="retry-shelf" type="button" data-i18n="checkBackRoom">Verificar o depósito</button>
           </div>
         </div>
       </section>
@@ -76,39 +91,47 @@
         <header class="immersive-hud">
           <div class="immersive-hud-strip">
             <label class="immersive-picker" for="immersive-genre-select">
-              <span>Genre</span>
+              <span data-i18n="genre">Gênero</span>
               <select id="immersive-genre-select" aria-label="Immersive genre"></select>
             </label>
             <label class="immersive-picker immersive-year-picker" for="immersive-year-input">
-              <span>Year</span>
+              <span data-i18n="year">Ano</span>
               <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
             </label>
-            <button id="immersive-filter-go" type="button">Go</button>
+            <label class="immersive-picker immersive-provider-picker" for="immersive-provider-select">
+              <span data-i18n="brazilStreaming">Streaming no Brasil</span>
+              <select id="immersive-provider-select" aria-label="Brazil streaming availability">
+                <option value="" data-i18n="allServices">Todos os serviços</option>
+                <option value="netflix">Netflix</option>
+                <option value="prime-video">Prime Video</option>
+              </select>
+            </label>
+            <button id="immersive-filter-go" type="button" data-i18n="go">Ir</button>
             <div class="immersive-format" role="group" aria-label="Immersive shelf format">
-              <button data-type="movie" type="button">Movies</button>
-              <button data-type="series" type="button">Series</button>
+              <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
+              <button data-type="series" type="button" data-i18n="series">Séries</button>
             </div>
-            <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false">Sound</button>
-            <button id="normal-mode-return" type="button">Return</button>
+            <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false" data-i18n="sound">Som</button>
+            <button id="normal-mode-return" type="button" data-i18n="return">Voltar</button>
           </div>
           <div id="immersive-settings" class="immersive-settings" hidden>
             <div class="audio-setting">
-              <button id="ambience-toggle" type="button" aria-pressed="false">Store ambience</button>
-              <label for="ambience-volume">Ambience level</label>
+              <button id="ambience-toggle" type="button" aria-pressed="false" data-i18n="storeAmbience">Ambiente da loja</button>
+              <label for="ambience-volume" data-i18n="ambienceLevel">Nível do ambiente</label>
               <input id="ambience-volume" type="range" min="0" max="100" value="100" step="1">
               <output id="ambience-volume-value">100%</output>
             </div>
             <div class="audio-setting">
-              <button id="music-toggle" type="button" aria-pressed="false">Store music</button>
+              <button id="music-toggle" type="button" aria-pressed="false" data-i18n="storeMusic">Música da loja</button>
               <label class="music-track-picker">
-                <span>Music tape</span>
+                <span data-i18n="musicTape">Fita musical</span>
                 <select id="music-track">
                   <option value="night-drive">Night drive</option>
                   <option value="late-fee-dreams">Late-fee dreams</option>
                   <option value="closing-time">Closing time</option>
                 </select>
               </label>
-              <label for="music-volume">Music level</label>
+              <label for="music-volume" data-i18n="musicLevel">Nível da música</label>
               <input id="music-volume" type="range" min="0" max="100" value="100" step="1">
               <output id="music-volume-value">100%</output>
             </div>
@@ -121,8 +144,8 @@
 
     <footer>
       <span>Will's Locadora No. 01</span>
-      <span>Catalogue titles are not a promise of an available stream.</span>
-      <span>Playback by your Stremio setup</span>
+      <span data-i18n="catalogueDisclaimer">Os títulos do catálogo não garantem uma transmissão disponível.</span>
+      <span data-i18n="playbackByStremio">Reprodução pelo seu Stremio</span>
       <span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span>
     </footer>
   </div>
@@ -165,6 +188,7 @@
   </template>
 
   <script src="/app-core.js"></script>
+  <script src="/i18n.js"></script>
   <script src="/store-ambience.js"></script>
   <script src="/app.js"></script>
 </body>

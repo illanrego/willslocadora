@@ -21,18 +21,22 @@ test('server binds to loopback and serves health plus static app', async (t) => 
   const page = await fetch(`http://127.0.0.1:${address.port}/`).then((response) => response.text());
   assert.match(page, /Will's Locadora/);
   assert.match(page, /id="store-year-input"[^>]+type="number"/);
-  assert.match(page, /id="year-go"[^>]*>Go<\/button>/);
+  assert.match(page, /id="year-go"[^>]+data-i18n="go"[^>]*>Ir<\/button>/);
+  assert.match(page, /id="locale-select"/);
+  assert.match(page, /id="provider-select"/);
+  assert.match(page, /id="immersive-provider-select"/);
   assert.match(page, /id="immersive-settings-toggle"[^>]+aria-controls="immersive-settings"[^>]+aria-expanded="false"/);
   assert.match(page, /id="immersive-settings"[^>]+hidden/);
   assert.match(page, /id="immersive-zoom-out"[^>]+aria-label="Zoom out"/);
   assert.match(page, /id="immersive-zoom-in"[^>]+aria-label="Zoom in"/);
   assert.match(page, /id="immersive-previous-stand"[^>]+hidden[^>]*>← Previous stand/);
   assert.match(page, /id="immersive-next-stand"[^>]+hidden[^>]*>Next stand/);
-  assert.match(page, /id="ambience-toggle"[^>]+aria-pressed="false"[^>]*>Store ambience<\/button>/);
-  assert.match(page, /id="music-toggle"[^>]+aria-pressed="false"[^>]*>Store music<\/button>/);
-  assert.match(page, /<label class="music-track-picker"[^>]*>\s*<span>Music tape<\/span>\s*<select id="music-track"/);
+  assert.match(page, /id="ambience-toggle"[^>]+aria-pressed="false"[^>]*>Ambiente da loja<\/button>/);
+  assert.match(page, /id="music-toggle"[^>]+aria-pressed="false"[^>]*>Música da loja<\/button>/);
+  assert.match(page, /<label class="music-track-picker"[^>]*>\s*<span data-i18n="musicTape">Fita musical<\/span>\s*<select id="music-track"/);
   assert.match(page, /id="ambience-volume"[^>]+type="range"[^>]+value="100"/);
   assert.match(page, /id="music-volume"[^>]+type="range"[^>]+value="100"/);
+  assert.match(page, /script src="\/i18n\.js"/);
   assert.match(page, /script src="\/store-ambience\.js"/);
   const audioPlayer = await fetch(`http://127.0.0.1:${address.port}/store-ambience.js`).then((response) => response.text());
   assert.match(audioPlayer, /function musicUrlForYear\(year, trackId\)/);
@@ -62,15 +66,18 @@ test('shelf accepts catalogue years through 2026 and rejects later years', async
   assert.equal((await fetch(`http://127.0.0.1:${port}/api/shelf?year=2026&genre=Action&type=movie`)).status, 200);
   assert.equal((await fetch(`http://127.0.0.1:${port}/api/shelf?year=2027&genre=Action&type=movie`)).status, 400);
   assert.equal((await fetch(`http://127.0.0.1:${port}/api/shelf?year=1999&genre=Crime,Thriller,Mystery&type=movie`)).status, 200);
-  assert.deepEqual(requested.map(({ year }) => year), [2026, 1999]);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/shelf?year=1999&genre=Horror&type=movie&provider=netflix`)).status, 200);
+  assert.deepEqual(requested.map(({ year }) => year), [2026, 1999, 1999]);
   assert.deepEqual(requested[1].genres, ['Crime', 'Thriller', 'Mystery']);
+  assert.equal(requested[2].provider, 'netflix');
 });
 
 test('server exposes validated rich title metadata', async (t) => {
+  const requested = [];
   const server = createServer({
     catalogue: {
       listSources: () => [],
-      titleMeta: async ({ type, id }) => ({ id, type, imdbRating: '8.7' }),
+      titleMeta: async ({ type, id, locale }) => { requested.push(locale); return { id, type, imdbRating: '8.7' }; },
     },
   });
   server.listen(0, '127.0.0.1');
@@ -81,6 +88,14 @@ test('server exposes validated rich title metadata', async (t) => {
   const response = await fetch(`http://127.0.0.1:${port}/api/meta?type=movie&id=tt0133093`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { meta: { id: 'tt0133093', type: 'movie', imdbRating: '8.7' } });
+  assert.equal(requested[0], 'pt-BR');
+
+  const english = await fetch(`http://127.0.0.1:${port}/api/meta?type=movie&id=tt0133093&locale=en-US`);
+  assert.equal(english.status, 200);
+  assert.equal(requested[1], 'en-US');
+
+  const unsupported = await fetch(`http://127.0.0.1:${port}/api/meta?type=movie&id=tt0133093&locale=fr-FR`);
+  assert.equal(unsupported.status, 400);
 
   const invalid = await fetch(`http://127.0.0.1:${port}/api/meta?type=movie&id=bad%2Fid`);
   assert.equal(invalid.status, 400);

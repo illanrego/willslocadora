@@ -44,6 +44,8 @@ button:focus-visible, input:focus-visible, .vhs-case:focus-visible { outline: 3p
 #year-go { min-height: 30px; border: 1px solid #ffe178; color: var(--black); background: var(--yellow); cursor: pointer; font-size: .72rem; font-weight: 900; text-transform: uppercase; }
 .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; padding: .5rem 1rem; }
 .header-actions button { min-height: 36px; padding: .4rem .7rem; border: 1px solid #59473b; background: transparent; cursor: pointer; text-transform: uppercase; letter-spacing: .08em; font-size: .68rem; }
+.locale-picker { display: grid; gap: .2rem; color: var(--cream); font: 900 .56rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; }
+.locale-picker select { min-height: 30px; padding: .2rem .35rem; border: 1px solid #59473b; color: var(--cream); background: var(--blue-deep); font: 900 .66rem/1 "Courier New", monospace; text-transform: uppercase; }
 .counter-button { background: var(--yellow) !important; border-color: #ffe178 !important; color: var(--black) !important; font-weight: 900 !important; transform: rotate(1deg); box-shadow: 3px 3px 0 #7d5e00; }
 .counter-button span { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: .4rem; background: var(--red); color: white; border-radius: 50%; }
 .mode-button { border-color: var(--cream) !important; color: var(--cream) !important; background: var(--red) !important; font-weight: 900; box-shadow: 3px 3px 0 var(--blue-deep); }
@@ -71,6 +73,8 @@ h1 { margin: 0; max-width: 1200px; font: 900 clamp(4rem, 10vw, 10rem)/.76 Impact
 .format-switch { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; border: 2px solid #2a2019; }
 .format-switch button { min-height: 44px; border: 0; background: transparent; color: #2a2019; cursor: pointer; font-size: .72rem; font-weight: 900; text-transform: uppercase; }
 .format-switch .is-active { color: white; background: #2a2019; }
+.provider-picker { position: relative; z-index: 1; display: grid; gap: .35rem; margin-top: 1rem; color: #2a2019; font: 900 .62rem/1 "Courier New", monospace; letter-spacing: .07em; text-transform: uppercase; }
+.provider-picker select { min-height: 38px; border: 2px solid #2a2019; color: #2a2019; background: #f7edcf; font: 900 .72rem/1 "Courier New", monospace; text-transform: uppercase; }
 
 .shelf-room { position: relative; min-width: 0; padding: 2.4rem clamp(1rem, 4vw, 4rem) 4rem; overflow: hidden; background:
   linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px) 0 0/90px 100%,
@@ -124,7 +128,7 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-stand-button:hover, .immersive-stand-button:focus-visible { color: var(--blue-deep); background: var(--yellow); }
 .immersive-stand-button:disabled { opacity: .55; cursor: wait; }
 .immersive-hud { position: absolute; z-index: 5; top: 0; left: 0; width: 100%; padding: .35rem .5rem .45rem; color: var(--cream); background: rgba(16, 24, 39, .96); border-bottom: 3px solid var(--red); box-shadow: 0 5px 20px rgba(0,0,0,.55); }
-.immersive-hud-strip { display: grid; grid-template-columns: minmax(220px, 1fr) 100px auto auto auto auto; gap: .35rem; align-items: stretch; min-height: 42px; }
+.immersive-hud-strip { display: grid; grid-template-columns: minmax(180px, 1fr) 88px minmax(140px, .7fr) auto auto auto auto; gap: .35rem; align-items: stretch; min-height: 42px; }
 .immersive-hud-strip > button, .immersive-format button { min-height: 42px; padding-inline: .75rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); background: transparent; cursor: pointer; font-size: .68rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .immersive-hud button:hover, .immersive-hud button:focus-visible, .immersive-hud button[aria-pressed="true"] { color: var(--blue-deep); background: var(--yellow); outline: 0; }
 #immersive-filter-go { color: var(--blue-deep); background: var(--yellow); }
@@ -133,6 +137,7 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-picker select { padding-inline: .4rem; }
 .immersive-year-picker { grid-template-columns: 1fr; gap: .15rem; }
 .immersive-year-picker input { width: 100%; padding-inline: .4rem; }
+.immersive-provider-picker { grid-template-columns: 1fr; gap: .15rem; }
 .immersive-format { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgba(246,235,204,.24); }
 .immersive-format button { border: 0; }
 .immersive-format .is-active { color: var(--blue-deep); background: var(--yellow); }

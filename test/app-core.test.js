@@ -52,6 +52,15 @@ test('filterByStore enforces selected year and aisle genre', () => {
   assert.deepEqual(filterByStore(titles, { year: 1999, genre: 'Horror' }).map((item) => item.id), ['old']);
 });
 
+test('filterByStore extends the selected shelf to twenty years only when requested', () => {
+  const titles = [
+    { id: 'nineteen-years-old', year: 1980, genres: ['Horror'] },
+    { id: 'twenty-years-old', year: 1979, genres: ['Horror'] },
+  ];
+
+  assert.deepEqual(filterByStore(titles, { year: 1999, genre: 'Horror', yearWindow: 20 }).map((item) => item.id), ['nineteen-years-old']);
+});
+
 test('filterByStore combines related genres into one broad aisle', () => {
   const titles = [
     { id: 'crime', year: 1999, genres: ['Crime'] },

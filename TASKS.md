@@ -25,7 +25,9 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Added a second, pointer-focused section zoom after the immersive shelf reaches its whole-stand zoom limit; zooming out unwinds section focus before whole-stand zoom.
 - [x] Added independent opt-in music and ambience/effects controls, shared ambience scheduling, decade-based selectable music tracks, and safe missing-file feedback in `docs/ambience.md`.
 - [x] Added optional server-only TMDB enrichment for Brazil watch-provider listings/certification, backdrops, title logos, expanded credits, and the returned watch-options link; trailers and clips remain excluded.
-- [x] Added canonical `npm test`; 26 tests pass after the immersive stand paging and layout work.
+- [x] Added Brazil subscription filters for Netflix and Prime Video. Provider-filtered shelves use TMDB `flatrate` availability only and expand from five to twenty years.
+- [x] Added a persistent PT/EN site toggle, locale-aware TMDB title/synopsis enrichment, locale-safe metadata caching, and localized VHS detail labels.
+- [x] Added canonical `npm test`; 31 tests pass after the Brazil provider-filter work.
 - [x] Exercised the real server, live Cinemeta catalogue, browser UI, detail dialog, counter action, and year refresh without browser console errors.
 
 ## Now — playtest the rental loop

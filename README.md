@@ -13,6 +13,7 @@ A runnable MVP is implemented with no third-party application dependencies:
 - live Stremio catalogue metadata through a loopback bridge;
 - VHS shelf, title detail, local counter queue, and responsive layout;
 - native `stremio:` detail handoff;
+- persistent PT/EN site copy with locale-aware TMDB title/synopsis enrichment;
 - safe HTTPS configuration for additional catalogue-capable add-ons;
 - Node test suite covering core rules, catalogue integration, redirect safety, and server behavior.
 
@@ -42,7 +43,9 @@ TMDB_API_KEY=your-local-key
 
 `npm start` now reads `.env` locally. An explicit shell variable still wins when present.
 
-With a key, title inspection supplements the existing Stremio metadata with TMDB backdrops, title logos, expanded credits, Brazilian certification, and Brazil-region provider listings. **Watch options** opens the Brazil link returned by TMDB (often a JustWatch result page); it is not a playback guarantee or necessarily a direct Netflix/Prime link. Trailers and clips are deliberately out of scope.
+With a key, title inspection supplements the existing Stremio metadata with TMDB backdrops, title logos, expanded credits, Brazilian certification, and Brazil-region provider listings. The **Brazil streaming** filter can limit a shelf to TMDB-confirmed Netflix or Prime Video subscription availability in Brazil; this expands that shelf from five years to the selected year plus its previous nineteen years. **Watch options** opens the Brazil link returned by TMDB (often a JustWatch result page); it is not a playback guarantee or necessarily a direct Netflix/Prime link. Trailers and clips are deliberately out of scope.
+
+The site starts in Brazilian Portuguese. Use the **Idioma / Language** selector in the header to switch between Portuguese (`pt-BR`) and English (`en-US`). TMDB metadata requests follow the selected locale and fall back to the catalogue/original value when a localized field is unavailable. Person names and provider identities are not machine-translated.
 
 > This product uses the TMDB API but is not endorsed or certified by TMDB.
 
@@ -57,7 +60,7 @@ There is no dependency-install step: the app uses browser APIs and the Node stan
 ## Core loop
 
 1. Choose a store year.
-2. Enter a genre aisle and browse releases from that year and the four years before it.
+2. Enter a genre aisle and browse releases from that year and the four years before it. Optionally select Netflix or Prime Video for TMDB-confirmed Brazil availability across the selected year and previous nineteen years.
 3. Inspect a VHS case and optionally take it to the local counter queue.
 4. Select **Watch in Stremio**.
 5. Native Stremio resolves streams through its own configured add-ons.
@@ -85,6 +88,7 @@ Security boundaries:
 - [ARCHITECTURE.md](ARCHITECTURE.md) — component and security boundaries
 - [TASKS.md](TASKS.md) — live ship board
 - [docs/integration-spike.md](docs/integration-spike.md) — actual Stremio handoff/catalogue evidence
+- [.hermes/plans/2026-07-20_160243-locadora-localization-store-expansion.md](.hermes/plans/2026-07-20_160243-locadora-localization-store-expansion.md) — future localization, immersive-store, balcony, and rental roadmap
 
 ## Product truth
 
