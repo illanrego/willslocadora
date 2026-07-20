@@ -290,6 +290,11 @@ class CatalogueStore {
     return titles.slice(0, 40);
   }
 
+  async featured(year) {
+    if (!this.tmdbClient?.enabled) return [];
+    return this.tmdbClient.discoverYearHits({ year });
+  }
+
   async titleMeta({ type, id, locale = 'pt-BR' }) {
     const requestedLocale = locale === 'en-US' ? 'en-US' : 'pt-BR';
     const key = `${requestedLocale}:${type}:${id}`;

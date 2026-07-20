@@ -84,6 +84,12 @@ function createServer({ catalogue, posterFetcher = safeFetchImage }) {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
         return sendJson(response, 200, { providers: BRAZIL_PROVIDERS });
       }
+      if (url.pathname === '/api/featured') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        const year = Number(url.searchParams.get('year'));
+        if (!Number.isInteger(year) || year < 1920 || year > 2026) return sendJson(response, 400, { error: 'Invalid featured year' });
+        return sendJson(response, 200, { titles: await catalogue.featured(year), year });
+      }
       if (url.pathname === '/api/shelf') {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
         const year = Number(url.searchParams.get('year'));

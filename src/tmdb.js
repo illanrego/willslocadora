@@ -153,9 +153,25 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     });
   }
 
+  async function discoverYearHits({ year, locale = 'pt-BR' }) {
+    if (!apiKey) return [];
+    const query = new URLSearchParams({
+      sort_by: 'popularity.desc',
+      'primary_release_date.gte': `${year}-01-01`,
+      'primary_release_date.lte': `${year}-12-31`,
+      'vote_count.gte': '20',
+    });
+    const result = await request(`/discover/movie?${query}`, locale);
+    return (result.results || []).slice(0, 3).map((title) => ({
+      id: `tmdb:${title.id}`, type: 'movie', name: title.title || 'Untitled', year: yearFromDate(title.release_date),
+      poster: imageUrl(title.poster_path, 'w500'), background: imageUrl(title.backdrop_path, 'w1280'), description: title.overview || '', genres: [],
+    }));
+  }
+
   return {
     enabled: Boolean(apiKey),
     discoverProviderShelf,
+    discoverYearHits,
     async enrich(title, locale = 'pt-BR') {
       if (!apiKey || !/^tt\d+$/.test(title.id || '')) return title;
       const requestedLocale = normalizeLocale(locale);

@@ -145,6 +145,15 @@ test('server exposes the installed Three.js browser module without exposing node
   assert.match(viewerSource, /availabilityBR/);
   assert.match(viewerSource, /function loadProviderAssets\(nextTitle\)/);
   assert.match(viewerSource, /loadProviderAssets\(title\);/);
+  assert.match(viewerSource, /function setDetailFocus\(nextFocus\)/);
+  assert.match(viewerSource, /focusFront\(\)/);
+  assert.match(viewerSource, /const VHS_MIN_ZOOM = 0\.62;/);
+  assert.match(viewerSource, /function adjustZoom\(delta\)/);
+  assert.match(viewerSource, /function wheel\(event\)/);
+  assert.match(viewerSource, /renderer\.domElement\.addEventListener\('wheel', wheel, \{ passive: false \}\)/);
+  assert.match(viewerSource, /zoomIn\(\)/);
+  assert.match(viewerSource, /zoomOut\(\)/);
+  assert.match(viewerSource, /focusBack\(\)/);
   assert.match(viewerSource, /backdropUrl/);
   assert.match(viewerSource, /logoUrl/);
 
@@ -161,7 +170,10 @@ test('server exposes the installed Three.js browser module without exposing node
   assert.match(immersiveSource, /function applyVisuals\(nextVisuals = \{\}\)/);
   assert.match(immersiveSource, /function drawSign\(context, genre, year, type, theme, providers, providerImages/);
   assert.match(immersiveSource, /function loadProviderLogos\(nextProviders\)/);
-  assert.match(immersiveSource, /new THREE\.SphereGeometry\(0\.12, 16, 12\)/);
+  assert.match(immersiveSource, /function featuredMovies\(titles\)/);
+  assert.match(immersiveSource, /function renderFeaturedPosters\(nextTitles\)/);
+  assert.match(immersiveSource, /renderFeaturedPosters\(nextTitles\)/);
+  assert.match(immersiveSource, /new THREE\.SphereGeometry/);
   assert.match(immersiveSource, /function drawStandMarker\(context, stand\)/);
   assert.match(immersiveSource, /transition\(nextTitles, nextGenre, nextYear, nextType, nextStand, direction, nextVisuals\)/);
 

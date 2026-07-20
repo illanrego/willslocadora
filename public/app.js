@@ -511,6 +511,17 @@
     detail.replaceChildren();
     const stage = document.createElement('div');
     stage.className = 'vhs-stage';
+    const controls = document.createElement('div');
+    controls.className = 'vhs-focus-controls';
+    for (const [method, label] of [['zoomOut', '−'], ['focusFront', 'Front'], ['focusWhole', 'Whole case'], ['focusBack', 'Back'], ['zoomIn', '+']]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.setAttribute('aria-label', label === '−' ? 'Zoom out' : label === '+' ? 'Zoom in' : label);
+      button.addEventListener('click', () => activeVhsViewer?.[method]());
+      controls.append(button);
+    }
+    stage.append(controls);
     detail.append(stage);
     if (!titleDialog.open) titleDialog.showModal();
 

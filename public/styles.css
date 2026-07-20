@@ -247,6 +247,9 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .title-dialog::backdrop { background: rgba(8, 6, 5, .76); backdrop-filter: blur(2px); }
 .title-detail, .vhs-stage { width: 100%; height: 100%; min-height: 0; }
 .vhs-stage { position: relative; display: block; padding: 0; background: transparent; perspective: none; }
+.vhs-focus-controls { position: absolute; z-index: 2; right: .6rem; bottom: .6rem; display: flex; gap: .25rem; }
+.vhs-focus-controls button { min-height: 32px; padding: .35rem .5rem; border: 1px solid rgba(231,216,177,.55); color: var(--cream); background: rgba(16,24,39,.88); font: 900 .58rem/1 "Courier New", monospace; text-transform: uppercase; cursor: pointer; }
+.vhs-focus-controls button:hover, .vhs-focus-controls button:focus-visible { color: var(--ink); background: var(--yellow); outline: 0; }
 .vhs-canvas { width: 100%; height: 100%; display: block; cursor: grab; outline: none; touch-action: none; }
 .vhs-canvas.is-dragging { cursor: grabbing; }
 .vhs-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--cyan); }

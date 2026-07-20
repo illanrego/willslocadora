@@ -74,6 +74,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - Restored the default empty-service path to the Stremio/Cinemeta catalogue; a live no-service Horror/1999 shelf returned 40 Cinemeta titles.
 - Replaced native multi-select streamer controls with direct checkbox groups and made the VHS viewer reload title-specific provider logos when asynchronous TMDB metadata arrives.
 - Added Phase C immersive identity controls: centralized genre stand themes, persisted lamp brightness/warmth controls with reset, and a selected-service plaque on filtered stands.
+- Added explicit front, whole-case, and back inspection controls to the VHS viewer, plus three featured movie posters from the current shelf behind each immersive stand.
 
 ## Next session start here
 

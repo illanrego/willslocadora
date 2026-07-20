@@ -107,6 +107,10 @@ function drawStandMarker(context, stand) {
   context.fillText(String(stand + 1).padStart(2, '0'), width / 2, 126);
 }
 
+function featuredMovies(titles) {
+  return titles.filter((title) => title.type === 'movie').slice(0, 3);
+}
+
 export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect }) {
   let activeTheme = theme || { backing: '#2f526b', trim: '#527f9e', sign: '#101827', lamp: '#c99a2e' };
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -140,11 +144,47 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   const wood = new THREE.MeshStandardMaterial({ color: 0x111011, roughness: 0.68, metalness: 0.08 });
   const edge = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.72 });
   const backingMaterial = new THREE.MeshStandardMaterial({ color: activeTheme.backing, roughness: 0.78 });
+  const settingWallMaterial = new THREE.MeshStandardMaterial({ color: 0x080d17, roughness: 0.9 });
+  const settingWall = new THREE.Mesh(new THREE.BoxGeometry(30, 16, 0.3), settingWallMaterial);
+  settingWall.position.set(0, 0.6, -3.15);
+  settingWall.receiveShadow = true;
+  room.add(settingWall);
   const trim = new THREE.MeshStandardMaterial({ color: activeTheme.trim, roughness: 0.72 });
   const backing = new THREE.Mesh(new THREE.BoxGeometry(12, 9.2, 0.35), backingMaterial);
   backing.position.z = -0.45;
   backing.receiveShadow = true;
   room.add(backing);
+
+  const featuredPosterGroup = new THREE.Group();
+  const featuredPosterLoader = new THREE.TextureLoader();
+  room.add(featuredPosterGroup);
+  function renderFeaturedPosters(nextTitles) {
+    featuredPosterGroup.clear();
+    featuredMovies(nextTitles).forEach((title, index) => {
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(4.8, 6.8, 0.08), new THREE.MeshStandardMaterial({ color: 0x171310, roughness: 0.65 }));
+      frame.position.set([-9.2, 0, 9.2][index], 1.2, -2.94);
+      const posterMaterial = new THREE.MeshBasicMaterial({ color: 0x332820 });
+      const poster = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 6.35), posterMaterial);
+      poster.position.z = 0.045;
+      frame.add(poster);
+      featuredPosterGroup.add(frame);
+      const posterUrl = title.posterUrl || (title.poster ? `/api/poster?${new URLSearchParams({ url: title.poster })}` : '');
+      if (posterUrl) featuredPosterLoader.load(posterUrl, (texture) => {
+        posterMaterial.map = texture;
+        posterMaterial.needsUpdate = true;
+      }, undefined, () => {});
+    });
+  }
+
+  async function loadFeaturedPosters(nextYear) {
+    try {
+      const response = await fetch(`/api/featured?year=${encodeURIComponent(nextYear)}`);
+      if (!response.ok) return;
+      const { titles: featured = [] } = await response.json();
+      renderFeaturedPosters(featured);
+    } catch {}
+  }
+
   for (const x of [-6.05, 6.05]) {
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.34, 9.85, 0.72), wood);
     post.position.set(x, -0.12, -0.02);
@@ -451,6 +491,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   renderer.domElement.addEventListener('wheel', wheel, { passive: false });
   resize();
   renderTapes(titles);
+  loadFeaturedPosters(year);
   applyVisuals({});
 
   function render(time) {
@@ -509,6 +550,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       standTransition = null;
       room.position.x = 0;
       updateSign(nextGenre, nextYear, nextType, false, nextStand);
+      if (nextYear !== year) loadFeaturedPosters(nextYear);
       renderTapes(nextTitles);
     },
     transition(nextTitles, nextGenre, nextYear, nextType, nextStand, direction, nextVisuals) {

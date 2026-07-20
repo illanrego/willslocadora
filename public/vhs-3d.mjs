@@ -15,6 +15,10 @@ const PROVIDER_LOGOS = Object.freeze({
   'Claro video': '/images/providers/claro-video.svg',
   'Apple TV Store': '/images/providers/apple-tv-store.svg',
 });
+const VHS_MIN_ZOOM = 0.62;
+const VHS_MAX_ZOOM = 1.45;
+const VHS_ZOOM_STEP = 0.12;
+
 const LOCADORA_PALETTE = {
   ink: '#080d17',
   navy: '#101827',
@@ -378,12 +382,37 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
 
+  let detailFocus = 'whole';
+  let zoom = 1;
+  let baseCameraDistance = 11.5;
+  let targetCameraDistance = baseCameraDistance;
+
+  function updateCameraDistance() {
+    targetCameraDistance = baseCameraDistance / zoom;
+  }
+
+  function adjustZoom(delta) {
+    zoom = THREE.MathUtils.clamp(zoom + delta, VHS_MIN_ZOOM, VHS_MAX_ZOOM);
+    updateCameraDistance();
+  }
+
+  function setDetailFocus(nextFocus) {
+    detailFocus = ['whole', 'front', 'back'].includes(nextFocus) ? nextFocus : 'whole';
+    zoom = detailFocus === 'whole' ? 1 : 1.35;
+    targetX = 0;
+    targetY = detailFocus === 'back' ? Math.PI : 0;
+    updateCameraDistance();
+    renderer.domElement.setAttribute('aria-label', `${title.name} VHS ${detailFocus} inspection.`);
+  }
+
   function resize() {
     const width = Math.max(container.clientWidth, 1);
     const height = Math.max(container.clientHeight, 1);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
-    camera.position.z = camera.aspect < 0.7 ? 13.5 : 11.5;
+    baseCameraDistance = camera.aspect < 0.7 ? 13.5 : 11.5;
+    updateCameraDistance();
+    if (!frame) camera.position.z = targetCameraDistance;
     camera.updateProjectionMatrix();
   }
   const observer = new ResizeObserver(resize);
@@ -450,6 +479,11 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     targetY += Math.PI;
   }
 
+  function wheel(event) {
+    event.preventDefault();
+    adjustZoom(event.deltaY < 0 ? VHS_ZOOM_STEP : -VHS_ZOOM_STEP);
+  }
+
   function keyDown(event) {
     if (event.key === 'ArrowLeft') targetY -= 0.22;
     else if (event.key === 'ArrowRight') targetY += 0.22;
@@ -465,12 +499,14 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   renderer.domElement.addEventListener('pointerup', pointerUp);
   renderer.domElement.addEventListener('pointercancel', pointerUp);
   renderer.domElement.addEventListener('dblclick', doubleClick);
+  renderer.domElement.addEventListener('wheel', wheel, { passive: false });
   renderer.domElement.addEventListener('keydown', keyDown);
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function render(time) {
     if (disposed) return;
+    camera.position.z += (targetCameraDistance - camera.position.z) * 0.14;
     group.rotation.x += (targetX - group.rotation.x) * 0.12;
     group.rotation.y += (targetY - group.rotation.y) * 0.12;
     group.position.y = reducedMotion ? 0 : Math.sin(time * 0.0014) * 0.035;
@@ -481,6 +517,11 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   renderer.domElement.focus({ preventScroll: true });
 
   return {
+    focusWhole() { setDetailFocus('whole'); },
+    focusFront() { setDetailFocus('front'); },
+    focusBack() { setDetailFocus('back'); },
+    zoomIn() { adjustZoom(VHS_ZOOM_STEP); },
+    zoomOut() { adjustZoom(-VHS_ZOOM_STEP); },
     update(nextTitle, nextAtCounter, assets = {}) {
       title = nextTitle;
       currentAtCounter = nextAtCounter;
@@ -499,6 +540,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       renderer.domElement.removeEventListener('pointerup', pointerUp);
       renderer.domElement.removeEventListener('pointercancel', pointerUp);
       renderer.domElement.removeEventListener('dblclick', doubleClick);
+      renderer.domElement.removeEventListener('wheel', wheel);
       renderer.domElement.removeEventListener('keydown', keyDown);
       frontCanvas.texture.dispose();
       backCanvas.texture.dispose();
