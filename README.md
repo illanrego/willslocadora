@@ -43,7 +43,7 @@ TMDB_API_KEY=your-local-key
 
 `npm start` now reads `.env` locally. An explicit shell variable still wins when present.
 
-With a key, title inspection supplements the existing Stremio metadata with TMDB backdrops, title logos, expanded credits, Brazilian certification, and Brazil-region provider listings. The **Brazil streaming** filter queries TMDB's Brazil subscription catalogue first for Netflix or Prime Video, then resolves compatible IMDb/Stremio IDs; it covers the selected year plus its previous nineteen years. **Watch options** opens the Brazil link returned by TMDB (often a JustWatch result page); it is not a playback guarantee or necessarily a direct Netflix/Prime link. Trailers and clips are deliberately out of scope.
+With a key, title inspection supplements the existing Stremio metadata with TMDB backdrops, title logos, expanded credits, Brazilian certification, and Brazil-region provider listings. The **Brazil streaming** filter supports multi-select OR discovery for Netflix, Prime Video, Max, Disney+, Globoplay, Paramount+, Apple TV+, MUBI, and Crunchyroll. It queries TMDB's Brazil `flatrate` catalogue first, then resolves compatible IMDb/Stremio IDs. By default it covers the selected year plus its previous nineteen years; **Ignore store year** deliberately searches the bounded 1920–2026 catalogue era instead. **Watch options** opens the Brazil link returned by TMDB (often a JustWatch result page); it is not a playback guarantee or necessarily a direct Netflix/Prime link. Trailers and clips are deliberately out of scope.
 
 The site starts in Brazilian Portuguese. Use the **Idioma / Language** selector in the header to switch between Portuguese (`pt-BR`) and English (`en-US`). TMDB metadata requests follow the selected locale and fall back to the catalogue/original value when a localized field is unavailable. Person names and provider identities are not machine-translated.
 
@@ -60,7 +60,7 @@ There is no dependency-install step: the app uses browser APIs and the Node stan
 ## Core loop
 
 1. Choose a store year.
-2. Enter a genre aisle and browse releases from that year and the four years before it. Optionally select Netflix or Prime Video for TMDB-confirmed Brazil availability across the selected year and previous nineteen years.
+2. Enter a genre aisle and browse releases from that year and the four years before it. Optionally select one or more Brazil streaming services for TMDB-confirmed `flatrate` availability (OR semantics) across the selected year and previous nineteen years, or explicitly ignore the store-year lens.
 3. Inspect a VHS case and optionally take it to the local counter queue.
 4. Select **Watch in Stremio**.
 5. Native Stremio resolves streams through its own configured add-ons.

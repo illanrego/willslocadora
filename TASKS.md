@@ -25,9 +25,9 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Added a second, pointer-focused section zoom after the immersive shelf reaches its whole-stand zoom limit; zooming out unwinds section focus before whole-stand zoom.
 - [x] Added independent opt-in music and ambience/effects controls, shared ambience scheduling, decade-based selectable music tracks, and safe missing-file feedback in `docs/ambience.md`.
 - [x] Added optional server-only TMDB enrichment for Brazil watch-provider listings/certification, backdrops, title logos, expanded credits, and the returned watch-options link; trailers and clips remain excluded.
-- [x] Added Brazil subscription filters for Netflix and Prime Video. Provider-filtered shelves query TMDB's Brazil `flatrate` catalogue first, resolve compatible IMDb/Stremio IDs, and cover twenty years.
+- [x] Added Brazil subscription multi-select filters for Netflix, Prime Video, Max, Disney+, Globoplay, Paramount+, Apple TV+, MUBI, and Crunchyroll. Provider-filtered shelves query TMDB's Brazil `flatrate` catalogue first with OR semantics, resolve compatible IMDb/Stremio IDs, and support an explicit bounded Ignore Store Year option.
 - [x] Added a persistent PT/EN site toggle, locale-aware TMDB title/synopsis enrichment, locale-safe metadata caching, and localized VHS detail labels.
-- [x] Added canonical `npm test`; 35 tests pass after TMDB-first Brazil provider discovery.
+- [x] Added canonical `npm test`; 39 tests pass after TMDB-first Brazil multi-provider discovery.
 - [x] Exercised the real server, live Cinemeta catalogue, browser UI, detail dialog, counter action, and year refresh without browser console errors.
 
 ## Now — playtest the rental loop
@@ -70,6 +70,9 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - Verified separate music and ambience controls render in immersive mode; missing assets report the exact 1990s pack required instead of falsely reporting playback.
 - Switched Netflix/Prime shelves from Stremio-candidate post-filtering to TMDB Brazil subscription discovery first; a live Netflix Horror/1999 query returned seven compatible titles.
 - Corrected Prime Video's duplicate TMDB provider-name lookup to use Brazil-searchable provider ID 119; a live Action/Adventure 1999 query returned 40 titles.
+- Added the canonical TMDB provider registry, multi-service OR discovery, and provider-only Ignore Store Year mode; live Netflix + Max requests returned 40 titles both within the 1980–1999 window and across the 1920–2026 range.
+- Restored the default empty-service path to the Stremio/Cinemeta catalogue; a live no-service Horror/1999 shelf returned 40 Cinemeta titles.
+- Replaced native multi-select streamer controls with direct checkbox groups and made the VHS viewer reload title-specific provider logos when asynchronous TMDB metadata arrives.
 
 ## Next session start here
 

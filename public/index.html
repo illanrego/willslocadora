@@ -49,14 +49,21 @@
             <button class="is-active" data-type="movie" type="button" data-i18n="movies">Filmes</button>
             <button data-type="series" type="button" data-i18n="series">Séries</button>
           </div>
-          <label class="provider-picker" for="provider-select">
-            <span data-i18n="brazilStreaming">Streaming no Brasil</span>
-            <select id="provider-select">
-              <option value="" data-i18n="allServices">Todos os serviços</option>
-              <option value="netflix">Netflix</option>
-              <option value="prime-video">Prime Video</option>
-            </select>
-          </label>
+          <fieldset class="provider-picker">
+            <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
+            <div id="provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
+              <label><input type="checkbox" data-provider-id="netflix"> Netflix</label>
+              <label><input type="checkbox" data-provider-id="prime-video"> Prime Video</label>
+              <label><input type="checkbox" data-provider-id="max"> Max</label>
+              <label><input type="checkbox" data-provider-id="disney-plus"> Disney+</label>
+              <label><input type="checkbox" data-provider-id="globoplay"> Globoplay</label>
+              <label><input type="checkbox" data-provider-id="paramount-plus"> Paramount+</label>
+              <label><input type="checkbox" data-provider-id="apple-tv-plus"> Apple TV+</label>
+              <label><input type="checkbox" data-provider-id="mubi"> MUBI</label>
+              <label><input type="checkbox" data-provider-id="crunchyroll"> Crunchyroll</label>
+            </div>
+            <label class="ignore-year-control"><input id="ignore-store-year" type="checkbox"> <span data-i18n="ignoreStoreYear">Ignore store year</span></label>
+          </fieldset>
         </aside>
 
         <div class="shelf-room">
@@ -98,14 +105,21 @@
               <span data-i18n="year">Ano</span>
               <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
             </label>
-            <label class="immersive-picker immersive-provider-picker" for="immersive-provider-select">
-              <span data-i18n="brazilStreaming">Streaming no Brasil</span>
-              <select id="immersive-provider-select" aria-label="Brazil streaming availability">
-                <option value="" data-i18n="allServices">Todos os serviços</option>
-                <option value="netflix">Netflix</option>
-                <option value="prime-video">Prime Video</option>
-              </select>
-            </label>
+            <fieldset class="immersive-picker immersive-provider-picker">
+              <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
+              <div id="immersive-provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
+                <label><input type="checkbox" data-provider-id="netflix"> Netflix</label>
+                <label><input type="checkbox" data-provider-id="prime-video"> Prime Video</label>
+                <label><input type="checkbox" data-provider-id="max"> Max</label>
+                <label><input type="checkbox" data-provider-id="disney-plus"> Disney+</label>
+                <label><input type="checkbox" data-provider-id="globoplay"> Globoplay</label>
+                <label><input type="checkbox" data-provider-id="paramount-plus"> Paramount+</label>
+                <label><input type="checkbox" data-provider-id="apple-tv-plus"> Apple TV+</label>
+                <label><input type="checkbox" data-provider-id="mubi"> MUBI</label>
+                <label><input type="checkbox" data-provider-id="crunchyroll"> Crunchyroll</label>
+              </div>
+            </fieldset>
+            <label class="immersive-ignore-year"><input id="immersive-ignore-store-year" type="checkbox"> <span data-i18n="allYears">All years</span></label>
             <button id="immersive-filter-go" type="button" data-i18n="go">Ir</button>
             <div class="immersive-format" role="group" aria-label="Immersive shelf format">
               <button data-type="movie" type="button" data-i18n="movies">Filmes</button>

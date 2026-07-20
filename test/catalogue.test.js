@@ -241,7 +241,24 @@ test('CatalogueStore routes provider shelves through TMDB discovery before catal
   const titles = await store.shelf({ year: 1999, genre: 'Horror', genres: ['Horror'], type: 'movie', provider: 'netflix', page: 1 });
 
   assert.deepEqual(titles.map((title) => title.id), ['tt0133093']);
-  assert.deepEqual(options, { year: 1999, genres: ['Horror'], type: 'movie', providerName: 'Netflix', page: 1 });
+  assert.deepEqual(options, { year: 1999, genres: ['Horror'], type: 'movie', providerIds: [8], providerNames: ['Netflix'], ignoreStoreYear: false, page: 1 });
+});
+
+test('CatalogueStore keeps the Stremio catalogue path when no streaming services are selected', async () => {
+  const store = new CatalogueStore({ tmdbClient: { enabled: true, discoverProviderShelf: async () => { throw new Error('TMDB should not be used'); } } });
+  store.sources = [];
+
+  assert.deepEqual(await store.shelf({ year: 1999, genres: ['Horror'], type: 'movie', providers: [], page: 0 }), []);
+});
+
+test('CatalogueStore sends selected providers as one TMDB OR discovery query', async () => {
+  let options;
+  const store = new CatalogueStore({ tmdbClient: { enabled: true, discoverProviderShelf: async (value) => { options = value; return []; } } });
+  store.sources = [];
+
+  await store.shelf({ year: 1999, genres: ['Action'], type: 'movie', providers: ['max', 'netflix'], ignoreStoreYear: true, page: 0 });
+
+  assert.deepEqual(options, { year: 1999, genres: ['Action'], type: 'movie', providerIds: [1899, 8], providerNames: ['HBO Max', 'Netflix'], ignoreStoreYear: true, page: 0 });
 });
 
 test('safeFetchJson revalidates a public redirect before following it', async () => {

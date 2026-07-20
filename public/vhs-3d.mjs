@@ -354,13 +354,18 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       texture.dispose();
     }, undefined, () => {});
   }
+  function loadProviderAssets(nextTitle) {
+    providerImages.length = 0;
+    redraw();
+    for (const [index, provider] of (nextTitle.availabilityBR?.providers || []).entries()) {
+      const tmdbLogo = (nextTitle.availabilityBR?.providerLogos || []).find((entry) => entry.name === provider)?.logo;
+      loadAsset(`provider-${index}`, tmdbLogo || PROVIDER_LOGOS[provider] || '');
+    }
+  }
   loadAsset('poster', posterUrl);
   loadAsset('backdrop', backdropUrl);
   loadAsset('logo', logoUrl);
-  for (const [index, provider] of (title.availabilityBR?.providers || []).entries()) {
-    const tmdbLogo = (title.availabilityBR?.providerLogos || []).find((entry) => entry.name === provider)?.logo;
-    loadAsset(`provider-${index}`, tmdbLogo || PROVIDER_LOGOS[provider] || '');
-  }
+  loadProviderAssets(title);
 
   let targetX = -0.06;
   let targetY = -0.32;
@@ -483,6 +488,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       loadAsset('poster', assets.posterUrl);
       loadAsset('backdrop', assets.backdropUrl);
       loadAsset('logo', assets.logoUrl);
+      loadProviderAssets(title);
     },
     dispose() {
       disposed = true;

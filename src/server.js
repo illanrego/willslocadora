@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { safeFetchImage } = require('./catalogue.js');
+const { BRAZIL_PROVIDERS, normalizeProviderIds } = require('./providers.js');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const THREE_BUILD = path.dirname(require.resolve('three'));
@@ -79,6 +80,10 @@ function createServer({ catalogue, posterFetcher = safeFetchImage }) {
         }
         return sendJson(response, 405, { error: 'Method not allowed' });
       }
+      if (url.pathname === '/api/providers') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        return sendJson(response, 200, { providers: BRAZIL_PROVIDERS });
+      }
       if (url.pathname === '/api/shelf') {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
         const year = Number(url.searchParams.get('year'));
@@ -86,10 +91,12 @@ function createServer({ catalogue, posterFetcher = safeFetchImage }) {
         const genres = genre.split(',').map((item) => item.trim()).filter(Boolean);
         const type = url.searchParams.get('type') === 'series' ? 'series' : 'movie';
         const stand = Number(url.searchParams.get('stand') || 0);
-        const provider = url.searchParams.get('provider') || '';
-        if (!Number.isInteger(year) || year < 1920 || year > 2026 || !genres.length || genres.length > 3 || genres.some((item) => item.length > 20) || !Number.isInteger(stand) || stand < 0 || stand > 20 || !['', 'netflix', 'prime-video'].includes(provider)) return sendJson(response, 400, { error: 'Invalid shelf filters' });
-        const titles = await catalogue.shelf({ year, genre: genres[0], genres, type, page: stand, provider, sourceId: url.searchParams.get('source') || '' });
-        return sendJson(response, 200, { titles, year, genre, type, stand, provider });
+        const requestedProviders = url.searchParams.get('providers') ?? url.searchParams.get('provider') ?? '';
+        const providers = normalizeProviderIds(requestedProviders);
+        const ignoreStoreYear = url.searchParams.get('ignoreStoreYear') === 'true';
+        if (!Number.isInteger(year) || year < 1920 || year > 2026 || !genres.length || genres.length > 3 || genres.some((item) => item.length > 20) || !Number.isInteger(stand) || stand < 0 || stand > 20 || (requestedProviders && !providers.length) || (ignoreStoreYear && !providers.length)) return sendJson(response, 400, { error: 'Invalid shelf filters' });
+        const titles = await catalogue.shelf({ year, genre: genres[0], genres, type, page: stand, providers, ignoreStoreYear, sourceId: url.searchParams.get('source') || '' });
+        return sendJson(response, 200, { titles, year, genre, type, stand, providers, ignoreStoreYear });
       }
       if (url.pathname === '/api/meta') {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });

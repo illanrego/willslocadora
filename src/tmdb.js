@@ -100,23 +100,26 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     return id || null;
   }
 
-  async function discoverProviderShelf({ year, genres, type, providerName, page = 0, locale = 'pt-BR' }) {
+  async function discoverProviderShelf({ year, genres, type, providerName = '', providerNames = [], providerIds = [], ignoreStoreYear = false, page = 0, locale = 'pt-BR' }) {
     if (!apiKey) return [];
     const requestedLocale = normalizeLocale(locale);
     const tmdbType = type === 'series' ? 'tv' : 'movie';
-    const provider = await providerId(tmdbType, providerName, requestedLocale);
-    if (!provider) return [];
+    const selectedProviderIds = [...new Set(providerIds.map(Number).filter(Number.isInteger))];
+    if (!selectedProviderIds.length && providerName) {
+      const provider = await providerId(tmdbType, providerName, requestedLocale);
+      if (provider) selectedProviderIds.push(provider);
+    }
+    if (!selectedProviderIds.length) return [];
     const genreIds = [...new Set((genres || []).map((genre) => TMDB_GENRES[genre]).filter(Boolean))];
-    const startYear = Number(year) - 19;
     const dateKey = tmdbType === 'movie' ? 'primary_release_date' : 'first_air_date';
     const fetchPage = (number) => {
       const query = new URLSearchParams({
         watch_region: 'BR',
         with_watch_monetization_types: 'flatrate',
-        with_watch_providers: String(provider),
+        with_watch_providers: selectedProviderIds.join('|'),
         page: String(number),
-        [`${dateKey}.gte`]: `${startYear}-01-01`,
-        [`${dateKey}.lte`]: `${year}-12-31`,
+        [`${dateKey}.gte`]: `${ignoreStoreYear ? 1920 : Number(year) - 19}-01-01`,
+        [`${dateKey}.lte`]: `${ignoreStoreYear ? 2026 : year}-12-31`,
       });
       if (genreIds.length) query.set('with_genres', genreIds.join('|'));
       return request(`/discover/${tmdbType}?${query}`, requestedLocale);
@@ -130,6 +133,7 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
         return external.imdb_id || '';
       } catch { return ''; }
     });
+    const names = providerNames.length ? providerNames : [providerName];
     return discovered.flatMap((title, index) => {
       const id = imdbIds[index];
       if (!/^tt\d+$/.test(id)) return [];
@@ -144,7 +148,7 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
         description: title.overview || '',
         imdbRating: title.vote_average ? String(title.vote_average) : '',
         director: [], writer: [], cast: [], source: 'tmdb-discover',
-        availabilityBR: { link: '', providers: [providerName], subscriptionProviders: [providerName] },
+        availabilityBR: { link: '', providers: names, subscriptionProviders: names },
       }];
     });
   }

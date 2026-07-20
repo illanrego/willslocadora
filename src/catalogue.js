@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { isIP } = require('node:net');
 const { deduplicateTitles, filterByStore, normalizeTitle } = require('../public/app-core.js');
+const { BRAZIL_PROVIDERS, PROVIDERS_BY_ID, normalizeProviderIds } = require('./providers.js');
 
 const DEFAULT_SOURCES = Object.freeze([
   {
@@ -23,7 +24,7 @@ const DEFAULT_SOURCES = Object.freeze([
     manifestUrl: 'https://1fe84bc728af-imdb-catalogs.baby-beamup.club/manifest.json',
   },
 ]);
-const BRAZIL_PROVIDER_FILTERS = Object.freeze({ netflix: 'Netflix', 'prime-video': 'Amazon Prime Video' });
+
 
 function isPrivateAddress(address) {
   const value = String(address).toLowerCase();
@@ -264,21 +265,24 @@ class CatalogueStore {
   }
 
   async shelf(options) {
-    const providerName = BRAZIL_PROVIDER_FILTERS[options.provider] || '';
-    if (options.provider && !providerName) throw new Error('Invalid Brazil streaming provider filter');
-    if (providerName && !this.tmdbClient?.enabled) throw new Error('Netflix and Prime Video filters require TMDB_API_KEY in .env');
-    if (providerName) {
+    const providerIds = normalizeProviderIds(options.providers || options.provider);
+    const hasRequestedProviders = Array.isArray(options.providers) ? options.providers.length > 0 : Boolean(options.providers || options.provider);
+    if (hasRequestedProviders && !providerIds.length) throw new Error('Invalid Brazil streaming provider filter');
+    if (providerIds.length && !this.tmdbClient?.enabled) throw new Error('Brazil streaming filters require TMDB_API_KEY in .env');
+    if (providerIds.length) {
+      const providers = providerIds.map((id) => PROVIDERS_BY_ID.get(id));
       return this.tmdbClient.discoverProviderShelf({
         year: options.year,
         genres: options.genres,
         type: options.type,
-        providerName,
+        providerIds: providers.map((provider) => provider.tmdbProviderId),
+        providerNames: providers.map((provider) => provider.canonicalName),
+        ignoreStoreYear: Boolean(options.ignoreStoreYear),
         page: options.page,
       });
     }
     const sources = options.sourceId ? this.sources.filter((source) => source.id === options.sourceId) : this.sources;
-    const yearWindow = providerName ? 20 : 5;
-    const results = await Promise.allSettled(sources.map((source) => fetchStoreShelf({ ...options, source, yearWindow, fetchImpl: this.fetchImpl })));
+    const results = await Promise.allSettled(sources.map((source) => fetchStoreShelf({ ...options, source, yearWindow: 5, fetchImpl: this.fetchImpl })));
     const titles = deduplicateTitles(results.filter((result) => result.status === 'fulfilled').flatMap((result) => result.value));
     if (!titles.length && results.some((result) => result.status === 'rejected')) {
       throw new Error('Catalogue sources could not fill this shelf');
@@ -302,5 +306,5 @@ class CatalogueStore {
 }
 
 module.exports = {
-  BRAZIL_PROVIDER_FILTERS, DEFAULT_SOURCES, CatalogueStore, assertSafeManifestUrl, buildResourceUrl, discoverCatalogs, discoverMetaResources, fetchStoreShelf, fetchTitleMeta, isPrivateAddress, safeFetchImage, safeFetchJson,
+  BRAZIL_PROVIDERS, DEFAULT_SOURCES, CatalogueStore, assertSafeManifestUrl, buildResourceUrl, discoverCatalogs, discoverMetaResources, fetchStoreShelf, fetchTitleMeta, isPrivateAddress, safeFetchImage, safeFetchJson,
 };

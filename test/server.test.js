@@ -23,8 +23,10 @@ test('server binds to loopback and serves health plus static app', async (t) => 
   assert.match(page, /id="store-year-input"[^>]+type="number"/);
   assert.match(page, /id="year-go"[^>]+data-i18n="go"[^>]*>Ir<\/button>/);
   assert.match(page, /id="locale-select"/);
-  assert.match(page, /id="provider-select"/);
-  assert.match(page, /id="immersive-provider-select"/);
+  assert.match(page, /id="provider-checkboxes"/);
+  assert.match(page, /<input type="checkbox" data-provider-id="netflix"/);
+  assert.match(page, /id="immersive-provider-checkboxes"/);
+  assert.match(page, /<input type="checkbox" data-provider-id="netflix"/);
   assert.match(page, /id="immersive-settings-toggle"[^>]+aria-controls="immersive-settings"[^>]+aria-expanded="false"/);
   assert.match(page, /id="immersive-settings"[^>]+hidden/);
   assert.match(page, /id="immersive-zoom-out"[^>]+aria-label="Zoom out"/);
@@ -69,7 +71,24 @@ test('shelf accepts catalogue years through 2026 and rejects later years', async
   assert.equal((await fetch(`http://127.0.0.1:${port}/api/shelf?year=1999&genre=Horror&type=movie&provider=netflix`)).status, 200);
   assert.deepEqual(requested.map(({ year }) => year), [2026, 1999, 1999]);
   assert.deepEqual(requested[1].genres, ['Crime', 'Thriller', 'Mystery']);
-  assert.equal(requested[2].provider, 'netflix');
+  assert.deepEqual(requested[2].providers, ['netflix']);
+});
+
+test('server accepts multi-provider OR filters and provider-only year overrides', async (t) => {
+  const requested = [];
+  const server = createServer({ catalogue: { listSources: () => [], shelf: async (options) => { requested.push(options); return []; } } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const { port } = server.address();
+
+  const result = await fetch(`http://127.0.0.1:${port}/api/shelf?year=1999&genre=Action&type=movie&providers=max,netflix&ignoreStoreYear=true`);
+  assert.equal(result.status, 200);
+  assert.deepEqual(requested[0].providers, ['max', 'netflix']);
+  assert.equal(requested[0].ignoreStoreYear, true);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/shelf?year=1999&genre=Action&type=movie&ignoreStoreYear=true`)).status, 400);
+  const providers = await fetch(`http://127.0.0.1:${port}/api/providers`).then((response) => response.json());
+  assert.deepEqual(providers.providers.find((provider) => provider.id === 'max'), { id: 'max', tmdbProviderId: 1899, canonicalName: 'HBO Max', displayName: 'Max', logoPath: '/images/providers/hbo-max.svg' });
 });
 
 test('server exposes validated rich title metadata', async (t) => {
@@ -124,6 +143,8 @@ test('server exposes the installed Three.js browser module without exposing node
   assert.match(viewerSource, /createVhsViewer/);
   assert.match(viewerSource, /certificationBR/);
   assert.match(viewerSource, /availabilityBR/);
+  assert.match(viewerSource, /function loadProviderAssets\(nextTitle\)/);
+  assert.match(viewerSource, /loadProviderAssets\(title\);/);
   assert.match(viewerSource, /backdropUrl/);
   assert.match(viewerSource, /logoUrl/);
 

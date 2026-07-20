@@ -73,8 +73,16 @@ h1 { margin: 0; max-width: 1200px; font: 900 clamp(4rem, 10vw, 10rem)/.76 Impact
 .format-switch { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; border: 2px solid #2a2019; }
 .format-switch button { min-height: 44px; border: 0; background: transparent; color: #2a2019; cursor: pointer; font-size: .72rem; font-weight: 900; text-transform: uppercase; }
 .format-switch .is-active { color: white; background: #2a2019; }
-.provider-picker { position: relative; z-index: 1; display: grid; gap: .35rem; margin-top: 1rem; color: #2a2019; font: 900 .62rem/1 "Courier New", monospace; letter-spacing: .07em; text-transform: uppercase; }
-.provider-picker select { min-height: 38px; border: 2px solid #2a2019; color: #2a2019; background: #f7edcf; font: 900 .72rem/1 "Courier New", monospace; text-transform: uppercase; }
+.provider-picker { position: relative; z-index: 1; display: grid; gap: .35rem; margin: 1rem 0 0; padding: 0; border: 0; color: #2a2019; font: 900 .62rem/1 "Courier New", monospace; letter-spacing: .07em; text-transform: uppercase; }
+.provider-checkboxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; }
+.provider-checkboxes label { display: flex; align-items: center; gap: .35rem; min-width: 0; padding: .4rem; border: 1px solid #8b7656; background: #f7edcf; cursor: pointer; font-size: .58rem; letter-spacing: .02em; }
+.provider-checkboxes input { accent-color: var(--red); }
+.provider-checkboxes label:has(input:checked) { color: #f7edcf; background: #2a2019; }
+.ignore-year-control { display: flex; align-items: center; gap: .4rem; font-size: .58rem; }
+.ignore-year-control input { accent-color: var(--red); }
+.immersive-picker select[multiple] { height: 5.7rem; }
+.immersive-ignore-year { display: flex; align-items: center; gap: .25rem; padding: .35rem .5rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); font: 900 .58rem/1 "Courier New", monospace; text-transform: uppercase; }
+.immersive-ignore-year input { accent-color: var(--yellow); }
 
 .shelf-room { position: relative; min-width: 0; padding: 2.4rem clamp(1rem, 4vw, 4rem) 4rem; overflow: hidden; background:
   linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px) 0 0/90px 100%,
@@ -138,6 +146,10 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-year-picker { grid-template-columns: 1fr; gap: .15rem; }
 .immersive-year-picker input { width: 100%; padding-inline: .4rem; }
 .immersive-provider-picker { grid-template-columns: 1fr; gap: .15rem; }
+.immersive-provider-picker .provider-checkboxes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.immersive-provider-picker .provider-checkboxes label { padding: .25rem; border-color: rgba(246,235,204,.35); color: var(--cream); background: rgba(158, 54, 52, .88); font-size: .52rem; }
+.immersive-provider-picker .provider-checkboxes input { accent-color: var(--yellow); }
+.immersive-provider-picker .provider-checkboxes label:has(input:checked) { color: var(--blue-deep); background: var(--yellow); }
 .immersive-format { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgba(246,235,204,.24); }
 .immersive-format button { border: 0; }
 .immersive-format .is-active { color: var(--blue-deep); background: var(--yellow); }

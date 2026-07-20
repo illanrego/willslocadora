@@ -19,7 +19,8 @@
     year: clampStoreYear(localStorage.getItem('locadora.year') || 1999),
     genreIndex: Number(localStorage.getItem('locadora.genre')) || 0,
     type: localStorage.getItem('locadora.type') === 'series' ? 'series' : 'movie',
-    provider: ['netflix', 'prime-video'].includes(localStorage.getItem('locadora.provider')) ? localStorage.getItem('locadora.provider') : '',
+    providers: (() => { try { const saved = JSON.parse(localStorage.getItem('locadora.providers') || '[]'); return Array.isArray(saved) ? saved.filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort() : []; } catch { const legacy = localStorage.getItem('locadora.provider'); return ['netflix', 'prime-video'].includes(legacy) ? [legacy] : []; } })(),
+    ignoreStoreYear: localStorage.getItem('locadora.ignoreStoreYear') === 'true',
     titles: [],
     counter: loadCounter(),
     request: null,
@@ -113,25 +114,48 @@
     if (reload) loadShelf();
   }
 
-  function setProvider(value, reload = true) {
-    state.provider = ['netflix', 'prime-video'].includes(value) ? value : '';
-    localStorage.setItem('locadora.provider', state.provider);
-    $('#provider-select').value = state.provider;
-    $('#immersive-provider-select').value = state.provider;
+  function selectedProviderIds(container) {
+    return [...container.querySelectorAll('[data-provider-id]:checked')].map((input) => input.dataset.providerId).sort();
+  }
+
+  function syncProviderControls() {
+    document.querySelectorAll('[data-provider-id]').forEach((input) => { input.checked = state.providers.includes(input.dataset.providerId); });
+    const enabled = state.providers.length > 0;
+    state.ignoreStoreYear = enabled && state.ignoreStoreYear;
+    for (const selector of ['#ignore-store-year', '#immersive-ignore-store-year']) {
+      $(selector).checked = state.ignoreStoreYear;
+      $(selector).disabled = !enabled;
+    }
+  }
+
+  function setProviders(values, reload = true) {
+    state.providers = [...new Set(values)].filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort();
+    localStorage.setItem('locadora.providers', JSON.stringify(state.providers));
+    syncProviderControls();
+    if (reload) loadShelf();
+  }
+
+  function setIgnoreStoreYear(value, reload = true) {
+    state.ignoreStoreYear = state.providers.length > 0 && Boolean(value);
+    localStorage.setItem('locadora.ignoreStoreYear', String(state.ignoreStoreYear));
+    syncProviderControls();
     if (reload) loadShelf();
   }
 
   function applyImmersiveFilters() {
     const year = $('#immersive-year-input').value;
     const genreIndex = Number($('#immersive-genre-select').value);
-    const provider = $('#immersive-provider-select').value;
+    const providers = selectedProviderIds($('#immersive-provider-checkboxes'));
+    const ignoreStoreYear = $('#immersive-ignore-store-year').checked;
     const yearChanged = clampStoreYear(year) !== state.year;
     const genreChanged = genreIndex !== state.genreIndex;
-    const providerChanged = provider !== state.provider;
-    if (!yearChanged && !genreChanged && !providerChanged) return;
+    const providerChanged = providers.join(',') !== state.providers.join(',');
+    const ignoreChanged = ignoreStoreYear !== state.ignoreStoreYear;
+    if (!yearChanged && !genreChanged && !providerChanged && !ignoreChanged) return;
     if (yearChanged) setYear(year, false);
     if (genreChanged) selectGenre(genreIndex, false);
-    if (providerChanged) setProvider(provider, false);
+    if (providerChanged) setProviders(providers, false);
+    if (ignoreChanged) setIgnoreStoreYear(ignoreStoreYear, false);
     loadShelf();
   }
 
@@ -351,9 +375,11 @@
     state.request = controller;
     const genre = genres[state.genreIndex];
     const aisle = String(state.genreIndex + 1).padStart(2, '0');
-    const providerLabel = state.provider === 'netflix' ? 'Netflix in Brazil' : state.provider === 'prime-video' ? 'Prime Video in Brazil' : '';
+    const providerNames = { netflix: 'Netflix', 'prime-video': 'Prime Video', max: 'Max', 'disney-plus': 'Disney+', globoplay: 'Globoplay', 'paramount-plus': 'Paramount+', 'apple-tv-plus': 'Apple TV+', mubi: 'MUBI', crunchyroll: 'Crunchyroll' };
+    const providerLabel = state.providers.map((id) => providerNames[id]).filter(Boolean).join(' + ');
+    const yearLabel = state.ignoreStoreYear ? 'all release years' : `${state.year - 19}–${state.year}`;
     $('#shelf-title').textContent = genreLabel(genre);
-    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${state.year - 19}–${state.year} · ${providerLabel}` : `${t('storeYearCaption')} ${state.year}`} · ${state.type === 'movie' ? t('movies') : t('series')}`;
+    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} in Brazil` : `${t('storeYearCaption')} ${state.year}`} · ${state.type === 'movie' ? t('movies') : t('series')}`;
     $('#shelf-status').textContent = append ? t('openingStand') : t('openingBoxes');
     $('#immersive-status').textContent = append ? t('openingStand') : t('openingBoxes');
     $('#immersive-previous-stand').disabled = true;
@@ -371,7 +397,7 @@
     }
 
     try {
-      const params = new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, provider: state.provider });
+      const params = new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear) });
       const body = await api(`/api/shelf?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
       if (!append) state.renderedTitleKeys = new Set();
@@ -556,8 +582,7 @@
     });
     applyLocale(false);
     $('#immersive-year-input').value = state.year;
-    $('#provider-select').value = state.provider;
-    $('#immersive-provider-select').value = state.provider;
+    syncProviderControls();
     $('#year-back').addEventListener('click', () => stepYear(-1));
     $('#year-forward').addEventListener('click', () => stepYear(1));
     $('#year-form').addEventListener('submit', (event) => {
@@ -565,7 +590,11 @@
       setYear($('#store-year-input').value);
     });
     $('#immersive-filter-go').addEventListener('click', applyImmersiveFilters);
-    $('#provider-select').addEventListener('change', (event) => setProvider(event.currentTarget.value));
+    $('#provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#provider-checkboxes'))));
+    $('#ignore-store-year').addEventListener('change', (event) => setIgnoreStoreYear(event.currentTarget.checked));
+    $('#immersive-ignore-store-year').addEventListener('change', (event) => {
+      $('#immersive-ignore-store-year').checked = event.currentTarget.checked;
+    });
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
     $('#immersive-settings-toggle').addEventListener('click', () => {
