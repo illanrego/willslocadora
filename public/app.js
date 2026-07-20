@@ -24,6 +24,7 @@
     providers: (() => { try { const saved = JSON.parse(localStorage.getItem('locadora.providers') || '[]'); return Array.isArray(saved) ? saved.filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort() : []; } catch { const legacy = localStorage.getItem('locadora.provider'); return ['netflix', 'prime-video'].includes(legacy) ? [legacy] : []; } })(),
     ignoreStoreYear: localStorage.getItem('locadora.ignoreStoreYear') === 'true',
     lighting: loadLighting(),
+    providerRegistry: [],
     titles: [],
     counter: loadCounter(),
     request: null,
@@ -85,7 +86,16 @@
   }
 
   function immersiveVisuals() {
-    return { theme: getGenreTheme(genreLabel(genres[state.genreIndex])), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers: state.providers };
+    const providers = state.providers.map((id) => state.providerRegistry.find((provider) => provider.id === id)).filter(Boolean);
+    return { theme: getGenreTheme(genreLabel(genres[state.genreIndex])), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers };
+  }
+
+  async function loadProviderRegistry() {
+    try {
+      const { providers } = await api('/api/providers');
+      state.providerRegistry = providers;
+      immersiveShelf?.setVisuals(immersiveVisuals());
+    } catch { /* Provider controls retain their local fallback state. */ }
   }
 
   function syncLightingControls() {
@@ -626,7 +636,7 @@
       event.preventDefault();
       setYear($('#store-year-input').value);
     });
-    $('#immersive-filter-go').addEventListener('click', applyImmersiveFilters);
+    $('#immersive-go').addEventListener('click', applyImmersiveFilters);
     $('#provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#provider-checkboxes'))));
     $('#ignore-store-year').addEventListener('change', (event) => setIgnoreStoreYear(event.currentTarget.checked));
     $('#immersive-ignore-store-year').addEventListener('change', (event) => {
@@ -692,6 +702,7 @@
   }
 
   wireEvents();
+  loadProviderRegistry();
   saveCounter();
   setYear(state.year);
 })();

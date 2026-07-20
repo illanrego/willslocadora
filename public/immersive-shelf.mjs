@@ -52,7 +52,7 @@ function drawPlaceholder(context, title) {
   lines.slice(0, 4).forEach((line, index) => context.fillText(line, width / 2, height / 2 + (index - 1.5) * 32));
 }
 
-function drawSign(context, genre, year, type, theme, loading = false) {
+function drawSign(context, genre, year, type, theme, providers, providerImages, loading = false) {
   const { width, height } = context.canvas;
   context.fillStyle = '#e7d8b1';
   context.fillRect(0, 0, width, height);
@@ -62,10 +62,31 @@ function drawSign(context, genre, year, type, theme, loading = false) {
   context.fillStyle = theme.sign;
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.font = '900 92px Impact, Arial Narrow, sans-serif';
-  context.fillText(String(genre).toUpperCase(), width / 2, 105);
+  const title = String(genre).toUpperCase();
+  const titleFontSize = title.length > 26 ? 58 : title.length > 18 ? 68 : 92;
+  context.font = `900 ${titleFontSize}px Impact, Arial Narrow, sans-serif`;
+  context.fillText(title, width / 2, 105);
+  const detail = loading ? 'OPENING THE BOXES…' : `${year}  •  ${type === 'series' ? 'SERIES' : 'MOVIES'}`;
+  const visibleProviders = providers.slice(0, 4);
   context.font = '700 32px Courier New, monospace';
-  context.fillText(loading ? 'OPENING THE BOXES…' : `${year}  •  ${type === 'series' ? 'SERIES' : 'MOVIES'}`, width / 2, 196);
+  const detailWidth = context.measureText(detail).width;
+  const logoWidth = visibleProviders.length ? visibleProviders.length * 48 + 12 : 0;
+  const detailX = width / 2 - logoWidth / 2;
+  context.fillText(detail, detailX, 196);
+  let logoX = detailX + detailWidth / 2 + 20;
+  for (const provider of visibleProviders) {
+    const image = providerImages.get(provider.id);
+    if (image?.complete && image.naturalWidth) context.drawImage(image, logoX, 174, 40, 40);
+    else {
+      context.fillStyle = theme.sign;
+      context.fillRect(logoX, 174, 40, 40);
+      context.fillStyle = '#e7d8b1';
+      context.font = '900 14px Arial Narrow, sans-serif';
+      context.fillText(provider.displayName.slice(0, 3).toUpperCase(), logoX + 20, 194);
+      context.font = '700 32px Courier New, monospace';
+    }
+    logoX += 48;
+  }
 }
 
 function drawStandMarker(context, stand) {
@@ -86,24 +107,6 @@ function drawStandMarker(context, stand) {
   context.fillText(String(stand + 1).padStart(2, '0'), width / 2, 126);
 }
 
-function drawServicePlaque(context, providers) {
-  const { width, height } = context.canvas;
-  context.clearRect(0, 0, width, height);
-  if (!providers.length) return;
-  context.fillStyle = '#101827';
-  context.fillRect(0, 0, width, height);
-  context.strokeStyle = '#c99a2e';
-  context.lineWidth = 8;
-  context.strokeRect(4, 4, width - 8, height - 8);
-  context.fillStyle = '#e7d8b1';
-  context.textAlign = 'center';
-  context.font = '900 19px Courier New, monospace';
-  context.fillText('BRAZIL · ANY SELECTED', width / 2, 27);
-  context.font = '900 24px Arial Narrow, sans-serif';
-  const label = providers.map((provider) => String(provider).replace(/-/g, ' ').toUpperCase()).join('  /  ');
-  context.fillText(label.slice(0, 38), width / 2, 63);
-}
-
 export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect }) {
   let activeTheme = theme || { backing: '#2f526b', trim: '#527f9e', sign: '#101827', lamp: '#c99a2e' };
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -122,7 +125,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 80);
   camera.position.set(0, 0.55, 18.2);
 
-  scene.add(new THREE.HemisphereLight(0xffefc2, 0x17150f, 2.1));
+  const hemisphereLight = new THREE.HemisphereLight(0xffefc2, 0x17150f, 2.1);
+  scene.add(hemisphereLight);
   const keyLight = new THREE.SpotLight(0xffe7ad, 75, 30, Math.PI / 4, 0.45, 1.3);
   keyLight.position.set(-4, 8, 8);
   keyLight.castShadow = true;
@@ -158,7 +162,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     room.add(lip);
   }
 
-  const signCanvas = canvasTexture(1024, 240, (context) => drawSign(context, genre, year, type, activeTheme));
+  let activeProviders = providers;
+  const providerImages = new Map();
+  const signCanvas = canvasTexture(1024, 240, (context) => drawSign(context, genre, year, type, activeTheme, activeProviders, providerImages));
   const sign = new THREE.Mesh(
     new THREE.BoxGeometry(7.9, 1.58, 0.22),
     [edge, edge, edge, edge, new THREE.MeshStandardMaterial({ map: signCanvas.texture, roughness: 0.62 }), edge],
@@ -175,15 +181,6 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   standMarker.position.set(4.88, 4.88, 0.18);
   standMarker.castShadow = true;
   room.add(standMarker);
-
-  const serviceCanvas = canvasTexture(720, 96, (context) => drawServicePlaque(context, providers));
-  const servicePlaque = new THREE.Mesh(
-    new THREE.BoxGeometry(4.1, 0.55, 0.14),
-    [edge, edge, edge, edge, new THREE.MeshStandardMaterial({ map: serviceCanvas.texture, roughness: 0.58 }), edge],
-  );
-  servicePlaque.position.set(-3.55, 4.88, 0.18);
-  servicePlaque.visible = providers.length > 0;
-  room.add(servicePlaque);
 
   const lampPositions = [-3.2, 3.2];
   const lampBulbs = [];
@@ -298,17 +295,36 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     selected = Math.min(selected, Math.max(tapeRecords.length - 1, 0));
   }
 
+  function loadProviderLogos(nextProviders) {
+    providerImages.clear();
+    for (const provider of nextProviders) {
+      if (!provider.logoPath) continue;
+      const image = new Image();
+      image.addEventListener('load', () => { if (!disposed) updateSign(currentGenre, currentYear, currentType); }, { once: true });
+      image.src = provider.logoPath;
+      providerImages.set(provider.id, image);
+    }
+  }
+
+  let currentGenre = genre;
+  let currentYear = year;
+  let currentType = type;
+
   function applyVisuals(nextVisuals = {}) {
     activeTheme = nextVisuals.theme || activeTheme;
+    activeProviders = Array.isArray(nextVisuals.providers) ? nextVisuals.providers : activeProviders;
     backingMaterial.color.set(activeTheme.backing);
+    backingMaterial.emissive.set(activeTheme.backing);
     trim.color.set(activeTheme.trim);
-    const nextProviders = Array.isArray(nextVisuals.providers) ? nextVisuals.providers : providers;
-    drawServicePlaque(serviceCanvas.canvas.getContext('2d'), nextProviders);
-    serviceCanvas.texture.needsUpdate = true;
-    servicePlaque.visible = nextProviders.length > 0;
     const nextLighting = nextVisuals.lighting || lighting || {};
     const lampColor = nextLighting.color || activeTheme.lamp;
     const intensity = Math.max(0.25, Number(nextLighting.brightness || 100) / 100);
+    backingMaterial.emissiveIntensity = 0.08 * intensity;
+    trim.emissive.set(activeTheme.trim);
+    trim.emissiveIntensity = 0.12 * intensity;
+    hemisphereLight.intensity = 2.1 * intensity;
+    keyLight.intensity = 75 * intensity;
+    amberLight.intensity = 18 * intensity;
     lampBulb.color.set(lampColor);
     lampBulb.emissive.set(lampColor);
     lampBulb.emissiveIntensity = 3.5 * intensity;
@@ -316,11 +332,15 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       lamp.color.set(lampColor);
       lamp.intensity = 32 * intensity;
     });
+    loadProviderLogos(activeProviders);
   }
 
   function updateSign(nextGenre, nextYear, nextType, loading = false, nextStand = activeStand) {
+    currentGenre = nextGenre;
+    currentYear = nextYear;
+    currentType = nextType;
     activeStand = nextStand;
-    drawSign(signCanvas.canvas.getContext('2d'), nextGenre, nextYear, nextType, activeTheme, loading);
+    drawSign(signCanvas.canvas.getContext('2d'), nextGenre, nextYear, nextType, activeTheme, activeProviders, providerImages, loading);
     signCanvas.texture.needsUpdate = true;
     drawStandMarker(standCanvas.canvas.getContext('2d'), activeStand);
     standCanvas.texture.needsUpdate = true;
@@ -431,6 +451,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   renderer.domElement.addEventListener('wheel', wheel, { passive: false });
   resize();
   renderTapes(titles);
+  applyVisuals({});
 
   function render(time) {
     if (disposed) return;
@@ -519,7 +540,6 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       clearTapes();
       signCanvas.texture.dispose();
       standCanvas.texture.dispose();
-      serviceCanvas.texture.dispose();
       const geometries = new Set();
       const materials = new Set();
       room.traverse((object) => {
