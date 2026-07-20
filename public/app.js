@@ -3,6 +3,8 @@
 
   const { clampStoreYear, createStremioUri } = window.LocadoraCore;
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
+  const { getGenreTheme } = window.LocadoraGenreThemes;
+  const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
   const genres = [
     { labelKey: 'genreAction', genres: ['Action', 'Adventure'] },
     { labelKey: 'genreComedy', genres: ['Comedy'] },
@@ -21,6 +23,7 @@
     type: localStorage.getItem('locadora.type') === 'series' ? 'series' : 'movie',
     providers: (() => { try { const saved = JSON.parse(localStorage.getItem('locadora.providers') || '[]'); return Array.isArray(saved) ? saved.filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort() : []; } catch { const legacy = localStorage.getItem('locadora.provider'); return ['netflix', 'prime-video'].includes(legacy) ? [legacy] : []; } })(),
     ignoreStoreYear: localStorage.getItem('locadora.ignoreStoreYear') === 'true',
+    lighting: loadLighting(),
     titles: [],
     counter: loadCounter(),
     request: null,
@@ -74,6 +77,29 @@
   function saveCounter() {
     localStorage.setItem('locadora.counter', JSON.stringify(state.counter));
     $('#counter-count').textContent = state.counter.length;
+  }
+
+  function loadLighting() {
+    try { return normalizeLighting(JSON.parse(localStorage.getItem('locadora.immersiveLighting') || '{}')); }
+    catch { return { ...DEFAULT_LIGHTING }; }
+  }
+
+  function immersiveVisuals() {
+    return { theme: getGenreTheme(genreLabel(genres[state.genreIndex])), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers: state.providers };
+  }
+
+  function syncLightingControls() {
+    $('#lamp-brightness').value = state.lighting.brightness;
+    $('#lamp-warmth').value = state.lighting.warmth;
+    $('#lamp-brightness-value').textContent = `${state.lighting.brightness}%`;
+    $('#lamp-warmth-value').textContent = `${state.lighting.warmth}K`;
+  }
+
+  function setLighting(nextLighting) {
+    state.lighting = normalizeLighting(nextLighting);
+    localStorage.setItem('locadora.immersiveLighting', JSON.stringify(state.lighting));
+    syncLightingControls();
+    immersiveShelf?.setVisuals(immersiveVisuals());
   }
 
   async function api(path, options) {
@@ -249,8 +275,8 @@
   function refreshImmersive(direction = 0) {
     if (!immersiveShelf) return;
     const genre = genres[state.genreIndex];
-    if (direction) immersiveShelf.transition(immersiveTitles(), genreLabel(genre), state.year, state.type, state.stand, direction);
-    else immersiveShelf.update(immersiveTitles(), genreLabel(genre), state.year, state.type, state.stand);
+    if (direction) immersiveShelf.transition(immersiveTitles(), genreLabel(genre), state.year, state.type, state.stand, direction, immersiveVisuals());
+    else immersiveShelf.update(immersiveTitles(), genreLabel(genre), state.year, state.type, state.stand, immersiveVisuals());
     $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
   }
 
@@ -294,6 +320,7 @@
         year: state.year,
         type: state.type,
         stand: state.stand,
+        ...immersiveVisuals(),
         onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
       });
       stage.querySelector('.immersive-canvas')?.focus();
@@ -305,12 +332,21 @@
     }
   }
 
+  function setImmersiveFilters(open) {
+    const expanded = state.mode === 'immersive' && Boolean(open);
+    $('#immersive-filters').hidden = !expanded;
+    $('#immersive-filters-toggle').setAttribute('aria-expanded', String(expanded));
+    if (expanded) setImmersiveSettings(false);
+  }
+
   function setImmersiveSettings(open) {
     const expanded = state.mode === 'immersive' && Boolean(open);
     $('#immersive-settings').hidden = !expanded;
-    const toggle = $('#immersive-settings-toggle');
-    toggle.setAttribute('aria-expanded', String(expanded));
-    toggle.textContent = expanded ? t('return') : t('sound');
+    $('#immersive-settings-toggle').setAttribute('aria-expanded', String(expanded));
+    if (expanded) {
+      $('#immersive-filters').hidden = true;
+      $('#immersive-filters-toggle').setAttribute('aria-expanded', 'false');
+    }
   }
 
   async function toggleStoreAudio(channel, buttonId, enabledLabel, disabledLabel) {
@@ -583,6 +619,7 @@
     applyLocale(false);
     $('#immersive-year-input').value = state.year;
     syncProviderControls();
+    syncLightingControls();
     $('#year-back').addEventListener('click', () => stepYear(-1));
     $('#year-forward').addEventListener('click', () => stepYear(1));
     $('#year-form').addEventListener('submit', (event) => {
@@ -597,6 +634,9 @@
     });
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
+    $('#immersive-filters-toggle').addEventListener('click', () => {
+      setImmersiveFilters($('#immersive-filters').hidden);
+    });
     $('#immersive-settings-toggle').addEventListener('click', () => {
       setImmersiveSettings($('#immersive-settings').hidden);
     });
@@ -607,6 +647,9 @@
     $('#music-track').addEventListener('change', selectMusicTrack);
     $('#ambience-volume').addEventListener('input', () => setStoreAudioVolume('ambience', '#ambience-volume', '#ambience-volume-value'));
     $('#music-volume').addEventListener('input', () => setStoreAudioVolume('music', '#music-volume', '#music-volume-value'));
+    $('#lamp-brightness').addEventListener('input', (event) => setLighting({ ...state.lighting, brightness: event.currentTarget.value }));
+    $('#lamp-warmth').addEventListener('input', (event) => setLighting({ ...state.lighting, warmth: event.currentTarget.value }));
+    $('#lamp-reset').addEventListener('click', () => setLighting(DEFAULT_LIGHTING));
     $('#immersive-previous-stand').addEventListener('click', goToPreviousStand);
     $('#immersive-next-stand').addEventListener('click', goToNextStand);
 

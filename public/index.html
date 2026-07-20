@@ -105,6 +105,15 @@
               <span data-i18n="year">Ano</span>
               <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
             </label>
+            <div class="immersive-format" role="group" aria-label="Immersive shelf format">
+              <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
+              <button data-type="series" type="button" data-i18n="series">Séries</button>
+            </div>
+            <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false" data-i18n="filters">Filtros</button>
+            <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false" data-i18n="sound">Som</button>
+            <button id="normal-mode-return" type="button" data-i18n="return">Voltar</button>
+          </div>
+          <div id="immersive-filters" class="immersive-filters" hidden>
             <fieldset class="immersive-picker immersive-provider-picker">
               <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
               <div id="immersive-provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
@@ -121,12 +130,6 @@
             </fieldset>
             <label class="immersive-ignore-year"><input id="immersive-ignore-store-year" type="checkbox"> <span data-i18n="allYears">All years</span></label>
             <button id="immersive-filter-go" type="button" data-i18n="go">Ir</button>
-            <div class="immersive-format" role="group" aria-label="Immersive shelf format">
-              <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
-              <button data-type="series" type="button" data-i18n="series">Séries</button>
-            </div>
-            <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false" data-i18n="sound">Som</button>
-            <button id="normal-mode-return" type="button" data-i18n="return">Voltar</button>
           </div>
           <div id="immersive-settings" class="immersive-settings" hidden>
             <div class="audio-setting">
@@ -148,6 +151,15 @@
               <label for="music-volume" data-i18n="musicLevel">Nível da música</label>
               <input id="music-volume" type="range" min="0" max="100" value="100" step="1">
               <output id="music-volume-value">100%</output>
+            </div>
+            <div class="audio-setting lighting-setting">
+              <label for="lamp-brightness" data-i18n="lampBrightness">Lamp brightness</label>
+              <input id="lamp-brightness" type="range" min="25" max="150" value="100" step="1">
+              <output id="lamp-brightness-value">100%</output>
+              <label for="lamp-warmth" data-i18n="lampWarmth">Lamp warmth</label>
+              <input id="lamp-warmth" type="range" min="2200" max="4200" value="3200" step="100">
+              <output id="lamp-warmth-value">3200K</output>
+              <button id="lamp-reset" type="button" data-i18n="resetLights">Reset lights</button>
             </div>
             <span id="immersive-status" role="status" aria-live="polite">Opening the boxes…</span>
           </div>
@@ -203,6 +215,8 @@
 
   <script src="/app-core.js"></script>
   <script src="/i18n.js"></script>
+  <script src="/genre-themes.js"></script>
+  <script src="/immersive-preferences.js"></script>
   <script src="/store-ambience.js"></script>
   <script src="/app.js"></script>
 </body>

@@ -157,10 +157,12 @@ test('server exposes the installed Three.js browser module without exposing node
   assert.match(immersiveSource, /const MAX_SECTION_ZOOM = 0\.8;/);
   assert.match(immersiveSource, /function updateCameraDistance\(\)/);
   assert.match(immersiveSource, /const lampPositions = \[-3\.2, 3\.2\];/);
-  assert.match(immersiveSource, /new THREE\.SpotLight\(0xffb15c, 32, 13/);
+  assert.match(immersiveSource, /new THREE\.SpotLight\(lighting\?\.color \|\| activeTheme\.lamp/);
+  assert.match(immersiveSource, /function applyVisuals\(nextVisuals = \{\}\)/);
+  assert.match(immersiveSource, /drawServicePlaque/);
   assert.match(immersiveSource, /new THREE\.SphereGeometry\(0\.12, 16, 12\)/);
   assert.match(immersiveSource, /function drawStandMarker\(context, stand\)/);
-  assert.match(immersiveSource, /transition\(nextTitles, nextGenre, nextYear, nextType, nextStand, direction\)/);
+  assert.match(immersiveSource, /transition\(nextTitles, nextGenre, nextYear, nextType, nextStand, direction, nextVisuals\)/);
 
   const app = await fetch(`http://127.0.0.1:${port}/app.js`);
   const appSource = await app.text();

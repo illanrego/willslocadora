@@ -135,21 +135,24 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-next-stand { right: 4.8rem; }
 .immersive-stand-button:hover, .immersive-stand-button:focus-visible { color: var(--blue-deep); background: var(--yellow); }
 .immersive-stand-button:disabled { opacity: .55; cursor: wait; }
-.immersive-hud { position: absolute; z-index: 5; top: 0; left: 0; width: 100%; padding: .35rem .5rem .45rem; color: var(--cream); background: rgba(16, 24, 39, .96); border-bottom: 3px solid var(--red); box-shadow: 0 5px 20px rgba(0,0,0,.55); }
-.immersive-hud-strip { display: grid; grid-template-columns: minmax(180px, 1fr) 88px minmax(140px, .7fr) auto auto auto auto; gap: .35rem; align-items: stretch; min-height: 42px; }
-.immersive-hud-strip > button, .immersive-format button { min-height: 42px; padding-inline: .75rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); background: transparent; cursor: pointer; font-size: .68rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
-.immersive-hud button:hover, .immersive-hud button:focus-visible, .immersive-hud button[aria-pressed="true"] { color: var(--blue-deep); background: var(--yellow); outline: 0; }
+.immersive-hud { position: absolute; z-index: 5; top: .5rem; left: 50%; width: min(900px, calc(100% - 1rem)); padding: .3rem; color: var(--cream); background: rgba(16, 24, 39, .94); border: 1px solid rgba(246,235,204,.28); border-bottom: 3px solid var(--red); box-shadow: 0 5px 20px rgba(0,0,0,.55); transform: translateX(-50%); }
+.immersive-hud-strip { display: grid; grid-template-columns: minmax(180px, 1fr) 76px minmax(128px, .7fr) auto auto auto; gap: .25rem; align-items: stretch; min-height: 38px; }
+.immersive-hud-strip > button, .immersive-format button { min-height: 38px; padding-inline: .6rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); background: transparent; cursor: pointer; font-size: .62rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.immersive-hud button:hover, .immersive-hud button:focus-visible, .immersive-hud button[aria-pressed="true"], .immersive-hud button[aria-expanded="true"] { color: var(--blue-deep); background: var(--yellow); outline: 0; }
 #immersive-filter-go { color: var(--blue-deep); background: var(--yellow); }
-.immersive-picker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .45rem; min-width: 0; padding: .35rem .7rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); font: 900 .6rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; }
-.immersive-picker select, .immersive-picker input { min-width: 0; height: 30px; border: 1px solid rgba(246,235,204,.42); color: var(--cream); background: rgba(158, 54, 52, .88); font: 900 .68rem/1 "Courier New", monospace; text-transform: uppercase; }
-.immersive-picker select { padding-inline: .4rem; }
-.immersive-year-picker { grid-template-columns: 1fr; gap: .15rem; }
-.immersive-year-picker input { width: 100%; padding-inline: .4rem; }
+.immersive-picker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .35rem; min-width: 0; padding: .25rem .55rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); font: 900 .55rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; }
+.immersive-picker select, .immersive-picker input { min-width: 0; height: 26px; border: 1px solid rgba(246,235,204,.42); color: var(--cream); background: rgba(158, 54, 52, .88); font: 900 .62rem/1 "Courier New", monospace; text-transform: uppercase; }
+.immersive-picker select { padding-inline: .3rem; }
+.immersive-year-picker { grid-template-columns: 1fr; gap: .1rem; }
+.immersive-year-picker input { width: 100%; padding-inline: .3rem; }
 .immersive-provider-picker { grid-template-columns: 1fr; gap: .15rem; }
 .immersive-provider-picker .provider-checkboxes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .immersive-provider-picker .provider-checkboxes label { padding: .25rem; border-color: rgba(246,235,204,.35); color: var(--cream); background: rgba(158, 54, 52, .88); font-size: .52rem; }
 .immersive-provider-picker .provider-checkboxes input { accent-color: var(--yellow); }
 .immersive-provider-picker .provider-checkboxes label:has(input:checked) { color: var(--blue-deep); background: var(--yellow); }
+.immersive-filters { display: grid; grid-template-columns: minmax(270px, 1fr) auto auto; gap: .35rem; align-items: end; padding: .4rem .1rem .1rem; border-top: 1px solid rgba(246,235,204,.2); }
+.immersive-ignore-year { align-self: stretch; display: grid; place-items: center; padding: .35rem .6rem; border: 1px solid rgba(246,235,204,.24); font: 900 .55rem/1.2 "Courier New", monospace; letter-spacing: .05em; text-align: center; text-transform: uppercase; }
+.immersive-filters #immersive-filter-go { min-width: 58px; }
 .immersive-format { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgba(246,235,204,.24); }
 .immersive-format button { border: 0; }
 .immersive-format .is-active { color: var(--blue-deep); background: var(--yellow); }
@@ -222,9 +225,13 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
   .source-form div { flex-direction: column; }
   footer { flex-direction: column; }
   .immersive-room, .immersive-stage { min-height: 680px; height: calc(100vh - 250px); }
-  .immersive-hud-strip { grid-template-columns: 38px minmax(0, 1fr) 38px; }
-  .immersive-picker, #immersive-filter-go, .immersive-format, #immersive-settings-toggle, #normal-mode-return { grid-column: span 3; }
-  .immersive-year-picker { grid-template-columns: auto 1fr; }
+  .immersive-hud { top: .25rem; width: calc(100% - .5rem); }
+  .immersive-hud-strip { grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); }
+  .immersive-hud-strip > .immersive-picker:first-child { grid-column: span 2; }
+  .immersive-year-picker, .immersive-format, #immersive-filters-toggle, #immersive-settings-toggle, #normal-mode-return { grid-column: span 1; }
+  .immersive-year-picker { grid-template-columns: 1fr; }
+  .immersive-filters { grid-template-columns: 1fr; align-items: stretch; }
+  .immersive-filters #immersive-filter-go { min-height: 38px; }
   .immersive-settings { grid-template-columns: 1fr; }
   .audio-setting { display: grid; grid-template-columns: 1fr auto; }
   .audio-setting button, .music-track-picker { grid-column: 1 / -1; }

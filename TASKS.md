@@ -73,6 +73,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - Added the canonical TMDB provider registry, multi-service OR discovery, and provider-only Ignore Store Year mode; live Netflix + Max requests returned 40 titles both within the 1980–1999 window and across the 1920–2026 range.
 - Restored the default empty-service path to the Stremio/Cinemeta catalogue; a live no-service Horror/1999 shelf returned 40 Cinemeta titles.
 - Replaced native multi-select streamer controls with direct checkbox groups and made the VHS viewer reload title-specific provider logos when asynchronous TMDB metadata arrives.
+- Added Phase C immersive identity controls: centralized genre stand themes, persisted lamp brightness/warmth controls with reset, and a selected-service plaque on filtered stands.
 
 ## Next session start here
 
