@@ -34,9 +34,10 @@ function brazilAvailability(details) {
   const offers = details['watch/providers']?.results?.BR;
   if (!offers) return { link: '', providers: [], subscriptionProviders: [] };
   const groups = ['flatrate', 'free', 'ads', 'rent', 'buy'];
+  const groupedProviders = groups.map((group) => offers[group] || []);
   return {
     link: typeof offers.link === 'string' ? offers.link : '',
-    providers: uniqueNames(groups.flatMap((group) => (offers[group] || []).map((provider) => provider.provider_name))),
+    providers: uniqueNames(groupedProviders.flatMap((group) => group.map((provider) => provider.provider_name))),
     subscriptionProviders: uniqueNames((offers.flatrate || []).map((provider) => provider.provider_name)),
   };
 }

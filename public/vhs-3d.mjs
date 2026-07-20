@@ -7,6 +7,14 @@ const ACTIONS = {
   availability: { x: 374, y: 1328, width: 276, height: 104 },
   watch: { x: 676, y: 1328, width: 276, height: 104 },
 };
+const PROVIDER_LOGOS = Object.freeze({
+  Netflix: '/images/providers/netflix.svg',
+  'Amazon Prime Video': '/images/providers/amazon-prime-video.svg',
+  'HBO Max': '/images/providers/hbo-max.svg',
+  'HBO Max Amazon Channel': '/images/providers/hbo-max-amazon-channel.svg',
+  'Claro video': '/images/providers/claro-video.svg',
+  'Apple TV Store': '/images/providers/apple-tv-store.svg',
+});
 const LOCADORA_PALETTE = {
   ink: '#080d17',
   navy: '#101827',
@@ -121,7 +129,7 @@ function drawBarcode(context, value, x, y, width, height) {
   context.textAlign = 'left';
 }
 
-function drawBack(context, title, atCounter, posterImage = null, backdropImage = null, copy = {}) {
+function drawBack(context, title, atCounter, posterImage = null, backdropImage = null, copy = {}, providerImages = []) {
   context.fillStyle = LOCADORA_PALETTE.ink;
   context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
   context.fillStyle = LOCADORA_PALETTE.navy;
@@ -160,12 +168,26 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   wrappedText(context, title.displayDescription || title.description || copy.noSynopsis, 72, 790, 880, 34, 6);
 
   const providers = title.availabilityBR?.providers || [];
+  const loadedProviderImages = providerImages.filter(Boolean);
+  const hasLocalProviderLogo = providers.some((provider) => PROVIDER_LOGOS[provider]);
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 20px Arial Narrow, sans-serif';
   context.fillText(copy.whereToWatchBrazil, 72, 1015);
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '700 20px Arial, sans-serif';
-  context.fillText(providers.join(' · ') || copy.noProviderListing, 326, 1015);
+  if (loadedProviderImages.length || hasLocalProviderLogo) {
+    const height = 30;
+    const gap = 12;
+    const widths = loadedProviderImages.map((image) => Math.min(118, Math.max(54, image.width * (height / Math.max(image.height, 1)))));
+    const totalWidth = widths.reduce((total, width) => total + width, 0) + Math.max(0, widths.length - 1) * gap;
+    let x = 326 + Math.max(0, (626 - totalWidth) / 2);
+    loadedProviderImages.forEach((image, index) => {
+      context.drawImage(image, x, 982, widths[index], height);
+      x += widths[index] + gap;
+    });
+  } else {
+    context.fillText(providers.join(' · ') || copy.noProviderListing, 326, 1015);
+  }
 
   context.strokeStyle = LOCADORA_PALETTE.red;
   context.lineWidth = 3;
@@ -291,8 +313,9 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   let posterImage = null;
   let backdropImage = null;
   let logoImage = null;
+  const providerImages = [];
   let currentAtCounter = atCounter;
-  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage, labels));
+  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage, labels, providerImages));
   const backMaterial = new THREE.MeshStandardMaterial({ map: backCanvas.texture, roughness: 0.72 });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(3.82, 5.82), backMaterial);
   back.position.z = -0.236;
@@ -315,7 +338,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     if (posterImage) drawPoster(frontContext, posterImage, title, logoImage);
     else drawFront(frontContext, title, labels);
     frontCanvas.texture.needsUpdate = true;
-    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels);
+    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels, providerImages);
     backCanvas.texture.needsUpdate = true;
   }
   function loadAsset(name, url) {
@@ -326,6 +349,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       if (name === 'poster') posterImage = texture.image;
       if (name === 'backdrop') backdropImage = texture.image;
       if (name === 'logo') logoImage = texture.image;
+      if (name.startsWith('provider-')) providerImages[Number(name.slice(9))] = texture.image;
       redraw();
       texture.dispose();
     }, undefined, () => {});
@@ -333,6 +357,9 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   loadAsset('poster', posterUrl);
   loadAsset('backdrop', backdropUrl);
   loadAsset('logo', logoUrl);
+  for (const [index, provider] of (title.availabilityBR?.providers || []).entries()) {
+    loadAsset(`provider-${index}`, PROVIDER_LOGOS[provider] || '');
+  }
 
   let targetX = -0.06;
   let targetY = -0.32;
