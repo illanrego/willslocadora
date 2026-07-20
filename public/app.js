@@ -1,17 +1,20 @@
 (() => {
   'use strict';
 
-  const { createStremioUri } = window.LocadoraCore;
+  const { clampStoreYear, createStremioUri } = window.LocadoraCore;
   const genres = [
-    { label: 'Action & Adventure', api: 'Action' },
-    { label: 'Comedy', api: 'Comedy' },
-    { label: 'Horror', api: 'Horror' },
-    { label: 'Sci-Fi & Fantasy', api: 'Sci-Fi' },
-    { label: 'Drama & Romance', api: 'Drama' },
-    { label: 'Thriller / Mystery', api: 'Thriller' },
+    { label: 'Action & Adventure', genres: ['Action', 'Adventure'] },
+    { label: 'Comedy', genres: ['Comedy'] },
+    { label: 'Horror', genres: ['Horror'] },
+    { label: 'Sci-Fi & Fantasy', genres: ['Sci-Fi', 'Fantasy'] },
+    { label: 'Drama', genres: ['Drama'] },
+    { label: 'Crime & Thriller', genres: ['Crime', 'Thriller', 'Mystery'] },
+    { label: 'Romance', genres: ['Romance'] },
+    { label: 'Family & Animation', genres: ['Family', 'Animation'] },
+    { label: 'Documentary', genres: ['Documentary'] },
   ];
   const state = {
-    year: Number(localStorage.getItem('locadora.year')) || 1999,
+    year: clampStoreYear(localStorage.getItem('locadora.year') || 1999),
     genreIndex: Number(localStorage.getItem('locadora.genre')) || 0,
     type: localStorage.getItem('locadora.type') === 'series' ? 'series' : 'movie',
     titles: [],
@@ -20,6 +23,7 @@
     stand: 0,
     metadata: new Map(),
     renderedTitleKeys: new Set(),
+    mode: 'normal',
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -30,6 +34,8 @@
   const sourcesDialog = $('#sources-dialog');
   let activeVhsViewer = null;
   let viewerToken = 0;
+  let immersiveShelf = null;
+  let immersiveToken = 0;
 
   function loadCounter() {
     try {
@@ -52,11 +58,15 @@
 
 
   function setYear(value) {
-    state.year = Math.max(1987, Math.min(1999, Number(value)));
+    state.year = clampStoreYear(value);
     localStorage.setItem('locadora.year', state.year);
-    $('#store-year').textContent = state.year;
-    $('#year-range').value = state.year;
+    $('#store-year-input').value = state.year;
     loadShelf();
+  }
+
+  function stepYear(offset) {
+    const input = $('#store-year-input');
+    input.value = clampStoreYear(Number(input.value || state.year) + offset);
   }
 
   function selectGenre(index) {
@@ -67,6 +77,7 @@
       button.setAttribute('aria-current', buttonIndex === index ? 'page' : 'false');
     });
     $('#aisle-number').textContent = String(index + 1).padStart(2, '0');
+    $('#immersive-genre').textContent = genres[index].label;
     loadShelf();
   }
 
@@ -142,6 +153,72 @@
     return `/api/poster?${new URLSearchParams({ url: source })}`;
   }
 
+  function immersiveTitles() {
+    return state.titles.map((title) => ({
+      ...title,
+      posterUrl: posterTextureUrl(title.poster || posterFallback(title)),
+    }));
+  }
+
+  function refreshImmersive() {
+    if (!immersiveShelf) return;
+    const genre = genres[state.genreIndex];
+    immersiveShelf.update(immersiveTitles(), genre.label, state.year, state.type);
+    $('#immersive-status').textContent = state.titles.length ? `${Math.min(state.titles.length, 24)} tapes on this display` : 'This display is empty';
+  }
+
+  async function mountImmersive() {
+    const token = ++immersiveToken;
+    const stage = $('#immersive-stage');
+    stage.textContent = '';
+    $('#immersive-status').textContent = 'Building the display…';
+    try {
+      const { createImmersiveShelf } = await import('./immersive-shelf.mjs');
+      if (state.mode !== 'immersive' || token !== immersiveToken) return;
+      const genre = genres[state.genreIndex];
+      immersiveShelf = createImmersiveShelf({
+        container: stage,
+        titles: immersiveTitles(),
+        genre: genre.label,
+        year: state.year,
+        type: state.type,
+        onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
+      });
+      stage.querySelector('.immersive-canvas')?.focus();
+      $('#immersive-status').textContent = state.titles.length ? `${Math.min(state.titles.length, 24)} tapes on this display` : 'This display is empty';
+    } catch (error) {
+      if (token !== immersiveToken) return;
+      $('#immersive-status').textContent = `The immersive shelf could not be loaded: ${error.message}`;
+    }
+  }
+
+  function setImmersiveHeader(open) {
+    const expanded = state.mode === 'immersive' && Boolean(open);
+    document.body.classList.toggle('immersive-header-open', expanded);
+    const toggle = $('#immersive-header-toggle');
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.textContent = expanded ? 'Hide header' : 'Header';
+  }
+
+  function setMode(mode) {
+    state.mode = mode === 'immersive' ? 'immersive' : 'normal';
+    const immersive = state.mode === 'immersive';
+    $('#normal-mode').hidden = immersive;
+    $('#immersive-room').hidden = !immersive;
+    document.body.classList.toggle('is-immersive', immersive);
+    setImmersiveHeader(false);
+    $('#immersive-toggle').textContent = immersive ? 'Normal mode' : 'Immersive mode';
+    $('#immersive-toggle').setAttribute('aria-pressed', String(immersive));
+    if (immersive) mountImmersive();
+    else {
+      immersiveToken += 1;
+      immersiveShelf?.dispose();
+      immersiveShelf = null;
+      $('#immersive-stage').replaceChildren();
+      $('#immersive-toggle').focus();
+    }
+  }
+
   async function loadShelf(stand = 0, append = false) {
     if (state.request) state.request.abort();
     const controller = new AbortController();
@@ -151,6 +228,8 @@
     $('#shelf-title').textContent = genre.label;
     $('#shelf-caption').textContent = `Aisle ${aisle} · Store year ${state.year} · ${state.type === 'movie' ? 'Movies' : 'Series'}`;
     $('#shelf-status').textContent = append ? 'Opening another stand…' : 'Opening the boxes…';
+    $('#immersive-status').textContent = append ? 'Opening another display…' : 'Opening the boxes…';
+    immersiveShelf?.setLoading(genre.label, state.year, state.type);
     shelf.hidden = false;
     shelf.setAttribute('aria-busy', 'true');
     emptyState.hidden = true;
@@ -160,7 +239,7 @@
     }
 
     try {
-      const params = new URLSearchParams({ genre: genre.api, year: state.year, type: state.type, stand });
+      const params = new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand });
       const body = await api(`/api/shelf?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
       if (!append) state.renderedTitleKeys = new Set();
@@ -172,18 +251,23 @@
         return true;
       });
       if (!state.titles.length) {
-        if (!append) showEmpty();
+        if (!append) {
+          showEmpty();
+          refreshImmersive();
+        }
         else $('#load-more-shelf').hidden = !hasAnotherSourcePage;
         return;
       }
       state.stand = stand;
       renderShelf(state.titles, stand, append);
+      refreshImmersive();
       $('#shelf-status').textContent = append ? `${state.titles.length} more tapes loaded` : `${state.titles.length} tapes found`;
       $('#load-more-shelf').hidden = !hasAnotherSourcePage;
     } catch (error) {
       if (error.name === 'AbortError') return;
       if (!append) state.titles = [];
       $('#shelf-status').textContent = error.message;
+      $('#immersive-status').textContent = error.message;
       if (!append) showEmpty();
     } finally {
       if (state.request === controller) state.request = null;
@@ -316,9 +400,21 @@
       button.addEventListener('click', () => selectGenre(index));
       genreNav.append(button);
     });
-    $('#year-back').addEventListener('click', () => setYear(state.year - 1));
-    $('#year-forward').addEventListener('click', () => setYear(state.year + 1));
-    $('#year-range').addEventListener('change', (event) => setYear(event.target.value));
+    $('#year-back').addEventListener('click', () => stepYear(-1));
+    $('#year-forward').addEventListener('click', () => stepYear(1));
+    $('#year-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      setYear($('#store-year-input').value);
+    });
+    $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
+    $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
+    $('#immersive-header-toggle').addEventListener('click', () => {
+      setImmersiveHeader(!document.body.classList.contains('immersive-header-open'));
+    });
+    $('#immersive-zoom-in').addEventListener('click', () => immersiveShelf?.zoomIn());
+    $('#immersive-zoom-out').addEventListener('click', () => immersiveShelf?.zoomOut());
+    $('#immersive-genre-back').addEventListener('click', () => selectGenre((state.genreIndex - 1 + genres.length) % genres.length));
+    $('#immersive-genre-forward').addEventListener('click', () => selectGenre((state.genreIndex + 1) % genres.length));
     document.querySelectorAll('[data-type]').forEach((button) => {
       button.classList.toggle('is-active', button.dataset.type === state.type);
       button.addEventListener('click', () => selectType(button.dataset.type));

@@ -2,12 +2,19 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  clampStoreYear,
   createStremioUri,
   deduplicateTitles,
   filterByStore,
   normalizeTitle,
   parseReleaseYear,
 } = require('../public/app-core.js');
+
+test('clampStoreYear supports the full catalogue era through 2026', () => {
+  assert.equal(clampStoreYear(1895), 1920);
+  assert.equal(clampStoreYear(2010), 2010);
+  assert.equal(clampStoreYear(2030), 2026);
+});
 
 test('parseReleaseYear extracts the first four digit year', () => {
   assert.equal(parseReleaseYear('1997–1999'), 1997);
@@ -43,6 +50,15 @@ test('filterByStore enforces selected year and aisle genre', () => {
     { id: 'unknown', year: null, genres: ['Horror'] },
   ];
   assert.deepEqual(filterByStore(titles, { year: 1999, genre: 'Horror' }).map((item) => item.id), ['old']);
+});
+
+test('filterByStore combines related genres into one broad aisle', () => {
+  const titles = [
+    { id: 'crime', year: 1999, genres: ['Crime'] },
+    { id: 'thriller', year: 1998, genres: ['Thriller'] },
+    { id: 'comedy', year: 1999, genres: ['Comedy'] },
+  ];
+  assert.deepEqual(filterByStore(titles, { year: 1999, genres: ['Crime', 'Thriller', 'Mystery'] }).map((item) => item.id), ['crime', 'thriller']);
 });
 
 test('deduplicateTitles keeps the richer copy of a stable title', () => {

@@ -10,7 +10,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Chose a constrained hybrid catalogue path: curated Cinemeta, TMDB, and IMDb defaults plus explicit custom catalogue manifests.
 - [x] Implemented a dependency-free Node loopback bridge bound to `127.0.0.1`.
 - [x] Added manifest validation, per-hop redirect/DNS safety, sanitized source listing, title normalization, and ID deduplication.
-- [x] Implemented six genre aisles, 1987–1999 Store Year control, movie/series switch, and five-year period shelves.
+- [x] Implemented nine broad genre aisles, 1920–2026 Store Year control, movie/series switch, and five-year period shelves.
 - [x] Implemented the VHS store presentation, title details, local counter persistence, empty/error states, responsive layout, and reduced-motion handling.
 - [x] Implemented native Stremio handoff and verified generated movie URI in the live UI.
 - [x] Broadened historical coverage with capability-aware multi-page catalogue fetching and partial source/page failure isolation.
@@ -18,7 +18,9 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Added on-demand Stremio metadata to title details: IMDb score, director, writers, and main cast, without adding that data to shelf cards.
 - [x] Renamed the local presentation to Will's Locadora with one compact red/yellow top-bar mark.
 - [x] Replaced title-dialog chrome with an interactive Three.js VHS case: real depth/lighting, drag rotation, poster front, and metadata/counter/Stremio controls on its textured back; shelves remain 2D.
-- [x] Added canonical `npm test`; 14 tests pass as of the broadened-catalogue verification.
+- [x] Added an optional immersive Three.js mode with one reusable steel-blue shelf, a physical genre/year tag, 24 clickable tapes, responsive whole-stand camera fitting, and a return to the normal shelves.
+- [x] Added an auto-hidden immersive header with a minimal in-scene reveal tab; immersive mode remains full-viewport.
+- [x] Added canonical `npm test`; 25 tests pass after the immersive-shelf, broad-genre, and 2026 year-range work.
 - [x] Exercised the real server, live Cinemeta catalogue, browser UI, detail dialog, counter action, and year refresh without browser console errors.
 
 ## Now — playtest the rental loop
@@ -28,6 +30,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 - [x] Classified the important Stremio add-ons: Torrentio is stream-only; TMDB and IMDb expose catalogue resources and are automatic defaults.
 - [ ] Decide whether five-year shelves are the right amount of period depth.
 - [ ] Review mobile behavior on the user's phone or a real narrow browser window.
+- [ ] Playtest the immersive shelf composition, tape readability, hover/pick behavior, and normal-mode return before expanding the 3D store.
 
 ## Next — quality after playtest
 
@@ -38,7 +41,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 
 ## Explicitly later
 
-- [ ] 2.5D/isometric store only after this simpler shelf UI proves the product loop.
+- [ ] Expand beyond the single immersive shelf only after its focused browsing loop is accepted.
 - [ ] Debian desktop packaging only after the local web version is satisfying.
 
 ## Session log — 2026-07-19

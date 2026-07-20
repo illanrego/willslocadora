@@ -71,62 +71,123 @@ function drawButton(context, rect, label, fill, ink) {
   context.textBaseline = 'alphabetic';
 }
 
-function drawBack(context, title, atCounter) {
-  context.fillStyle = '#eee0b8';
-  context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
-  context.strokeStyle = '#a58b5d';
-  context.lineWidth = 18;
-  context.strokeRect(34, 34, 956, 1468);
-  context.fillStyle = '#b7392d';
-  context.fillRect(72, 72, 260, 18);
-  context.fillStyle = '#e3a928';
-  context.fillRect(350, 72, 260, 18);
-  context.fillStyle = '#2c7e84';
-  context.fillRect(628, 72, 324, 18);
-
-  context.fillStyle = '#8d3528';
-  context.font = '900 25px Courier New, monospace';
-  context.fillText(`${title.type === 'series' ? 'TELEVISION SERIES' : 'FEATURE PRESENTATION'} · ${String(title.source || 'CATALOGUE').toUpperCase()}`, 72, 145);
-
-  context.fillStyle = '#211914';
-  context.font = '900 82px Impact, sans-serif';
-  let y = wrappedText(context, title.name, 72, 245, 880, 84, 2) + 8;
-
-  context.fillStyle = '#8d3528';
-  context.font = '800 29px Courier New, monospace';
-  const meta = [title.year, ...(title.genres || []).slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`].filter(Boolean).join(' · ');
-  y = wrappedText(context, meta || 'DETAILS NOT LISTED', 72, y, 880, 38, 2) + 30;
-
-  const credits = [
-    ['DIRECTOR', names(title.director, 4)],
-    ['WRITERS', names(title.writer, 4)],
-    ['STARRING', names(title.cast, 6)],
-  ];
-  for (const [label, value] of credits) {
-    context.fillStyle = '#2c7378';
-    context.font = '900 25px Courier New, monospace';
-    context.fillText(label, 72, y);
-    context.fillStyle = '#4e4231';
-    context.font = '700 25px Arial, sans-serif';
-    y = wrappedText(context, value, 260, y, 692, 33, 2) + 18;
+function drawImageFrame(context, image, x, y, width, height, focus = 0.5) {
+  context.fillStyle = '#071a31';
+  context.fillRect(x, y, width, height);
+  if (image) {
+    context.save();
+    context.beginPath();
+    context.rect(x, y, width, height);
+    context.clip();
+    const imageWidth = image.naturalWidth || image.width;
+    const imageHeight = image.naturalHeight || image.height;
+    const scale = Math.max(width / imageWidth, height / imageHeight);
+    const drawWidth = imageWidth * scale;
+    const drawHeight = imageHeight * scale;
+    context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) * focus, drawWidth, drawHeight);
+    context.restore();
   }
+  context.strokeStyle = '#e6dfbd';
+  context.lineWidth = 7;
+  context.strokeRect(x, y, width, height);
+}
 
-  context.strokeStyle = '#b9a373';
+function drawBarcode(context, value, x, y, width, height) {
+  context.fillStyle = '#f6f3e7';
+  context.fillRect(x, y, width, height);
+  let seed = 0;
+  for (const character of String(value || 'LOCADORA')) seed = ((seed * 31) + character.charCodeAt(0)) >>> 0;
+  let cursor = x + 24;
+  while (cursor < x + width - 24) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const bar = 2 + (seed % 7);
+    context.fillStyle = '#111';
+    context.fillRect(cursor, y + 18, bar, height - 55);
+    cursor += bar + 3 + ((seed >>> 8) % 5);
+  }
+  context.fillStyle = '#111';
+  context.font = '700 19px Courier New, monospace';
+  context.textAlign = 'center';
+  context.fillText(String(value || 'WILLS-LOCADORA').toUpperCase(), x + width / 2, y + height - 15);
+  context.textAlign = 'left';
+}
+
+function drawBack(context, title, atCounter, image = null) {
+  context.fillStyle = '#0d477f';
+  context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
+  context.fillStyle = '#0a3768';
+  context.fillRect(32, 32, 960, 1472);
+  context.strokeStyle = '#e0bc35';
+  context.lineWidth = 10;
+  context.strokeRect(44, 44, 936, 1448);
+
+  context.fillStyle = '#f2e9cc';
+  context.font = '900 24px Arial Narrow, sans-serif';
+  context.fillText(String(title.source || "WILL'S LOCADORA").toUpperCase(), 72, 92);
+  context.font = '700 18px Courier New, monospace';
+  context.fillText(`${title.type === 'series' ? 'HOME VIDEO SERIES' : 'FEATURE PRESENTATION'} · ${title.year || 'YEAR UNKNOWN'}`, 72, 126);
+  drawBarcode(context, title.id, 596, 68, 356, 126);
+
+  context.fillStyle = '#f4cf38';
+  context.font = '900 74px Impact, Arial Narrow, sans-serif';
+  wrappedText(context, title.name, 72, 250, 880, 75, 2);
+  context.fillStyle = '#f4f0df';
+  context.font = '800 23px Arial Narrow, sans-serif';
+  const meta = [...(title.genres || []).slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`].filter(Boolean).join('  ·  ');
+  context.fillText(meta || 'CATALOGUE EDITION', 72, 365);
+
+  drawImageFrame(context, image, 72, 405, 348, 285, 0.18);
+  drawImageFrame(context, image, 448, 405, 504, 285, 0.78);
+
+  context.fillStyle = '#f4cf38';
+  context.font = '900 29px Arial Narrow, sans-serif';
+  context.fillText('THE STORY', 72, 750);
+  context.fillStyle = '#f4f0df';
+  context.font = '25px Arial, sans-serif';
+  wrappedText(context, title.description || 'No synopsis was included by this catalogue source.', 72, 790, 880, 34, 8);
+
+  context.strokeStyle = '#7aa2c8';
   context.lineWidth = 3;
   context.beginPath();
-  context.moveTo(72, y);
-  context.lineTo(952, y);
+  context.moveTo(72, 1058);
+  context.lineTo(952, 1058);
   context.stroke();
-  y += 48;
-  context.fillStyle = '#4b4031';
-  context.font = '28px Georgia, serif';
-  wrappedText(context, title.description || 'No synopsis was included by this catalogue source.', 72, y, 880, 39, 8);
 
-  drawButton(context, ACTIONS.counter, atCounter ? 'RETURN TO SHELF' : 'TAKE TO COUNTER', '#d8c698', '#32271e');
-  drawButton(context, ACTIONS.watch, 'WATCH IN STREMIO →', '#e3a928', '#211914');
-  context.fillStyle = '#b7392d';
-  context.font = '900 22px Courier New, monospace';
-  context.fillText('BE KIND · REWIND   /   DRAG TO INSPECT', 72, 1480);
+  const credits = [
+    ['DIRECTED BY', names(title.director, 4)],
+    ['WRITTEN BY', names(title.writer, 4)],
+    ['STARRING', names(title.cast, 6)],
+  ];
+  let y = 1105;
+  for (const [label, value] of credits) {
+    context.fillStyle = '#f4cf38';
+    context.font = '900 20px Arial Narrow, sans-serif';
+    context.fillText(label, 72, y);
+    context.fillStyle = '#f4f0df';
+    context.font = '700 20px Arial, sans-serif';
+    y = wrappedText(context, value, 242, y, 710, 27, 2) + 12;
+  }
+
+  context.fillStyle = '#a9c3da';
+  context.font = '16px Courier New, monospace';
+  context.fillText('CATALOGUE LISTING ONLY · PLAYBACK AND AVAILABILITY BY YOUR STREMIO SETUP', 72, 1288);
+  drawButton(context, ACTIONS.counter, atCounter ? 'RETURN TO SHELF' : 'TAKE TO COUNTER', '#f4f0df', '#0b3472');
+  drawButton(context, ACTIONS.watch, 'WATCH IN STREMIO →', '#f4cf38', '#0b3472');
+
+  context.fillStyle = '#dfe8ef';
+  context.font = '900 18px Courier New, monospace';
+  context.fillText('VHS  ·  BE KIND, REWIND  ·  DRAG TO INSPECT', 72, 1480);
+  context.globalAlpha = 0.13;
+  context.strokeStyle = '#fff';
+  context.lineWidth = 2;
+  for (let index = 0; index < 20; index += 1) {
+    const scratchY = 60 + ((index * 83 + String(title.id || '').length * 17) % 1410);
+    context.beginPath();
+    context.moveTo(48 + (index % 4) * 19, scratchY);
+    context.lineTo(976 - (index % 5) * 31, scratchY + (index % 3) * 2);
+    context.stroke();
+  }
+  context.globalAlpha = 1;
 }
 
 function inside(rect, x, y) {
@@ -187,7 +248,9 @@ export function createVhsViewer({ container, title, posterUrl, atCounter, onCoun
   front.userData.surface = 'front';
   group.add(front);
 
-  const backCanvas = canvasTexture((context) => drawBack(context, title, atCounter));
+  let backImage = null;
+  let currentAtCounter = atCounter;
+  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, backImage));
   const backMaterial = new THREE.MeshStandardMaterial({ map: backCanvas.texture, roughness: 0.72 });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(3.82, 5.82), backMaterial);
   back.position.z = -0.236;
@@ -207,8 +270,11 @@ export function createVhsViewer({ container, title, posterUrl, atCounter, onCoun
   if (posterUrl) {
     loader.load(posterUrl, (texture) => {
       if (disposed) return texture.dispose();
+      backImage = texture.image;
       drawPoster(frontCanvas.canvas.getContext('2d'), texture.image);
       frontCanvas.texture.needsUpdate = true;
+      drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, backImage);
+      backCanvas.texture.needsUpdate = true;
       texture.dispose();
     }, undefined, () => {});
   }
@@ -328,7 +394,8 @@ export function createVhsViewer({ container, title, posterUrl, atCounter, onCoun
   return {
     update(nextTitle, nextAtCounter) {
       title = nextTitle;
-      drawBack(backCanvas.canvas.getContext('2d'), title, nextAtCounter);
+      currentAtCounter = nextAtCounter;
+      drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, backImage);
       backCanvas.texture.needsUpdate = true;
     },
     dispose() {

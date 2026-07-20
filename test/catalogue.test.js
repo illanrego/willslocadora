@@ -132,6 +132,26 @@ test('fetchStoreShelf aggregates year catalogues then applies the aisle', async 
   assert.deepEqual(titles.map((item) => item.id), ['h-1999', 'h-1998', 'h-1997']);
 });
 
+test('fetchStoreShelf merges related genre catalogue pages into one aisle', async () => {
+  const requests = [];
+  const fakeFetch = async (url) => {
+    requests.push(url);
+    const genre = decodeURIComponent(url.match(/genre=([^&.]+)/)[1]);
+    return { ok: true, json: async () => ({ metas: [
+      { id: genre.toLowerCase(), type: 'movie', name: genre, releaseInfo: '1999', genres: [genre] },
+    ] }) };
+  };
+  const titles = await fetchStoreShelf({
+    source: {
+      id: 'test', manifestUrl: 'https://addon.example/manifest.json',
+      catalogs: [{ type: 'movie', id: 'top', extras: ['genre'], options: { genre: ['Crime', 'Thriller'] }, pageSize: 50 }],
+    },
+    genres: ['Crime', 'Thriller', 'Mystery'], year: 1999, type: 'movie', fetchImpl: fakeFetch, pageCount: 1,
+  });
+  assert.equal(requests.length, 2);
+  assert.deepEqual(titles.map((item) => item.id).sort(), ['crime', 'thriller']);
+});
+
 test('fetchStoreShelf paginates capability-matched year catalogues and keeps healthy pages', async () => {
   const requests = [];
   const fakeFetch = async (url) => {

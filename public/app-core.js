@@ -5,6 +5,11 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
+  function clampStoreYear(value) {
+    const year = Number(value);
+    return Math.max(1920, Math.min(2026, Number.isFinite(year) ? Math.round(year) : 1999));
+  }
+
   function parseReleaseYear(value) {
     const match = String(value == null ? '' : value).match(/(?:18|19|20)\d{2}/);
     return match ? Number(match[0]) : null;
@@ -35,11 +40,12 @@
   }
 
   function filterByStore(titles, options) {
-    const genre = String(options.genre || '').toLowerCase();
+    const genres = (Array.isArray(options.genres) ? options.genres : [options.genre])
+      .filter(Boolean).map((genre) => String(genre).toLowerCase());
     const year = Number(options.year);
     return titles.filter((title) => {
       if (!Number.isInteger(title.year) || title.year > year || title.year < year - 4) return false;
-      return !genre || title.genres.some((item) => item.toLowerCase() === genre);
+      return !genres.length || title.genres.some((item) => genres.includes(item.toLowerCase()));
     });
   }
 
@@ -65,5 +71,5 @@
     return `stremio:///detail/${title.type}/${title.id}`;
   }
 
-  return { createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear };
+  return { clampStoreYear, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear };
 }));

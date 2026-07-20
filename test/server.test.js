@@ -20,6 +20,31 @@ test('server binds to loopback and serves health plus static app', async (t) => 
 
   const page = await fetch(`http://127.0.0.1:${address.port}/`).then((response) => response.text());
   assert.match(page, /Will's Locadora/);
+  assert.match(page, /id="store-year-input"[^>]+type="number"/);
+  assert.match(page, /id="year-go"[^>]*>Go<\/button>/);
+  assert.match(page, /id="immersive-header-toggle"[^>]+aria-expanded="false"/);
+  assert.match(page, /id="immersive-zoom-out"[^>]+aria-label="Zoom out"/);
+  assert.match(page, /id="immersive-zoom-in"[^>]+aria-label="Zoom in"/);
+});
+
+test('shelf accepts catalogue years through 2026 and rejects later years', async (t) => {
+  const requested = [];
+  const server = createServer({
+    catalogue: {
+      listSources: () => [],
+      shelf: async (options) => { requested.push(options); return []; },
+    },
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const { port } = server.address();
+
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/shelf?year=2026&genre=Action&type=movie`)).status, 200);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/shelf?year=2027&genre=Action&type=movie`)).status, 400);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/shelf?year=1999&genre=Crime,Thriller,Mystery&type=movie`)).status, 200);
+  assert.deepEqual(requested.map(({ year }) => year), [2026, 1999]);
+  assert.deepEqual(requested[1].genres, ['Crime', 'Thriller', 'Mystery']);
 });
 
 test('server exposes validated rich title metadata', async (t) => {
@@ -62,6 +87,11 @@ test('server exposes the installed Three.js browser module without exposing node
   assert.equal(viewer.status, 200);
   assert.match(viewer.headers.get('content-type'), /text\/javascript/);
   assert.match(await viewer.text(), /createVhsViewer/);
+
+  const immersive = await fetch(`http://127.0.0.1:${port}/immersive-shelf.mjs`);
+  assert.equal(immersive.status, 200);
+  assert.match(immersive.headers.get('content-type'), /text\/javascript/);
+  assert.match(await immersive.text(), /createImmersiveShelf/);
 
   const privateModule = await fetch(`http://127.0.0.1:${port}/node_modules/three/package.json`);
   assert.equal(privateModule.status, 404);

@@ -83,10 +83,11 @@ function createServer({ catalogue, posterFetcher = safeFetchImage }) {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
         const year = Number(url.searchParams.get('year'));
         const genre = url.searchParams.get('genre') || '';
+        const genres = genre.split(',').map((item) => item.trim()).filter(Boolean);
         const type = url.searchParams.get('type') === 'series' ? 'series' : 'movie';
         const stand = Number(url.searchParams.get('stand') || 0);
-        if (!Number.isInteger(year) || year < 1920 || year > 2100 || !genre || genre.length > 40 || !Number.isInteger(stand) || stand < 0 || stand > 20) return sendJson(response, 400, { error: 'Invalid shelf filters' });
-        const titles = await catalogue.shelf({ year, genre, type, page: stand, sourceId: url.searchParams.get('source') || '' });
+        if (!Number.isInteger(year) || year < 1920 || year > 2026 || !genres.length || genres.length > 3 || genres.some((item) => item.length > 20) || !Number.isInteger(stand) || stand < 0 || stand > 20) return sendJson(response, 400, { error: 'Invalid shelf filters' });
+        const titles = await catalogue.shelf({ year, genre: genres[0], genres, type, page: stand, sourceId: url.searchParams.get('source') || '' });
         return sendJson(response, 200, { titles, year, genre, type, stand });
       }
       if (url.pathname === '/api/meta') {

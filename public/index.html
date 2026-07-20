@@ -10,21 +10,22 @@
 <body>
   <a class="skip-link" href="#shelf">Skip to shelf</a>
   <div class="store-shell">
-    <header class="store-header">
+    <header id="store-header" class="store-header">
       <a class="brand" href="/" aria-label="Will's Locadora home">
         <strong>WILL'S LOCADORA</strong>
         <span class="brand-tag">Be kind. Rewind.</span>
       </a>
 
-      <div class="year-machine" aria-label="Store year">
-        <span class="year-label">Store year</span>
+      <form id="year-form" class="year-machine" aria-label="Store year">
+        <label class="year-label" for="store-year-input">Store year</label>
         <button class="year-step" id="year-back" type="button" aria-label="Previous store year">−</button>
-        <output id="store-year" aria-live="polite">1999</output>
+        <input id="store-year-input" type="number" min="1920" max="2026" step="1" value="1999" inputmode="numeric" autocomplete="off" aria-label="Store year">
         <button class="year-step" id="year-forward" type="button" aria-label="Next store year">+</button>
-        <input id="year-range" type="range" min="1987" max="1999" step="1" value="1999" aria-label="Select store year">
-      </div>
+        <button id="year-go" type="submit">Go</button>
+      </form>
 
       <nav class="header-actions" aria-label="Store actions">
+        <button class="mode-button" id="immersive-toggle" type="button" aria-pressed="false">Immersive mode</button>
         <button class="counter-button" id="counter-open" type="button">
           Counter <span id="counter-count" aria-label="items at counter">0</span>
         </button>
@@ -33,7 +34,7 @@
     </header>
 
     <main>
-      <section class="shop-floor" aria-label="Video store aisles">
+      <section id="normal-mode" class="shop-floor" aria-label="Video store aisles">
         <aside class="aisle-directory">
           <div class="directory-sign"><span>Aisle</span><strong id="aisle-number">01</strong></div>
           <nav id="genre-nav" aria-label="Genres"></nav>
@@ -63,6 +64,26 @@
             <button id="retry-shelf" type="button">Check the back room</button>
           </div>
         </div>
+      </section>
+
+      <section id="immersive-room" class="immersive-room" aria-label="Immersive video shelf" hidden>
+        <button id="immersive-header-toggle" class="immersive-header-tab" type="button" aria-controls="store-header" aria-expanded="false">Header</button>
+        <div class="immersive-zoom" role="group" aria-label="Immersive shelf zoom">
+          <button id="immersive-zoom-in" type="button" aria-label="Zoom in">+</button>
+          <button id="immersive-zoom-out" type="button" aria-label="Zoom out">−</button>
+        </div>
+        <div class="immersive-hud">
+          <button id="immersive-genre-back" type="button" aria-label="Previous genre">←</button>
+          <output id="immersive-genre" aria-live="polite">Action &amp; Adventure</output>
+          <button id="immersive-genre-forward" type="button" aria-label="Next genre">→</button>
+          <div class="immersive-format" role="group" aria-label="Immersive shelf format">
+            <button data-type="movie" type="button">Movies</button>
+            <button data-type="series" type="button">Series</button>
+          </div>
+          <button id="normal-mode-return" type="button">Return to normal mode</button>
+          <span id="immersive-status" role="status" aria-live="polite">Opening the boxes…</span>
+        </div>
+        <div id="immersive-stage" class="immersive-stage"></div>
       </section>
     </main>
 

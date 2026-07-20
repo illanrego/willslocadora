@@ -163,13 +163,14 @@ async function fetchCatalogPages({ source, catalog, extras, fetchImpl, pageCount
   return bodies.flatMap((body) => Array.isArray(body.metas) ? body.metas : []);
 }
 
-async function fetchStoreShelf({ source, genre, year, type = 'movie', fetchImpl = fetch, yearWindow = 5, pageCount = 2, page = 0 }) {
+async function fetchStoreShelf({ source, genre, genres, year, type = 'movie', fetchImpl = fetch, yearWindow = 5, pageCount = 2, page = 0 }) {
+  const aisleGenres = (Array.isArray(genres) && genres.length ? genres : [genre]).filter(Boolean);
   const catalogs = (source.catalogs || []).filter((catalog) => catalog.type === type);
   const yearCatalog = catalogs.find((catalog) => catalog.extras.includes('genre') && /(^|\.)year$|year/i.test(`${catalog.id} ${catalog.name || ''}`));
   const genreCatalog = catalogs.find((catalog) => {
     if (!catalog.extras.includes('genre')) return false;
     const options = catalog.options && catalog.options.genre;
-    return !options || !options.length || options.includes(genre);
+    return !options || !options.length || aisleGenres.some((item) => options.includes(item));
   });
   const fallbackCatalog = catalogs.find((catalog) => !(catalog.requiredExtras || []).length);
   let raw = [];
@@ -187,13 +188,19 @@ async function fetchStoreShelf({ source, genre, year, type = 'movie', fetchImpl 
     raw = pages.filter(({ status }) => status === 'fulfilled').flatMap(({ value }) => value);
     if (!raw.length && pages.some(({ status }) => status === 'rejected')) throw new Error('Catalogue year pages are unavailable');
   } else if (genreCatalog) {
-    raw = await fetchCatalogPages({ source, catalog: genreCatalog, extras: { genre }, fetchImpl, pageCount, page });
+    const options = genreCatalog.options && genreCatalog.options.genre;
+    const supportedGenres = !options || !options.length ? aisleGenres : aisleGenres.filter((item) => options.includes(item));
+    const pages = await Promise.allSettled(supportedGenres.map((item) => fetchCatalogPages({
+      source, catalog: genreCatalog, extras: { genre: item }, fetchImpl, pageCount, page,
+    })));
+    raw = pages.filter(({ status }) => status === 'fulfilled').flatMap(({ value }) => value);
+    if (!raw.length && pages.some(({ status }) => status === 'rejected')) throw new Error('Catalogue genre pages are unavailable');
   } else if (fallbackCatalog) {
     raw = await fetchCatalogPages({ source, catalog: fallbackCatalog, extras: {}, fetchImpl, pageCount, page });
   }
 
   const normalized = raw.map((meta) => normalizeTitle(meta, source.id)).filter((title) => title.id);
-  return filterByStore(deduplicateTitles(normalized), { genre, year })
+  return filterByStore(deduplicateTitles(normalized), { genres: aisleGenres, year })
     .sort((a, b) => (b.year - a.year) || a.name.localeCompare(b.name));
 }
 
