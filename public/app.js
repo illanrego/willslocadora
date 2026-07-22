@@ -54,6 +54,14 @@
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
 
+  function disposeVhsViewer() {
+    viewerToken += 1;
+    activeVhsViewer?.dispose();
+    activeVhsViewer = null;
+    activeViewerTitle = null;
+    $('#title-detail').replaceChildren();
+  }
+
   function genreLabel(genre) { return t(genre.labelKey); }
 
   function applyLocale(refreshTitle = true) {
@@ -648,7 +656,8 @@
     const token = ++viewerToken;
     activeViewerTitle = title;
     detail.dataset.titleKey = `${title.type}:${title.id}`;
-    if (activeVhsViewer && titleDialog.open) {
+    if (activeVhsViewer) {
+      if (!titleDialog.open) titleDialog.showModal();
       activeVhsViewer.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
       if (hydrate) loadTitleMetadata(title).then(() => {
         if (token === viewerToken && titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
@@ -838,10 +847,6 @@
     });
     titleDialog.addEventListener('close', () => {
       viewerToken += 1;
-      activeVhsViewer?.dispose();
-      activeVhsViewer = null;
-      activeViewerTitle = null;
-      $('#title-detail').replaceChildren();
     });
     $('#counter-open').addEventListener('click', () => { renderCounter(); counterDialog.showModal(); });
     if (window.locadoraIsPublic) {
@@ -876,6 +881,7 @@
   }
 
   wireEvents();
+  window.addEventListener('pagehide', disposeVhsViewer, { once: true });
   loadProviderRegistry();
   saveCounter();
   setYear(state.year);
