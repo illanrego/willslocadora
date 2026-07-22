@@ -2,7 +2,6 @@ name = "locadora-api"
 main = "src/index.mjs"
 compatibility_date = "2026-07-22"
 
-# Intentionally empty until the public GitHub Pages URL is known.
-# Set the exact production and deliberate development origins before deployment.
+# Exact GitHub Pages production origin plus intentional local development origin.
 [vars]
-ALLOWED_ORIGINS = ""
+ALLOWED_ORIGINS = "https://illanrego.github.io,http://127.0.0.1:4173"
