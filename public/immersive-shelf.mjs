@@ -148,7 +148,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       poster.position.z = 0.045;
       frame.add(poster);
       featuredPosterGroup.add(frame);
-      const posterUrl = title.posterUrl || (title.poster ? `/api/poster?${new URLSearchParams({ url: title.poster })}` : '');
+      const posterUrl = title.posterUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : '');
       if (posterUrl) featuredPosterLoader.load(posterUrl, (texture) => {
         if (disposed || frame.parent !== featuredPosterGroup) return texture.dispose();
         texture.colorSpace = THREE.SRGBColorSpace;

@@ -30,7 +30,7 @@ function drawCover(context, image) {
   context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
 }
 
-export function createVhsCase(title, { width = .82, height = 1.45, depth = .28, posterUrl = title.posterUrl || (title.poster ? `/api/poster?${new URLSearchParams({ url: title.poster })}` : '') } = {}) {
+export function createVhsCase(title, { width = .82, height = 1.45, depth = .28, posterUrl = title.posterUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : '') } = {}) {
   const group = new THREE.Group();
   const caseMaterial = new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .7 });
   const caseMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), caseMaterial); caseMesh.castShadow = true; group.add(caseMesh);

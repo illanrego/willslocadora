@@ -126,7 +126,7 @@
   }
 
   async function api(path, options) {
-    const response = await fetch(path, options);
+    const response = await fetch(window.locadoraApiUrl(path), options);
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
     return body;
@@ -277,7 +277,7 @@
 
   function posterTextureUrl(source) {
     if (!source || source.startsWith('data:') || source.startsWith(location.origin)) return source;
-    return `/api/poster?${new URLSearchParams({ url: source })}`;
+    return window.locadoraPosterUrl(source);
   }
 
   function vhsAssets(title, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
@@ -800,26 +800,30 @@
       $('#title-detail').replaceChildren();
     });
     $('#counter-open').addEventListener('click', () => { renderCounter(); counterDialog.showModal(); });
-    $('#sources-open').addEventListener('click', () => { renderSources(); sourcesDialog.showModal(); });
+    if (window.locadoraIsPublic) {
+      $('#sources-open').hidden = true;
+    } else {
+      $('#sources-open').addEventListener('click', () => { renderSources(); sourcesDialog.showModal(); });
+      $('#source-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const message = $('#source-message');
+        const button = form.querySelector('button');
+        message.textContent = 'Checking manifest…';
+        button.disabled = true;
+        try {
+          const data = Object.fromEntries(new FormData(form));
+          const { source } = await api('/api/sources', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
+          form.reset();
+          message.textContent = `${source.name} connected.`;
+          await renderSources();
+          loadShelf();
+        } catch (error) { message.textContent = error.message; }
+        finally { button.disabled = false; }
+      });
+    }
     $('#retry-shelf').addEventListener('click', loadShelf);
     $('#load-more-shelf').addEventListener('click', goToNextStand);
-    $('#source-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const form = event.currentTarget;
-      const message = $('#source-message');
-      const button = form.querySelector('button');
-      message.textContent = 'Checking manifest…';
-      button.disabled = true;
-      try {
-        const data = Object.fromEntries(new FormData(form));
-        const { source } = await api('/api/sources', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
-        form.reset();
-        message.textContent = `${source.name} connected.`;
-        await renderSources();
-        loadShelf();
-      } catch (error) { message.textContent = error.message; }
-      finally { button.disabled = false; }
-    });
     for (const dialog of document.querySelectorAll('dialog')) {
       dialog.addEventListener('click', (event) => {
         if (event.target === dialog) dialog.close();

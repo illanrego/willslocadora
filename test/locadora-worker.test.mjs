@@ -60,6 +60,43 @@ test('public worker normalizes title metadata without exposing its TMDB key', as
   assert.equal(JSON.stringify(meta).includes('test-key'), false);
 });
 
+test('public worker returns three featured titles for a selected store year', async () => {
+  const worker = createLocadoraWorker({
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      assert.equal(url.pathname, '/3/discover/movie');
+      assert.equal(url.searchParams.get('primary_release_date.gte'), '1999-01-01');
+      return Response.json({ results: [
+        { id: 1, title: 'First', release_date: '1999-01-01', poster_path: '/first.jpg' },
+        { id: 2, title: 'Second', release_date: '1999-02-01', poster_path: '/second.jpg' },
+        { id: 3, title: 'Third', release_date: '1999-03-01', poster_path: '/third.jpg' },
+        { id: 4, title: 'Fourth', release_date: '1999-04-01', poster_path: '/fourth.jpg' },
+      ] });
+    },
+  });
+  const response = await worker.fetch(new Request('https://api.example/v1/featured?year=1999'), env, context());
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.year, 1999);
+  assert.deepEqual(body.titles.map((title) => title.name), ['First', 'Second', 'Third']);
+});
+
+test('public worker proxies only TMDB poster URLs', async () => {
+  const worker = createLocadoraWorker({
+    fetchImpl: async (input) => {
+      assert.equal(String(input), 'https://image.tmdb.org/t/p/w500/poster.jpg');
+      return new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'image/jpeg' } });
+    },
+  });
+  const allowed = await worker.fetch(new Request('https://api.example/v1/image?url=https%3A%2F%2Fimage.tmdb.org%2Ft%2Fp%2Fw500%2Fposter.jpg'), env, context());
+  assert.equal(allowed.status, 200);
+  assert.equal(allowed.headers.get('content-type'), 'image/jpeg');
+  assert.equal((await allowed.arrayBuffer()).byteLength, 3);
+
+  const blocked = await worker.fetch(new Request('https://api.example/v1/image?url=https%3A%2F%2Fevil.example%2Fposter.jpg'), env, context());
+  assert.equal(blocked.status, 400);
+});
+
 test('public worker uses TMDB Brazil flatrate discovery for provider-filtered shelves', async () => {
   const requested = [];
   const worker = createLocadoraWorker({

@@ -113,7 +113,7 @@ export function createBalcony({ container, rental, year, onCounterSelect, onTitl
       const poster = box(1.5, 2.14, .02, posterMaterial, 0, 0, .052, frame); poster.castShadow = false;
       const yearLabel = new THREE.Mesh(new THREE.PlaneGeometry(1.38, .18), new THREE.MeshBasicMaterial({ map: labelTexture(`${year} SELEÇÃO`, { width: 420, height: 80, background: '#1b2635' }) }));
       yearLabel.position.set(0, -1.02, .07); frame.add(yearLabel);
-      const posterUrl = title.posterUrl || (title.poster ? `/api/poster?${new URLSearchParams({ url: title.poster })}` : '');
+      const posterUrl = title.posterUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : '');
       if (posterUrl) posterLoader.load(posterUrl, (texture) => {
         if (disposed || !frame.parent) return texture.dispose();
         texture.colorSpace = THREE.SRGBColorSpace; posterTextures.add(texture); posterMaterial.map.dispose(); posterMaterial.map = texture; posterMaterial.needsUpdate = true;

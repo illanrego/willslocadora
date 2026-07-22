@@ -140,6 +140,30 @@ async function titleMeta({ type, id, locale }, env, fetchImpl) {
   };
 }
 
+async function featured(year, env, fetchImpl) {
+  if (!Number.isInteger(year) || year < 1920 || year > 2026) throw new Error('Invalid featured year');
+  const tmdb = createTmdb(env, fetchImpl);
+  const query = new URLSearchParams({ sort_by: 'popularity.desc', 'primary_release_date.gte': `${year}-01-01`, 'primary_release_date.lte': `${year}-12-31`, 'vote_count.gte': '20' });
+  const data = await tmdb.request(`/discover/movie?${query}`);
+  return (data.results || []).slice(0, 3).map((title) => ({
+    id: `tmdb:${title.id}`, type: 'movie', name: title.title || 'Untitled', year: yearFromDate(title.release_date),
+    poster: imageUrl(title.poster_path, 'w500'), background: imageUrl(title.backdrop_path, 'w1280'), description: title.overview || '', genres: [],
+  }));
+}
+
+async function image(source, fetchImpl) {
+  let url;
+  try { url = new URL(source); } catch { throw new Error('Invalid image URL'); }
+  if (url.protocol !== 'https:' || url.hostname !== TMDB_IMAGE_HOST || !url.pathname.startsWith('/t/p/')) throw new Error('Image URL is not allowed');
+  const response = await fetchImpl(url.href, { headers: { accept: 'image/*' }, signal: AbortSignal.timeout(5000) });
+  const contentType = response.headers.get('content-type') || '';
+  const length = Number(response.headers.get('content-length') || 0);
+  if (!response.ok || !contentType.toLowerCase().startsWith('image/') || length > 8_000_000) throw new Error('Image is unavailable');
+  const body = await response.arrayBuffer();
+  if (body.byteLength > 8_000_000) throw new Error('Image is too large');
+  return { contentType: contentType.split(';')[0], body };
+}
+
 export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
   return {
     async fetch(request, env, ctx) {
@@ -151,6 +175,15 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
       try {
         if (url.pathname === '/v1/health') return json({ ok: true, service: 'locadora-api' }, 200, policy.headers);
         if (url.pathname === '/v1/providers') return json({ providers: PROVIDERS }, 200, { ...policy.headers, 'cache-control': 'public, max-age=604800' });
+        if (url.pathname === '/v1/featured') {
+          const year = Number(url.searchParams.get('year'));
+          const titles = await featured(year, env, fetchImpl);
+          return json({ titles, year }, 200, { ...policy.headers, 'cache-control': 'public, max-age=86400, s-maxage=604800' });
+        }
+        if (url.pathname === '/v1/image') {
+          const result = await image(url.searchParams.get('url') || '', fetchImpl);
+          return new Response(result.body, { status: 200, headers: { ...policy.headers, 'content-type': result.contentType, 'cache-control': 'public, max-age=86400, s-maxage=604800', 'x-content-type-options': 'nosniff' } });
+        }
         if (url.pathname === '/v1/title') {
           const meta = await titleMeta({ type: url.searchParams.get('type'), id: url.searchParams.get('id') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl);
           return json({ meta }, 200, { ...policy.headers, 'cache-control': 'public, max-age=86400, s-maxage=604800' });
@@ -163,7 +196,11 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
         }
         return json({ error: 'Not found' }, 404, policy.headers);
       } catch (error) {
-        return json({ error: error instanceof Error && /TMDB is not configured/.test(error.message) ? 'Catalogue service is not configured' : 'Catalogue service is temporarily unavailable' }, 502, policy.headers);
+        const message = error instanceof Error ? error.message : '';
+        const status = /^(Invalid|Image URL is not allowed)/.test(message) ? 400 : 502;
+        const publicError = /TMDB is not configured/.test(message) ? 'Catalogue service is not configured'
+          : status === 400 ? message : 'Catalogue service is temporarily unavailable';
+        return json({ error: publicError }, status, policy.headers);
       }
     },
   };

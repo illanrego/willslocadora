@@ -5,7 +5,8 @@
   "description": "A local 1990s video-rental GUI for Stremio",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "build:pages": "node scripts/build-pages.mjs"
   },
   "engines": {
     "node": ">=18"
