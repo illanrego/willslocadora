@@ -56,7 +56,7 @@ function featuredMovies(titles) {
   return titles.filter((title) => title.type === 'movie').slice(0, 3);
 }
 
-export function createBalcony({ container, rental, year, copy, onCounterSelect, onTitleSelect, onBagSelect, onTip, onOwner, onCollectiveAwards }) {
+export function createBalcony({ container, rental, year, copy, onCounterSelect, onTitleSelect, onBagSelect, onTip, onOwner = onCounterSelect, onCollectiveAwards = onCounterSelect }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.shadowMap.enabled = true;
   renderer.domElement.className = 'immersive-canvas'; renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute('aria-label', 'Locadora counter. Use arrow keys to choose a counter tape, Enter to inspect it, and plus or minus to zoom.');
