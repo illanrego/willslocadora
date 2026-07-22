@@ -56,7 +56,7 @@ function featuredMovies(titles) {
   return titles.filter((title) => title.type === 'movie').slice(0, 3);
 }
 
-export function createBalcony({ container, rental, year, copy, onCounterSelect, onTitleSelect, onBagSelect, onTip }) {
+export function createBalcony({ container, rental, year, copy, onCounterSelect, onTitleSelect, onBagSelect, onTip, onOwner, onCollectiveAwards }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.shadowMap.enabled = true;
   renderer.domElement.className = 'immersive-canvas'; renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute('aria-label', 'Locadora counter. Use arrow keys to choose a counter tape, Enter to inspect it, and plus or minus to zoom.');
@@ -73,7 +73,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(28, 22), new THREE.MeshStandardMaterial({ color: 0x303440, roughness: .9 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -2.5; floor.receiveShadow = true; scene.add(floor);
   const posterLoader = new THREE.TextureLoader(); const posterTextures = new Set();
   for (let row = 0; row < 4; row += 1) for (let col = 0; col < 18; col += 1) box(.45, .82, .18, new THREE.MeshStandardMaterial({ color: [0x6a2730, 0x304e67, 0x7c6332, 0x2f513f][(row + col) % 4], roughness: .7 }), -5.2 + col * .61, .4 + row * .92, -5.13, room);
-  const ownerFrame = box(2.25, 3.25, .08, new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .65 }), -8.2, 3.35, -5.08, room); ownerFrame.castShadow = false;
+  const ownerFrame = box(2.25, 3.25, .08, new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .65 }), -8.2, 4.55, -5.08, room); ownerFrame.castShadow = false; ownerFrame.userData.action = 'owner';
   const ownerPortraitMaterial = new THREE.MeshStandardMaterial({ map: noticeTexture('WILL', [copy.ownerCaption], { width: 360, height: 540, background: '#8e3026' }), roughness: .82 });
   const ownerPortrait = box(2.02, 2.62, .02, ownerPortraitMaterial, 0, .2, .052, ownerFrame); ownerPortrait.castShadow = false;
   const ownerCaption = new THREE.Mesh(new THREE.PlaneGeometry(2.02, .35), new THREE.MeshBasicMaterial({ map: labelTexture(copy.ownerCaption, { width: 520, height: 100, background: '#8e3026' }) })); ownerCaption.position.set(0, -1.42, .07); ownerFrame.add(ownerCaption);
@@ -81,7 +81,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
     if (disposed || !ownerFrame.parent) return texture.dispose();
     texture.colorSpace = THREE.SRGBColorSpace; posterTextures.add(texture); ownerPortraitMaterial.map.dispose(); ownerPortraitMaterial.map = texture; ownerPortraitMaterial.needsUpdate = true;
   }, undefined, () => {});
-  const awardsFrame = box(2.65, 3.35, .08, new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .65 }), 8.1, 3.35, -5.08, room); awardsFrame.castShadow = false;
+  const awardsFrame = box(2.65, 3.35, .08, new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .65 }), 8.1, 4.55, -5.08, room); awardsFrame.castShadow = false; awardsFrame.userData.action = 'collective-awards';
   const awardsBoard = box(2.4, 3.05, .02, new THREE.MeshStandardMaterial({ map: noticeTexture(copy.collectiveAwards, copy.collectiveAwardLines, { width: 560, height: 720, background: '#315b73' }), roughness: .82 }), 0, 0, .052, awardsFrame); awardsBoard.castShadow = false;
   // The customer side is deliberately open: no railing or barrier crosses the counter view.
   box(13.8, 3.6, 2.4, laminate, 0, -.05, -.3, room); box(14.2, .28, 2.7, countertop, 0, 1.61, -.3, room);
@@ -109,7 +109,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   const pixSticker = new THREE.Mesh(new THREE.PlaneGeometry(.68, .8), new THREE.MeshBasicMaterial({ map: pixDemonstrationTexture() })); pixSticker.position.set(0, -.03, .526); jar.add(pixSticker); jar.userData.action = 'tip';
   const donationPlaque = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .3), new THREE.MeshBasicMaterial({ map: labelTexture('DOAÇÕES', { width: 380, height: 90, background: '#31636b' }) })); donationPlaque.position.set(1.28, COUNTER_TOP + .42, .42); room.add(donationPlaque);
   const counterObject = new THREE.Group(); counterObject.position.copy(COUNTER_POSITION); room.add(counterObject);
-  const interactive = [jar]; const tapeRecords = [];
+  const interactive = [jar, ownerFrame, awardsFrame]; const tapeRecords = [];
   if (rental.rented) {
     const bag = new THREE.Mesh(new THREE.BoxGeometry(3.1, 1.9, 1.08), new THREE.MeshPhysicalMaterial({ color: 0xf2e8cf, transparent: true, opacity: .76, roughness: .38 })); bag.position.y = .95; bag.castShadow = true; counterObject.add(bag);
     for (const x of [-.75, .75]) { const handle = new THREE.Mesh(new THREE.TorusGeometry(.45, .07, 8, 18, Math.PI), paper); handle.position.set(x, 1.91, .05); handle.rotation.z = Math.PI; counterObject.add(handle); }
@@ -144,7 +144,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   function zoomProgress() { return THREE.MathUtils.smoothstep((zoom - 1) / (1.65 - 1), 0, 1); }
   function updatePointer(event) { const rect = renderer.domElement.getBoundingClientRect(); pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1); pointerX = pointer.x * .34; pointerY = pointer.y * .18; }
   function intersect(event) { updatePointer(event); raycaster.setFromCamera(pointer, camera); return raycaster.intersectObjects(interactive, true)[0]; }
-  function activate(object) { let target = object; while (target && !target.userData.action) target = target.parent; if (target?.userData.action === 'title') onTitleSelect(tapeRecords[target.userData.index]?.title); else if (target?.userData.action === 'bag') onBagSelect(); else if (target?.userData.action === 'counter') onCounterSelect(); else if (target?.userData.action === 'tip') onTip(); }
+  function activate(object) { let target = object; while (target && !target.userData.action) target = target.parent; if (target?.userData.action === 'title') onTitleSelect(tapeRecords[target.userData.index]?.title); else if (target?.userData.action === 'bag') onBagSelect(); else if (target?.userData.action === 'counter') onCounterSelect(); else if (target?.userData.action === 'tip') onTip(); else if (target?.userData.action === 'owner') onOwner(); else if (target?.userData.action === 'collective-awards') onCollectiveAwards(); }
   function click(event) { const hit = intersect(event); if (hit) { const index = hit.object.userData.index; if (Number.isInteger(index)) selected = index; activate(hit.object); } }
   function move(event) { const hit = intersect(event); hovered = Number.isInteger(hit?.object.userData.index) ? hit.object.userData.index : -1; renderer.domElement.style.cursor = hit ? 'pointer' : 'default'; }
   function adjustZoom(amount) { zoom = THREE.MathUtils.clamp(zoom + amount, .72, 1.65); return zoom; }

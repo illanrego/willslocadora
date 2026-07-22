@@ -602,6 +602,8 @@
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
         onBagSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
         onTip: () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; $('#balcony-dialog').showModal(); },
+        onOwner: () => { $('#balcony-panel-status').textContent = t('ownerNotice'); $('#balcony-dialog').showModal(); },
+        onCollectiveAwards: () => { $('#balcony-panel-status').textContent = t('collectiveAwardsNotice'); $('#balcony-dialog').showModal(); },
       });
     } catch (error) {
       try { await mountBalconyFallback(stage); }
