@@ -502,7 +502,7 @@
       const body = await api(`/api/shelf?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
       if (!append) state.renderedTitleKeys = new Set();
-      const hasAnotherSourcePage = body.titles.length === 40;
+      const hasAnotherSourcePage = Boolean(body.hasNextStand);
       state.titles = body.titles.filter((title) => {
         const key = `${title.type}:${title.id}`;
         if (state.renderedTitleKeys.has(key)) return false;

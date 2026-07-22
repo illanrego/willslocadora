@@ -129,6 +129,7 @@ test('public worker uses TMDB Brazil flatrate discovery for provider-filtered sh
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.titles[0].id, 'tt0000011');
+  assert.equal(body.hasNextStand, false);
   assert.deepEqual(body.titles[0].genres, ['Romance']);
 
   const discovery = requested.find((url) => url.pathname === '/3/discover/tv');

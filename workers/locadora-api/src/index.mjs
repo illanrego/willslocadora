@@ -113,12 +113,13 @@ async function shelf(filters, env, fetchImpl) {
   });
   const selectedNames = filters.providers.map((id) => PROVIDERS_BY_ID.get(id).canonicalName);
   const genreName = (id) => tmdbType === 'tv' ? TV_GENRE_NAMES[id] : Object.keys(MOVIE_GENRES).find((name) => MOVIE_GENRES[name] === id);
-  return discovered.flatMap((title, index) => /^tt\d+$/.test(imdbIds[index] || '') ? [{
+  const titles = discovered.flatMap((title, index) => /^tt\d+$/.test(imdbIds[index] || '') ? [{
     id: imdbIds[index], type: filters.type, name: title.title || title.name || 'Untitled', year: yearFromDate(title.release_date || title.first_air_date),
     genres: (title.genre_ids || []).map(genreName).filter(Boolean), poster: imageUrl(title.poster_path, 'w500'), background: imageUrl(title.backdrop_path, 'w1280'),
     description: title.overview || '', imdbRating: title.vote_average ? String(title.vote_average) : '', director: [], writer: [], cast: [], source: 'tmdb-discover',
     availabilityBR: { link: '', providers: selectedNames, subscriptionProviders: selectedNames },
   }] : []);
+  return { titles, hasNextStand: discovered.length === MAX_TITLES };
 }
 
 async function titleMeta({ type, id, locale }, env, fetchImpl) {
@@ -202,8 +203,8 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
         if (url.pathname === '/v1/shelf') {
           const filters = validShelf(url);
           if (!filters) return json({ error: 'Invalid shelf filters' }, 400, policy.headers);
-          const titles = await shelf(filters, env, fetchImpl);
-          return json({ titles, year: filters.year, genre: filters.genre, type: filters.type, stand: filters.stand, providers: filters.providers, ignoreStoreYear: filters.ignoreStoreYear }, 200, { ...policy.headers, 'cache-control': 'public, max-age=900, s-maxage=3600' });
+          const shelfPage = await shelf(filters, env, fetchImpl);
+          return json({ titles: shelfPage.titles, hasNextStand: shelfPage.hasNextStand, year: filters.year, genre: filters.genre, type: filters.type, stand: filters.stand, providers: filters.providers, ignoreStoreYear: filters.ignoreStoreYear }, 200, { ...policy.headers, 'cache-control': 'public, max-age=900, s-maxage=3600' });
         }
         return json({ error: 'Not found' }, 404, policy.headers);
       } catch (error) {
