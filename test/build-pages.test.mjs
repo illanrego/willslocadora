@@ -11,7 +11,7 @@ test('Pages build emits static assets, vendor Three.js, and relative entry paths
   execFileSync(process.execPath, ['scripts/build-pages.mjs'], { cwd: root, stdio: 'pipe' });
 
   assert.equal(existsSync(`${dist}/index.html`), true);
-  assert.equal(existsSync(`${dist}/vendor/three.module.js`), true);
+  assert.equal(existsSync(`${dist}/vendor/three.module.mjs`), true);
   assert.equal(existsSync(`${dist}/api-config.js`), true);
   const config = readFileSync(`${dist}/api-config.js`, 'utf8');
   assert.match(config, /locadora-api\.willstartpage\.workers\.dev\/v1/);

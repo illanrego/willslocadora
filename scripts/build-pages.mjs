@@ -11,7 +11,7 @@ if (!existsSync(three)) throw new Error('Three.js browser module is missing; run
 rmSync(dist, { recursive: true, force: true });
 cpSync(publicDir, dist, { recursive: true });
 mkdirSync(resolve(dist, 'vendor'), { recursive: true });
-cpSync(three, resolve(dist, 'vendor/three.module.js'));
+cpSync(three, resolve(dist, 'vendor/three.module.mjs'));
 
 const index = resolve(dist, 'index.html');
 const html = readFileSync(index, 'utf8')
@@ -22,7 +22,7 @@ writeFileSync(index, html);
 
 for (const file of ['immersive-shelf.mjs', 'vhs-3d.mjs', 'vhs-case.mjs', 'balcony.mjs']) {
   const path = resolve(dist, file);
-  writeFileSync(path, readFileSync(path, 'utf8').replaceAll("'/vendor/three.module.js'", "'./vendor/three.module.js'"));
+  writeFileSync(path, readFileSync(path, 'utf8').replaceAll("'/vendor/three.module.js'", "'./vendor/three.module.mjs'"));
 }
 
 console.log(`Built GitHub Pages site in ${dist}`);
