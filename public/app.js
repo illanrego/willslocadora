@@ -46,6 +46,7 @@
   const counterDialog = $('#counter-dialog');
   const sourcesDialog = $('#sources-dialog');
   let activeVhsViewer = null;
+  let activeViewerTitle = null;
   let viewerToken = 0;
   let immersiveShelf = null;
   let immersiveToken = 0;
@@ -645,10 +646,16 @@
   async function openTitle(title, hydrate = true, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
     const detail = $('#title-detail');
     const token = ++viewerToken;
-    activeVhsViewer?.dispose();
-    activeVhsViewer = null;
-    detail.className = 'title-detail';
+    activeViewerTitle = title;
     detail.dataset.titleKey = `${title.type}:${title.id}`;
+    if (activeVhsViewer && titleDialog.open) {
+      activeVhsViewer.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
+      if (hydrate) loadTitleMetadata(title).then(() => {
+        if (token === viewerToken && titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
+      }).catch(() => {});
+      return;
+    }
+    detail.className = 'title-detail';
     detail.replaceChildren();
     const stage = document.createElement('div');
     stage.className = 'vhs-stage';
@@ -676,14 +683,16 @@
         copy: getCopy(state.locale),
         atCounter: isAtCounter(title),
         onCounter: () => {
-          toggleCounter(title);
-          activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
+          const current = activeViewerTitle;
+          if (!current) return;
+          toggleCounter(current);
+          activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))));
         },
         onAvailability: () => {
-          const url = title.availabilityBR?.link;
+          const url = activeViewerTitle?.availabilityBR?.link;
           if (url) window.open(url, '_blank', 'noopener,noreferrer');
         },
-        onWatch: () => { window.location.href = createStremioUri(title); },
+        onWatch: () => { if (activeViewerTitle) window.location.href = createStremioUri(activeViewerTitle); },
         onClose: () => titleDialog.close(),
       });
     } catch (error) {
@@ -831,6 +840,7 @@
       viewerToken += 1;
       activeVhsViewer?.dispose();
       activeVhsViewer = null;
+      activeViewerTitle = null;
       $('#title-detail').replaceChildren();
     });
     $('#counter-open').addEventListener('click', () => { renderCounter(); counterDialog.showModal(); });
