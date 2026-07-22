@@ -14,6 +14,16 @@ function labelTexture(text, { width = 512, height = 160, color = '#f5e8c8', back
   const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
 }
 
+function noticeTexture(title, lines, { width = 520, height = 720, background = '#233d4b' } = {}) {
+  const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+  const context = canvas.getContext('2d'); context.fillStyle = background; context.fillRect(0, 0, width, height);
+  context.strokeStyle = '#d2a948'; context.lineWidth = 14; context.strokeRect(10, 10, width - 20, height - 20);
+  context.fillStyle = '#f5e8c8'; context.font = '900 42px Arial'; context.textAlign = 'center'; context.fillText(title, width / 2, 82, width - 48);
+  context.strokeStyle = '#d2a948'; context.lineWidth = 4; context.beginPath(); context.moveTo(42, 116); context.lineTo(width - 42, 116); context.stroke();
+  context.font = '900 27px Arial'; context.fillStyle = '#f7ddb0'; lines.forEach((line, index) => context.fillText(line, width / 2, 182 + index * 104, width - 62));
+  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
+}
+
 function box(width, height, depth, material, x, y, z, group) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material); mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); return mesh;
 }
@@ -46,7 +56,7 @@ function featuredMovies(titles) {
   return titles.filter((title) => title.type === 'movie').slice(0, 3);
 }
 
-export function createBalcony({ container, rental, year, onCounterSelect, onTitleSelect, onBagSelect, onTip }) {
+export function createBalcony({ container, rental, year, copy, onCounterSelect, onTitleSelect, onBagSelect, onTip }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.shadowMap.enabled = true;
   renderer.domElement.className = 'immersive-canvas'; renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute('aria-label', 'Locadora counter. Use arrow keys to choose a counter tape, Enter to inspect it, and plus or minus to zoom.');
@@ -61,9 +71,18 @@ export function createBalcony({ container, rental, year, onCounterSelect, onTitl
   const laminate = new THREE.MeshStandardMaterial({ color: 0x16456a, roughness: .72 }); const countertop = new THREE.MeshStandardMaterial({ color: 0x28658d, roughness: .5, metalness: .08 }); const dark = new THREE.MeshStandardMaterial({ color: 0x181714, roughness: .76 }); const steel = new THREE.MeshStandardMaterial({ color: 0x46606a, metalness: .65, roughness: .38 }); const paper = new THREE.MeshStandardMaterial({ color: 0xe9dfbd, roughness: .92 });
   box(24, 14, .35, new THREE.MeshStandardMaterial({ color: 0x202733, roughness: .92 }), 0, 3, -5.4, room);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(28, 22), new THREE.MeshStandardMaterial({ color: 0x303440, roughness: .9 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -2.5; floor.receiveShadow = true; scene.add(floor);
-  for (let row = 0; row < 4; row += 1) for (let col = 0; col < 18; col += 1) box(.45, .82, .18, new THREE.MeshStandardMaterial({ color: [0x6a2730, 0x304e67, 0x7c6332, 0x2f513f][(row + col) % 4], roughness: .7 }), -5.2 + col * .61, .4 + row * .92, -5.13, room);
-  for (const x of [-8.2, 8.2]) { const poster = box(2.1, 3.05, .08, new THREE.MeshStandardMaterial({ map: labelTexture(x < 0 ? 'SEXTA' : 'REBOBINE', { width: 300, height: 460, background: x < 0 ? '#8e3026' : '#315b73' }) }), x, 3.35, -5.08, room); poster.castShadow = false; }
   const posterLoader = new THREE.TextureLoader(); const posterTextures = new Set();
+  for (let row = 0; row < 4; row += 1) for (let col = 0; col < 18; col += 1) box(.45, .82, .18, new THREE.MeshStandardMaterial({ color: [0x6a2730, 0x304e67, 0x7c6332, 0x2f513f][(row + col) % 4], roughness: .7 }), -5.2 + col * .61, .4 + row * .92, -5.13, room);
+  const ownerFrame = box(2.25, 3.25, .08, new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .65 }), -8.2, 3.35, -5.08, room); ownerFrame.castShadow = false;
+  const ownerPortraitMaterial = new THREE.MeshStandardMaterial({ map: noticeTexture('WILL', [copy.ownerCaption], { width: 360, height: 540, background: '#8e3026' }), roughness: .82 });
+  const ownerPortrait = box(2.02, 2.62, .02, ownerPortraitMaterial, 0, .2, .052, ownerFrame); ownerPortrait.castShadow = false;
+  const ownerCaption = new THREE.Mesh(new THREE.PlaneGeometry(2.02, .35), new THREE.MeshBasicMaterial({ map: labelTexture(copy.ownerCaption, { width: 520, height: 100, background: '#8e3026' }) })); ownerCaption.position.set(0, -1.42, .07); ownerFrame.add(ownerCaption);
+  posterLoader.load(new URL('./images/illan-pixel-portrait.png', import.meta.url).href, (texture) => {
+    if (disposed || !ownerFrame.parent) return texture.dispose();
+    texture.colorSpace = THREE.SRGBColorSpace; posterTextures.add(texture); ownerPortraitMaterial.map.dispose(); ownerPortraitMaterial.map = texture; ownerPortraitMaterial.needsUpdate = true;
+  }, undefined, () => {});
+  const awardsFrame = box(2.65, 3.35, .08, new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .65 }), 8.1, 3.35, -5.08, room); awardsFrame.castShadow = false;
+  const awardsBoard = box(2.4, 3.05, .02, new THREE.MeshStandardMaterial({ map: noticeTexture(copy.collectiveAwards, copy.collectiveAwardLines, { width: 560, height: 720, background: '#315b73' }), roughness: .82 }), 0, 0, .052, awardsFrame); awardsBoard.castShadow = false;
   // The customer side is deliberately open: no railing or barrier crosses the counter view.
   box(13.8, 3.6, 2.4, laminate, 0, -.05, -.3, room); box(14.2, .28, 2.7, countertop, 0, 1.61, -.3, room);
   box(1.45, .035, .9, paper, -3.85, COUNTER_TOP + .018, .25, room);

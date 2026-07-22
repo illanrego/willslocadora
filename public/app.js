@@ -597,6 +597,7 @@
         container: stage,
         rental: rentalState(),
         year: state.year,
+        copy: { ownerCaption: t('ownerCaption'), collectiveAwards: t('collectiveAwards'), collectiveAwardLines: [t('collectiveAwardOne'), t('collectiveAwardTwo'), t('collectiveAwardThree')] },
         onCounterSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
         onBagSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
