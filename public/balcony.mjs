@@ -52,6 +52,15 @@ function pixDemonstrationTexture() {
   const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
 }
 
+function inspectionControls(container) {
+  const controls = document.createElement('div'); controls.className = 'scene-inspection-controls'; controls.hidden = true;
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'scene-inspection-close'; close.textContent = '×'; close.setAttribute('aria-label', 'Close');
+  const zoomIn = document.createElement('button'); zoomIn.type = 'button'; zoomIn.textContent = '+'; zoomIn.setAttribute('aria-label', 'Zoom in');
+  const zoomOut = document.createElement('button'); zoomOut.type = 'button'; zoomOut.textContent = '−'; zoomOut.setAttribute('aria-label', 'Zoom out');
+  controls.append(close, zoomIn, zoomOut); container.append(controls);
+  return { controls, close, zoomIn, zoomOut };
+}
+
 function featuredMovies(titles) {
   return titles.filter((title) => title.type === 'movie').slice(0, 3);
 }
@@ -61,6 +70,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   renderer.domElement.className = 'immersive-canvas'; renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute('aria-label', 'Locadora counter. Use arrow keys to choose a counter tape, Enter to inspect it, and plus or minus to zoom.');
   container.replaceChildren(renderer.domElement);
+  const inspector = inspectionControls(container);
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x07101b); scene.fog = new THREE.Fog(0x07101b, 12, 31);
   const camera = new THREE.PerspectiveCamera(39, 1, .1, 80); camera.position.set(0, 5.8, 17);
   const homeLookAt = new THREE.Vector3(0, 1.7, -1.2); const cameraLookAt = homeLookAt.clone();
@@ -123,7 +133,17 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
     counterObject.userData.action = 'counter'; interactive.push(counterObject);
   }
   const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let selected = 0; let hovered = -1; let disposed = false; let frame = 0; let zoom = 1; let baseDistance = 17; let pointerX = 0; let pointerY = 0;
+  let selected = 0; let hovered = -1; let disposed = false; let frame = 0; let zoom = 1; let baseDistance = 17; let pointerX = 0; let pointerY = 0; let focusedFrame = null;
+  const focusPosition = new THREE.Vector3(0, 2.65, 5.2);
+  const focusRotation = new THREE.Euler(0, 0, 0);
+  function focusFrame(next) {
+    if (focusedFrame === next) return;
+    focusedFrame = next; inspector.controls.hidden = false;
+  }
+  function closeFocus() { focusedFrame = null; inspector.controls.hidden = true; }
+  [ownerFrame, awardsFrame].forEach((item) => {
+    item.userData.homePosition = item.position.clone(); item.userData.homeRotation = item.rotation.clone(); item.userData.homeScale = item.scale.clone();
+  });
   function renderFeaturedPosters(titles) {
     featuredMovies(titles).forEach((title, index) => {
       const x = [-2.7, 0, 2.7][index];
@@ -144,14 +164,14 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   function zoomProgress() { return THREE.MathUtils.smoothstep((zoom - 1) / (1.65 - 1), 0, 1); }
   function updatePointer(event) { const rect = renderer.domElement.getBoundingClientRect(); pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1); pointerX = pointer.x * .34; pointerY = pointer.y * .18; }
   function intersect(event) { updatePointer(event); raycaster.setFromCamera(pointer, camera); return raycaster.intersectObjects(interactive, true)[0]; }
-  function activate(object) { let target = object; while (target && !target.userData.action) target = target.parent; if (target?.userData.action === 'title') onTitleSelect(tapeRecords[target.userData.index]?.title); else if (target?.userData.action === 'bag') onBagSelect(); else if (target?.userData.action === 'counter') onCounterSelect(); else if (target?.userData.action === 'tip') onTip(); else if (target?.userData.action === 'owner') onOwner(); else if (target?.userData.action === 'collective-awards') onCollectiveAwards(); }
-  function click(event) { const hit = intersect(event); if (hit) { const index = hit.object.userData.index; if (Number.isInteger(index)) selected = index; activate(hit.object); } }
+  function activate(object) { let target = object; while (target && !target.userData.action) target = target.parent; if (target?.userData.action === 'title') onTitleSelect(tapeRecords[target.userData.index]?.title); else if (target?.userData.action === 'bag') onBagSelect(); else if (target?.userData.action === 'counter') onCounterSelect(); else if (target?.userData.action === 'tip') onTip(); else if (target?.userData.action === 'owner') focusFrame(ownerFrame); else if (target?.userData.action === 'collective-awards') focusFrame(awardsFrame); }
+  function click(event) { const hit = intersect(event); if (!hit) { closeFocus(); return; } const index = hit.object.userData.index; if (Number.isInteger(index)) selected = index; activate(hit.object); }
   function move(event) { const hit = intersect(event); hovered = Number.isInteger(hit?.object.userData.index) ? hit.object.userData.index : -1; renderer.domElement.style.cursor = hit ? 'pointer' : 'default'; }
   function adjustZoom(amount) { zoom = THREE.MathUtils.clamp(zoom + amount, .72, 1.65); return zoom; }
   function wheel(event) { updatePointer(event); event.preventDefault(); adjustZoom(event.deltaY < 0 ? .1 : -.1); }
-  function keyDown(event) { if (event.key === '+' || event.key === '=') { adjustZoom(.12); event.preventDefault(); return; } if (event.key === '-' || event.key === '_') { adjustZoom(-.12); event.preventDefault(); return; } if (!tapeRecords.length) return; if (event.key === 'ArrowLeft') selected = Math.max(0, selected - 1); else if (event.key === 'ArrowRight') selected = Math.min(tapeRecords.length - 1, selected + 1); else if (event.key === 'ArrowUp') selected = Math.max(0, selected - TAPE_COLUMNS); else if (event.key === 'ArrowDown') selected = Math.min(tapeRecords.length - 1, selected + TAPE_COLUMNS); else if (event.key === 'Enter' || event.key === ' ') onTitleSelect(tapeRecords[selected]?.title); else return; event.preventDefault(); }
+  function keyDown(event) { if (event.key === 'Escape' && focusedFrame) { closeFocus(); event.preventDefault(); return; } if (event.key === '+' || event.key === '=') { adjustZoom(.12); event.preventDefault(); return; } if (event.key === '-' || event.key === '_') { adjustZoom(-.12); event.preventDefault(); return; } if (!tapeRecords.length) return; if (event.key === 'ArrowLeft') selected = Math.max(0, selected - 1); else if (event.key === 'ArrowRight') selected = Math.min(tapeRecords.length - 1, selected + 1); else if (event.key === 'ArrowUp') selected = Math.max(0, selected - TAPE_COLUMNS); else if (event.key === 'ArrowDown') selected = Math.min(tapeRecords.length - 1, selected + TAPE_COLUMNS); else if (event.key === 'Enter' || event.key === ' ') onTitleSelect(tapeRecords[selected]?.title); else return; event.preventDefault(); }
   function resize() { const width = Math.max(container.clientWidth, 1); const height = Math.max(container.clientHeight, 1); renderer.setSize(width, height, false); camera.aspect = width / height; baseDistance = camera.aspect < .75 ? 20 : 17; camera.updateProjectionMatrix(); }
-  const observer = new ResizeObserver(resize); observer.observe(container); renderer.domElement.addEventListener('click', click); renderer.domElement.addEventListener('pointermove', move); renderer.domElement.addEventListener('keydown', keyDown); renderer.domElement.addEventListener('wheel', wheel, { passive: false }); resize();
-  function render() { if (disposed) return; const overhead = zoomProgress(); const parallax = 1 - overhead; customerCamera.set(pointerX * parallax, 5.8 + pointerY * parallax, baseDistance / zoom); overheadCamera.set(overheadFocus.x, overheadFocus.y + Math.max(10, baseDistance / 1.65), overheadFocus.z); targetCamera.lerpVectors(customerCamera, overheadCamera, overhead); targetLookAt.lerpVectors(homeLookAt, overheadFocus, overhead); if (reducedMotion || overhead >= 1) { camera.position.copy(targetCamera); cameraLookAt.copy(targetLookAt); } else { camera.position.lerp(targetCamera, .12); cameraLookAt.lerp(targetLookAt, .12); } camera.lookAt(cameraLookAt); tapeRecords.forEach(({ vhs }, index) => { const active = index === selected || index === hovered; const targetZ = vhs.group.userData.baseZ + (active ? .22 : 0); const targetScale = active ? 1.05 : 1; if (reducedMotion) { vhs.group.position.z = targetZ; vhs.group.scale.setScalar(targetScale); } else { vhs.group.position.z += (targetZ - vhs.group.position.z) * .16; const nextScale = THREE.MathUtils.lerp(vhs.group.scale.x, targetScale, .16); vhs.group.scale.setScalar(nextScale); } vhs.material.emissive.setHex(active ? 0x221805 : 0); }); renderer.render(scene, camera); frame = requestAnimationFrame(render); } render();
+  const observer = new ResizeObserver(resize); observer.observe(container); renderer.domElement.addEventListener('click', click); renderer.domElement.addEventListener('pointermove', move); renderer.domElement.addEventListener('keydown', keyDown); renderer.domElement.addEventListener('wheel', wheel, { passive: false }); inspector.close.addEventListener('click', closeFocus); inspector.zoomIn.addEventListener('click', () => adjustZoom(.12)); inspector.zoomOut.addEventListener('click', () => adjustZoom(-.12)); resize();
+  function render() { if (disposed) return; const overhead = zoomProgress(); const parallax = 1 - overhead; customerCamera.set(pointerX * parallax, 5.8 + pointerY * parallax, baseDistance / zoom); overheadCamera.set(overheadFocus.x, overheadFocus.y + Math.max(10, baseDistance / 1.65), overheadFocus.z); targetCamera.lerpVectors(customerCamera, overheadCamera, overhead); targetLookAt.lerpVectors(homeLookAt, overheadFocus, overhead); [ownerFrame, awardsFrame].forEach((item) => { const active = item === focusedFrame; const targetPosition = active ? focusPosition : item.userData.homePosition; const targetRotation = active ? focusRotation : item.userData.homeRotation; const targetScale = active ? 1.7 : 1; if (reducedMotion) { item.position.copy(targetPosition); item.rotation.copy(targetRotation); item.scale.setScalar(targetScale); } else { item.position.lerp(targetPosition, .14); item.rotation.x += (targetRotation.x - item.rotation.x) * .14; item.rotation.y += (targetRotation.y - item.rotation.y) * .14; item.rotation.z += (targetRotation.z - item.rotation.z) * .14; item.scale.setScalar(THREE.MathUtils.lerp(item.scale.x, targetScale, .14)); } }); if (focusedFrame) { targetCamera.set(0, 3.3, Math.max(9, 15 / zoom)); targetLookAt.copy(focusPosition); } if (reducedMotion || overhead >= 1) { camera.position.copy(targetCamera); cameraLookAt.copy(targetLookAt); } else { camera.position.lerp(targetCamera, .12); cameraLookAt.lerp(targetLookAt, .12); } camera.lookAt(cameraLookAt); tapeRecords.forEach(({ vhs }, index) => { const active = index === selected || index === hovered; const targetZ = vhs.group.userData.baseZ + (active ? .22 : 0); const targetScale = active ? 1.05 : 1; if (reducedMotion) { vhs.group.position.z = targetZ; vhs.group.scale.setScalar(targetScale); } else { vhs.group.position.z += (targetZ - vhs.group.position.z) * .16; const nextScale = THREE.MathUtils.lerp(vhs.group.scale.x, targetScale, .16); vhs.group.scale.setScalar(nextScale); } vhs.material.emissive.setHex(active ? 0x221805 : 0); }); renderer.render(scene, camera); frame = requestAnimationFrame(render); } render();
   return { zoomIn() { return adjustZoom(.12); }, zoomOut() { return adjustZoom(-.12); }, dispose() { disposed = true; cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener('click', click); renderer.domElement.removeEventListener('pointermove', move); renderer.domElement.removeEventListener('keydown', keyDown); renderer.domElement.removeEventListener('wheel', wheel); tapeRecords.forEach(({ vhs }) => vhs.dispose()); posterTextures.forEach((texture) => texture.dispose()); scene.traverse((object) => { object.geometry?.dispose(); if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose()); else object.material?.dispose(); }); renderer.dispose(); renderer.domElement.remove(); } };
 }
