@@ -1,7 +1,9 @@
 # Locadora — product specification
 
-**Status:** initial plan  
-**Date:** 2026-07-19  
+> **Historical local-first plan:** The current authoritative public MVP direction is [`MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md`](MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md). Read it first. This document retains the detailed original discovery/store presentation plan and may contain superseded local-only assumptions.
+
+**Status:** historical initial plan
+**Date:** 2026-07-19
 **Product type:** local web GUI, with a future desktop wrapper only after the web experience proves itself
 
 ## One-line concept

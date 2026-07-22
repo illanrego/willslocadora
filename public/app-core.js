@@ -72,5 +72,73 @@
     return `stremio:///detail/${title.type}/${title.id}`;
   }
 
-  return { clampStoreYear, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear };
+  function rentalTitleKey(title) {
+    if (!title || (title.type !== 'movie' && title.type !== 'series') || !String(title.id || '').trim()) return '';
+    return `${title.type}:${title.id}`;
+  }
+
+  function normalizeRentalTitle(value) {
+    if (!value || typeof value !== 'object' || !rentalTitleKey(value)) return null;
+    return {
+      id: String(value.id),
+      type: value.type,
+      name: String(value.name || 'Untitled'),
+      year: parseReleaseYear(value.year) || null,
+      poster: typeof value.poster === 'string' ? value.poster : '',
+      background: typeof value.background === 'string' ? value.background : '',
+      description: typeof value.description === 'string' ? value.description : '',
+    };
+  }
+
+  function normalizeRentalTitles(value) {
+    const seen = new Set();
+    return (Array.isArray(value) ? value : []).map(normalizeRentalTitle).filter((title) => {
+      const key = rentalTitleKey(title);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function normalizeRentalState(value) {
+    let source = value;
+    if (typeof value === 'string') {
+      try { source = JSON.parse(value); } catch { source = {}; }
+    }
+    source = source && typeof source === 'object' ? source : {};
+    const counter = normalizeRentalTitles(source.counter);
+    const rentedTitles = normalizeRentalTitles(source.rented && source.rented.titles);
+    const rentedKeys = new Set(rentedTitles.map(rentalTitleKey));
+    const returned = (Array.isArray(source.returned) ? source.returned : []).map((entry) => {
+      const title = normalizeRentalTitle(entry && entry.title);
+      const watchedStatus = ['watched', 'not_watched', 'unknown'].includes(entry && entry.watchedStatus) ? entry.watchedStatus : 'unknown';
+      return title ? { title, watchedStatus } : null;
+    }).filter(Boolean);
+    return {
+      counter: rentedTitles.length ? [] : counter.filter((title) => !rentedKeys.has(rentalTitleKey(title))),
+      rented: rentedTitles.length ? { titles: rentedTitles } : null,
+      returned,
+    };
+  }
+
+  function rentCounterTitles(value) {
+    const state = normalizeRentalState(value);
+    if (!state.counter.length || state.rented) return state;
+    return { ...state, counter: [], rented: { titles: state.counter } };
+  }
+
+  function returnRentedTitle(value, key, watchedStatus) {
+    const state = normalizeRentalState(value);
+    if (!state.rented || !['watched', 'not_watched', 'unknown'].includes(watchedStatus)) return state;
+    const title = state.rented.titles.find((item) => rentalTitleKey(item) === key);
+    if (!title) return state;
+    const remaining = state.rented.titles.filter((item) => rentalTitleKey(item) !== key);
+    return {
+      ...state,
+      rented: remaining.length ? { titles: remaining } : null,
+      returned: [...state.returned, { title, watchedStatus }],
+    };
+  }
+
+  return { clampStoreYear, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, rentCounterTitles, returnRentedTitle };
 }));

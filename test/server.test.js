@@ -47,7 +47,7 @@ test('server binds to loopback and serves health plus static app', async (t) => 
   assert.match(audioPlayer, /\/audio\/music\/1990s\/\$\{trackId\}\.mp3/);
   assert.match(audioPlayer, /\/audio\/ambience\/store-room-tone\.mp3/);
   assert.match(audioPlayer, /fluorescent-hum-loop\.mp3', volume: 0\.08/);
-  assert.match(audioPlayer, /fluorescent-light-flicker\.mp3', volume: 0\.13/);
+  assert.match(audioPlayer, /fluorescent-light-flicker\.mp3', volume: 0\.08/);
   assert.match(audioPlayer, /function setVolume\(channel, value\)/);
   assert.match(audioPlayer, /fluorescent-light-flicker\.mp3/);
 });

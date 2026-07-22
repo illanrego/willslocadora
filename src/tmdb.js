@@ -3,9 +3,17 @@
 const TMDB_API_ROOT = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_ROOT = 'https://image.tmdb.org/t/p';
 const SUPPORTED_LOCALES = new Set(['pt-BR', 'en-US']);
-const TMDB_GENRES = Object.freeze({
+const TMDB_MOVIE_GENRES = Object.freeze({
   Action: 28, Adventure: 12, Animation: 16, Comedy: 35, Crime: 80, Documentary: 99, Drama: 18,
   Family: 10751, Fantasy: 14, Horror: 27, Mystery: 9648, Romance: 10749, 'Sci-Fi': 878, Thriller: 53,
+});
+const TMDB_TV_GENRES = Object.freeze({
+  Action: 10759, Adventure: 10759, Animation: 16, Comedy: 35, Crime: 80, Documentary: 99, Drama: 18,
+  Family: 10751, Fantasy: 10765, Horror: 9648, Mystery: 9648, Romance: 10766, 'Sci-Fi': 10765, Thriller: 9648,
+});
+const TMDB_TV_GENRE_NAMES = Object.freeze({
+  16: 'Animation', 18: 'Drama', 35: 'Comedy', 80: 'Crime', 99: 'Documentary', 9648: 'Mystery',
+  10751: 'Family', 10759: 'Action', 10765: 'Sci-Fi', 10766: 'Romance',
 });
 
 const PREFERRED_PROVIDER_IDS = Object.freeze({ 'Amazon Prime Video': 119 });
@@ -110,7 +118,8 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
       if (provider) selectedProviderIds.push(provider);
     }
     if (!selectedProviderIds.length) return [];
-    const genreIds = [...new Set((genres || []).map((genre) => TMDB_GENRES[genre]).filter(Boolean))];
+    const genreMap = tmdbType === 'tv' ? TMDB_TV_GENRES : TMDB_MOVIE_GENRES;
+    const genreIds = [...new Set((genres || []).map((genre) => genreMap[genre]).filter(Boolean))];
     const dateKey = tmdbType === 'movie' ? 'primary_release_date' : 'first_air_date';
     const fetchPage = (number) => {
       const query = new URLSearchParams({
@@ -134,6 +143,9 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
       } catch { return ''; }
     });
     const names = providerNames.length ? providerNames : [providerName];
+    const genreName = (genreId) => tmdbType === 'tv'
+      ? TMDB_TV_GENRE_NAMES[genreId]
+      : Object.keys(TMDB_MOVIE_GENRES).find((name) => TMDB_MOVIE_GENRES[name] === genreId);
     return discovered.flatMap((title, index) => {
       const id = imdbIds[index];
       if (!/^tt\d+$/.test(id)) return [];
@@ -142,7 +154,7 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
         type,
         name: title.title || title.name || 'Untitled',
         year: yearFromDate(title.release_date || title.first_air_date),
-        genres: (title.genre_ids || []).map((genreId) => Object.keys(TMDB_GENRES).find((name) => TMDB_GENRES[name] === genreId)).filter(Boolean),
+        genres: (title.genre_ids || []).map(genreName).filter(Boolean),
         poster: imageUrl(title.poster_path, 'w500'),
         background: imageUrl(title.backdrop_path, 'w1280'),
         description: title.overview || '',

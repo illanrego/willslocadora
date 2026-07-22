@@ -88,6 +88,7 @@ Security boundaries:
 - [ARCHITECTURE.md](ARCHITECTURE.md) — component and security boundaries
 - [TASKS.md](TASKS.md) — live ship board
 - [docs/integration-spike.md](docs/integration-spike.md) — actual Stremio handoff/catalogue evidence
+- [docs/balcony.md](docs/balcony.md) — frontend-first 3D Balcony brief: Balcão rental pile/bag, returns, counter atmosphere, and tip jar
 - [.hermes/plans/2026-07-20_160243-locadora-localization-store-expansion.md](.hermes/plans/2026-07-20_160243-locadora-localization-store-expansion.md) — future localization, immersive-store, balcony, and rental roadmap
 
 ## Product truth

@@ -8,6 +8,9 @@ const {
   filterByStore,
   normalizeTitle,
   parseReleaseYear,
+  normalizeRentalState,
+  rentCounterTitles,
+  returnRentedTitle,
 } = require('../public/app-core.js');
 
 test('clampStoreYear supports the full catalogue era through 2026', () => {
@@ -85,3 +88,51 @@ test('createStremioUri builds native detail routes without stream data', () => {
   assert.throws(() => createStremioUri({ type: 'movie', id: 'bad/id' }), /Invalid title/);
 });
 
+const balconyTitles = [
+  { id: 'tt0133093', type: 'movie', name: 'The Matrix', year: 1999 },
+  { id: 'tt0114369', type: 'movie', name: 'Se7en', year: 1995 },
+];
+
+test('rentCounterTitles moves the complete counter into one rented bag', () => {
+  const rental = rentCounterTitles({ counter: balconyTitles, rented: null, returned: [] });
+  assert.deepEqual(rental.counter, []);
+  assert.equal(rental.rented.titles.length, 2);
+  assert.deepEqual(rental.rented.titles.map((title) => title.id), ['tt0133093', 'tt0114369']);
+});
+
+test('returnRentedTitle keeps the bag while another title remains', () => {
+  const rented = rentCounterTitles({ counter: balconyTitles, rented: null, returned: [] });
+  const returned = returnRentedTitle(rented, 'movie:tt0133093', 'watched');
+  assert.equal(returned.rented.titles.length, 1);
+  assert.equal(returned.rented.titles[0].id, 'tt0114369');
+  assert.deepEqual(returned.returned.map((entry) => [entry.title.id, entry.watchedStatus]), [['tt0133093', 'watched']]);
+});
+
+test('returnRentedTitle removes the bag after the last return', () => {
+  const rented = rentCounterTitles({ counter: [balconyTitles[0]], rented: null, returned: [] });
+  const returned = returnRentedTitle(rented, 'movie:tt0133093', 'unknown');
+  assert.equal(returned.rented, null);
+  assert.equal(returned.returned.length, 1);
+});
+
+test('normalizeRentalState safely recovers from malformed persisted rental data', () => {
+  assert.deepEqual(normalizeRentalState('{not json'), { counter: [], rented: null, returned: [] });
+  const recovered = normalizeRentalState({
+    counter: [{ id: 'good', type: 'movie', name: 'Good' }, { id: '', type: 'movie', name: 'Bad' }],
+    rented: { titles: [{ id: 'rented', type: 'series', name: 'Rented' }, null] },
+    returned: [{ title: { id: 'returned', type: 'movie', name: 'Returned' }, watchedStatus: 'watched' }, { title: null }],
+  });
+  assert.deepEqual(recovered.counter, []);
+  assert.deepEqual(recovered.rented.titles.map((title) => title.id), ['rented']);
+  assert.deepEqual(recovered.returned.map((entry) => [entry.title.id, entry.watchedStatus]), [['returned', 'watched']]);
+});
+
+test('normalizeRentalState keeps the counter empty while a Locadora bag is rented', () => {
+  const rental = normalizeRentalState({
+    counter: [balconyTitles[0]],
+    rented: { titles: [balconyTitles[1]] },
+  });
+
+  assert.deepEqual(rental.counter, []);
+  assert.deepEqual(rental.rented.titles.map((title) => title.id), ['tt0114369']);
+});

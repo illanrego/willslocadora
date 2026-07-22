@@ -78,6 +78,7 @@ Status legend: [ ] todo · [~] in progress · [x] done
 
 ## Next session start here
 
-1. Run `npm start` and open `http://127.0.0.1:4173`.
-2. Playtest the complete browse → inspect → counter → Stremio loop.
-3. Record what feels wrong before adding features.
+1. Read `MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md`: it is the authoritative public MVP brief, including Supabase, the dedicated Worker boundary, rentals, reviews, and Letterboxd CSV interoperability.
+2. Resolve the remaining rental-package and due-date decisions at the end of that document before implementation. The MVP now requires passwordless email plus a unique public username; reviews are public by default unless explicitly private; ordinary cursewords are censored rather than deleting the review; and Letterboxd import starts with watchlist CSV only.
+3. Preserve the existing local browse → inspect → counter → Stremio loop while designing the public deployment; do not touch a visitor’s Stremio account/configuration.
+4. Build and playtest the frontend-only Balcony from `docs/balcony.md` next: local state for `available → counter → rented → returned`, with the Balcão pile transforming into a Locadora plastic rental bag in the same counter position, a return area, membership desk, rear-facing CRT, and separate tip jar. No database/backend is needed for this experiment.

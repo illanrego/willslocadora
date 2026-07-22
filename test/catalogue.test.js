@@ -210,6 +210,31 @@ test('TMDB uses Prime Video’s Brazil-searchable provider record when provider 
   assert.match(requests.find((url) => url.includes('/discover/movie')), /with_watch_providers=119/);
 });
 
+test('TMDB maps the Romance series aisle to its TV soap genre', async () => {
+  const requests = [];
+  const client = createTmdbClient({
+    apiKey: 'unit-test',
+    fetchImpl: async (url) => {
+      const value = String(url);
+      requests.push(value);
+      if (value.includes('/discover/tv') && value.includes('page=1')) return { ok: true, json: async () => ({ results: [{
+        id: 1, name: 'Brazilian Soap', first_air_date: '2005-01-01', genre_ids: [10766], poster_path: '/soap.jpg',
+      }] }) };
+      if (value.includes('/discover/tv') && value.includes('page=2')) return { ok: true, json: async () => ({ results: [] }) };
+      if (value.includes('/tv/1/external_ids')) return { ok: true, json: async () => ({ imdb_id: 'tt0000001' }) };
+      throw new Error(`Unexpected request: ${value}`);
+    },
+  });
+
+  const titles = await client.discoverProviderShelf({
+    year: 2010, genres: ['Romance'], type: 'series', providerIds: [307, 119],
+    providerNames: ['Globoplay', 'Amazon Prime Video'], page: 0,
+  });
+
+  assert.match(requests.find((url) => url.includes('/discover/tv')), /with_genres=10766/);
+  assert.deepEqual(titles[0].genres, ['Romance']);
+});
+
 test('CatalogueStore enriches compatible Stremio metadata with TMDB details when configured', async () => {
   const store = new CatalogueStore({
     tmdbClient: { enrich: async (title) => ({ ...title, certificationBR: '14', availabilityBR: { link: 'https://example.test/watch', providers: ['Netflix'] } }) },

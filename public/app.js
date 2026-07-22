@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { clampStoreYear, createStremioUri } = window.LocadoraCore;
+  const { clampStoreYear, createStremioUri, normalizeRentalState, rentCounterTitles, returnRentedTitle } = window.LocadoraCore;
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
@@ -16,6 +16,7 @@
     { labelKey: 'genreFamily', genres: ['Family', 'Animation'] },
     { labelKey: 'genreDocumentary', genres: ['Documentary'] },
   ];
+  const initialRental = loadRentalState();
   const state = {
     locale: normalizeLocale(localStorage.getItem('locadora.locale') || 'pt-BR'),
     year: clampStoreYear(localStorage.getItem('locadora.year') || 1999),
@@ -26,7 +27,8 @@
     lighting: loadLighting(),
     providerRegistry: [],
     titles: [],
-    counter: loadCounter(),
+    counter: initialRental.counter,
+    rental: { rented: initialRental.rented, returned: initialRental.returned },
     request: null,
     stand: 0,
     metadata: new Map(),
@@ -46,6 +48,7 @@
   let viewerToken = 0;
   let immersiveShelf = null;
   let immersiveToken = 0;
+  let balcony = null;
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
 
@@ -68,15 +71,25 @@
     }
   }
 
-  function loadCounter() {
-    try {
-      const value = JSON.parse(localStorage.getItem('locadora.counter') || '[]');
-      return Array.isArray(value) ? value : [];
-    } catch { return []; }
+  function loadRentalState() {
+    const saved = localStorage.getItem('locadora.rental');
+    if (saved) return normalizeRentalState(saved);
+    try { return normalizeRentalState({ counter: JSON.parse(localStorage.getItem('locadora.counter') || '[]') }); }
+    catch { return normalizeRentalState({}); }
+  }
+
+  function rentalState() {
+    return { counter: state.counter, rented: state.rental.rented, returned: state.rental.returned };
+  }
+
+  function applyRental(next) {
+    state.counter = next.counter;
+    state.rental = { rented: next.rented, returned: next.returned };
   }
 
   function saveCounter() {
     localStorage.setItem('locadora.counter', JSON.stringify(state.counter));
+    localStorage.setItem('locadora.rental', JSON.stringify(rentalState()));
     $('#counter-count').textContent = state.counter.length;
   }
 
@@ -342,6 +355,18 @@
     }
   }
 
+  function setImmersiveHudCollapsed(collapsed) {
+    const hud = $('#immersive-hud');
+    hud.classList.toggle('is-collapsed', Boolean(collapsed));
+    $('#immersive-hud-toggle').setAttribute('aria-expanded', String(!collapsed));
+    $('#immersive-hud-toggle').setAttribute('aria-label', collapsed ? 'Show immersive controls' : 'Hide immersive controls');
+    $('#immersive-hud-toggle').textContent = collapsed ? '⌄' : '⌃';
+    if (collapsed) {
+      setImmersiveFilters(false);
+      setImmersiveSettings(false);
+    }
+  }
+
   function setImmersiveFilters(open) {
     const expanded = state.mode === 'immersive' && Boolean(open);
     $('#immersive-filters').hidden = !expanded;
@@ -392,15 +417,29 @@
   }
 
   function setMode(mode) {
-    state.mode = mode === 'immersive' ? 'immersive' : 'normal';
+    state.mode = ['immersive', 'balcony'].includes(mode) ? mode : 'normal';
     const immersive = state.mode === 'immersive';
-    $('#normal-mode').hidden = immersive;
+    const isBalcony = state.mode === 'balcony';
+    $('#normal-mode').hidden = immersive || isBalcony;
     $('#immersive-room').hidden = !immersive;
-    document.body.classList.toggle('is-immersive', immersive);
+    $('#balcony-room').hidden = !isBalcony;
+    document.body.classList.toggle('is-immersive', immersive || isBalcony);
     setImmersiveSettings(false);
     $('#immersive-toggle').textContent = immersive ? t('return') : t('immersiveMode');
     $('#immersive-toggle').setAttribute('aria-pressed', String(immersive));
-    if (immersive) mountImmersive();
+    if (immersive) {
+      balcony?.dispose();
+      balcony = null;
+      $('#balcony-stage').replaceChildren();
+      mountImmersive();
+    }
+    else if (isBalcony) {
+      immersiveToken += 1;
+      immersiveShelf?.dispose();
+      immersiveShelf = null;
+      $('#immersive-stage').replaceChildren();
+      mountBalcony();
+    }
     else {
       immersiveToken += 1;
       immersiveShelf?.dispose();
@@ -411,6 +450,9 @@
       $('#music-toggle').setAttribute('aria-pressed', 'false');
       $('#music-toggle').textContent = t('storeMusic');
       $('#immersive-stage').replaceChildren();
+      balcony?.dispose();
+      balcony = null;
+      $('#balcony-stage').replaceChildren();
       $('#immersive-toggle').focus();
     }
   }
@@ -495,10 +537,75 @@
   }
 
   function toggleCounter(title) {
+    if (state.rental.rented) return;
     if (isAtCounter(title)) state.counter = state.counter.filter((item) => item.id !== title.id || item.type !== title.type);
-    else state.counter.push(title);
+    else if (!state.rental.rented?.titles.some((item) => item.id === title.id && item.type === title.type)) state.counter.push(title);
     saveCounter();
     renderCounter();
+    if (state.mode === 'balcony') refreshBalcony();
+  }
+
+  function rentCounter() {
+    applyRental(rentCounterTitles(rentalState()));
+    saveCounter();
+    renderBalconyPanel();
+    refreshBalcony();
+  }
+
+  function returnRental(title, watchedStatus) {
+    applyRental(returnRentedTitle(rentalState(), `${title.type}:${title.id}`, watchedStatus));
+    saveCounter();
+    renderBalconyPanel();
+    refreshBalcony();
+  }
+
+  async function mountBalcony() {
+    const stage = $('#balcony-stage');
+    balcony?.dispose();
+    stage.textContent = '';
+    try {
+      const { createBalcony } = await import('./balcony.mjs');
+      if (state.mode !== 'balcony') return;
+      balcony = createBalcony({
+        container: stage,
+        rental: rentalState(),
+        year: state.year,
+        onCounterSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
+        onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
+        onBagSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
+        onTip: () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; $('#balcony-dialog').showModal(); },
+      });
+    } catch (error) { stage.textContent = `The Balcony could not be loaded: ${error.message}`; }
+  }
+
+  function refreshBalcony() { if (state.mode === 'balcony') mountBalcony(); }
+
+  function renderBalconyPanel() {
+    const counterList = $('#balcony-counter-list');
+    const rentedList = $('#balcony-rented-list');
+    counterList.replaceChildren(); rentedList.replaceChildren();
+    const rented = state.rental.rented;
+    $('#rent-counter').disabled = !state.counter.length || Boolean(rented);
+    $('#balcony-panel-status').textContent = rented
+      ? (state.locale === 'pt-BR' ? `${rented.titles.length} fita(s) na sacola Locadora. Devolva uma por vez.` : `${rented.titles.length} tape(s) in the Locadora bag. Return one at a time.`)
+      : (state.locale === 'pt-BR' ? `${state.counter.length} fita(s) no Balcão.` : `${state.counter.length} tape(s) at the counter.`);
+    if (!state.counter.length) counterList.textContent = state.locale === 'pt-BR' ? 'Nenhuma fita selecionada no Balcão.' : 'No tapes selected at the counter.';
+    state.counter.forEach((title) => {
+      const item = document.createElement('article'); item.className = 'counter-item';
+      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name;
+      const actions = document.createElement('div'); actions.className = 'return-choices';
+      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'; inspect.addEventListener('click', () => openTitle(title));
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = state.locale === 'pt-BR' ? 'Remover' : 'Remove'; remove.addEventListener('click', () => toggleCounter(title));
+      text.append(name); actions.append(inspect, remove); item.append(text, actions); counterList.append(item);
+    });
+    if (!rented) { rentedList.textContent = state.locale === 'pt-BR' ? 'A sacola está vazia.' : 'The bag is empty.'; return; }
+    rented.titles.forEach((title) => {
+      const item = document.createElement('article'); item.className = 'counter-item balcony-return-item';
+      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; text.append(name);
+      const choices = document.createElement('div'); choices.className = 'return-choices';
+      ['watched', 'not_watched', 'unknown'].forEach((status) => { const button = document.createElement('button'); button.type = 'button'; button.textContent = status === 'watched' ? (state.locale === 'pt-BR' ? 'Assistida' : 'Watched') : status === 'not_watched' ? (state.locale === 'pt-BR' ? 'Não assistida' : 'Not watched') : (state.locale === 'pt-BR' ? 'Não sei' : 'Unknown'); button.addEventListener('click', () => returnRental(title, status)); choices.append(button); });
+      item.append(text, choices); rentedList.append(item);
+    });
   }
 
   async function openTitle(title, hydrate = true, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
@@ -655,6 +762,14 @@
     });
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
+    $('#balcony-toggle').addEventListener('click', () => setMode('balcony'));
+    $('#balcony-return-shelf').addEventListener('click', () => setMode('immersive'));
+    $('#balcony-panel-open').addEventListener('click', () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); });
+    $('#balcony-zoom-in').addEventListener('click', () => balcony?.zoomIn());
+    $('#balcony-zoom-out').addEventListener('click', () => balcony?.zoomOut());
+    $('#rent-counter').addEventListener('click', rentCounter);
+    $('#tip-jar').addEventListener('click', () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; });
+    $('#immersive-hud-toggle').addEventListener('click', () => setImmersiveHudCollapsed(!$('#immersive-hud').classList.contains('is-collapsed')));
     $('#immersive-filters-toggle').addEventListener('click', () => {
       setImmersiveFilters($('#immersive-filters').hidden);
     });

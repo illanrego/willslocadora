@@ -1,5 +1,7 @@
 # Locadora — architecture and integration plan
 
+> **Historical local-only architecture:** The current authoritative public MVP architecture is [`MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md`](MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md). Read it first. This document retains implementation detail for the existing local bridge and native Stremio integration, but its no-hosted-backend assumptions are superseded.
+
 ## System boundary
 
 ```text

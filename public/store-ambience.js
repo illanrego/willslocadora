@@ -6,7 +6,7 @@
     { url: '/audio/ambience/store-room-tone.mp3', volume: 0.2 },
   ];
   const effects = {
-    light: { url: '/audio/ambience/fluorescent-light-flicker.mp3', volume: 0.13, minDelay: 12_000, maxDelay: 28_000 },
+    light: { url: '/audio/ambience/fluorescent-light-flicker.mp3', volume: 0.08, minDelay: 12_000, maxDelay: 28_000 },
     vhs: { url: '/audio/ambience/vhs-eject.mp3', volume: 0.24, minDelay: 35_000, maxDelay: 80_000 },
     bell: { url: '/audio/ambience/shop-door-bell.mp3', volume: 0.28, minDelay: 110_000, maxDelay: 220_000 },
   };

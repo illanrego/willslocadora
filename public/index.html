@@ -95,7 +95,7 @@
         </div>
         <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" hidden>← Previous stand</button>
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
-        <header class="immersive-hud">
+        <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
             <label class="immersive-picker" for="immersive-genre-select">
               <span data-i18n="genre">Gênero</span>
@@ -109,9 +109,11 @@
               <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
               <button data-type="series" type="button" data-i18n="series">Séries</button>
             </div>
+            <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Hide immersive controls">⌃</button>
             <button id="immersive-go" type="button" data-i18n="go">Ir</button>
             <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false" data-i18n="filters">Filtros</button>
             <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false" data-i18n="sound">Som</button>
+            <button id="balcony-toggle" type="button" aria-controls="balcony-room" data-i18n="balcony">Balcão 3D</button>
             <button id="normal-mode-return" type="button" data-i18n="return">Voltar</button>
           </div>
           <div id="immersive-filters" class="immersive-filters" hidden>
@@ -166,6 +168,19 @@
         </header>
         <div id="immersive-stage" class="immersive-stage"></div>
       </section>
+
+      <section id="balcony-room" class="balcony-room" aria-label="Balcony rental counter" hidden>
+        <header class="balcony-hud">
+          <p data-i18n="balconyCaption">O balcão da Locadora · seleção local, sem pagamento</p>
+          <div class="balcony-zoom" role="group" aria-label="Balcony zoom">
+            <button id="balcony-zoom-in" type="button" aria-label="Zoom in">+</button>
+            <button id="balcony-zoom-out" type="button" aria-label="Zoom out">−</button>
+          </div>
+          <button id="balcony-panel-open" type="button" data-i18n="openCounter">Abrir controles do balcão</button>
+          <button id="balcony-return-shelf" type="button" data-i18n="returnShelf">Voltar à estante imersiva</button>
+        </header>
+        <div id="balcony-stage" class="balcony-stage"></div>
+      </section>
     </main>
 
     <footer>
@@ -186,6 +201,21 @@
       <button class="dialog-close" value="close" aria-label="Close counter">×</button>
     </form>
     <div id="counter-list" class="counter-list"></div>
+  </dialog>
+
+  <dialog id="balcony-dialog" class="panel-dialog balcony-dialog">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow" data-i18n="balcony">Balcão 3D</span><h2 data-i18n="counter">Balcão</h2></div>
+      <button class="dialog-close" value="close" aria-label="Close balcony controls">×</button>
+    </form>
+    <p id="balcony-panel-status" class="panel-copy" role="status" aria-live="polite"></p>
+    <div id="balcony-counter-list" class="counter-list"></div>
+    <button id="rent-counter" class="balcony-rent-button" type="button" data-i18n="rent">Alugar</button>
+    <section class="balcony-return-controls" aria-labelledby="balcony-return-heading">
+      <h3 id="balcony-return-heading" data-i18n="returns">Devoluções</h3>
+      <div id="balcony-rented-list" class="counter-list"></div>
+    </section>
+    <button id="tip-jar" class="tip-jar-button" type="button" data-i18n="tipJar">Mantenha as luzes da Locadora acesas.</button>
   </dialog>
 
   <dialog id="sources-dialog" class="panel-dialog sources-dialog">

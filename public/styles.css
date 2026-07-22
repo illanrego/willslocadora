@@ -136,7 +136,11 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-stand-button:hover, .immersive-stand-button:focus-visible { color: var(--blue-deep); background: var(--yellow); }
 .immersive-stand-button:disabled { opacity: .55; cursor: wait; }
 .immersive-hud { position: absolute; z-index: 5; top: .5rem; left: 50%; width: min(900px, calc(100% - 1rem)); padding: .3rem; color: var(--cream); background: rgba(16, 24, 39, .94); border: 1px solid rgba(246,235,204,.28); border-bottom: 3px solid var(--red); box-shadow: 0 5px 20px rgba(0,0,0,.55); transform: translateX(-50%); }
-.immersive-hud-strip { display: grid; grid-template-columns: minmax(180px, 1fr) 76px minmax(128px, .7fr) auto auto auto auto; gap: .25rem; align-items: stretch; min-height: 38px; }
+.immersive-hud-strip { display: grid; grid-template-columns: minmax(180px, 1fr) 76px minmax(128px, .7fr) auto auto auto auto auto; gap: .25rem; align-items: stretch; min-height: 38px; }
+.immersive-hud.is-collapsed { left: auto; right: .5rem; width: auto; padding: .2rem; transform: none; }
+.immersive-hud.is-collapsed .immersive-hud-strip { display: block; min-height: 0; }
+.immersive-hud.is-collapsed .immersive-hud-strip > :not(#immersive-hud-toggle), .immersive-hud.is-collapsed > :not(.immersive-hud-strip) { display: none; }
+.immersive-hud.is-collapsed #immersive-hud-toggle { width: 34px; min-height: 32px; padding: 0; font-size: 1rem; }
 .immersive-hud-strip > button, .immersive-format button { min-height: 38px; padding-inline: .6rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); background: transparent; cursor: pointer; font-size: .62rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .immersive-hud button:hover, .immersive-hud button:focus-visible, .immersive-hud button[aria-pressed="true"], .immersive-hud button[aria-expanded="true"] { color: var(--blue-deep); background: var(--yellow); outline: 0; }
 #immersive-go { color: var(--blue-deep); background: var(--yellow); }
@@ -163,6 +167,23 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .audio-setting input[type="range"] { flex: 1 1 110px; min-width: 110px; accent-color: var(--yellow); }
 .audio-setting output { font: 900 .65rem/1 "Courier New", monospace; }
 #immersive-status { grid-column: 1 / -1; padding: .4rem 1rem; text-align: center; background: rgba(16, 24, 39, .98); font: 700 .62rem/1 "Courier New", monospace; text-transform: uppercase; }
+
+.balcony-room { position: relative; min-height: 100vh; overflow: hidden; background: #07101b; }
+.balcony-stage { width: 100%; height: 100vh; min-height: 620px; }
+.balcony-hud { position: absolute; z-index: 5; top: .7rem; left: 50%; display: flex; align-items: center; gap: .45rem; width: min(780px, calc(100% - 1rem)); padding: .45rem; color: var(--cream); background: rgba(16,24,39,.94); border: 1px solid rgba(246,235,204,.3); box-shadow: 0 5px 20px rgba(0,0,0,.55); transform: translateX(-50%); }
+.balcony-hud p { flex: 1; margin: 0; font: 900 .62rem/1.25 "Courier New", monospace; text-transform: uppercase; }
+.balcony-hud button, .balcony-rent-button, .tip-jar-button { min-height: 38px; padding: .55rem .7rem; border: 1px solid var(--cream); color: var(--ink); background: var(--yellow); cursor: pointer; font: 900 .65rem/1 "Courier New", monospace; text-transform: uppercase; }
+.balcony-hud > button:last-child { color: var(--cream); background: var(--red); }
+.balcony-zoom { display: flex; gap: .25rem; }
+.balcony-hud .balcony-zoom button { display: grid; place-items: center; min-width: 38px; padding: 0; border-radius: 50%; font-size: 1.2rem; }
+.balcony-rent-button { width: 100%; margin: .5rem 0 1rem; background: #c84232; color: white; box-shadow: 3px 3px 0 #4c1814; }
+.balcony-rent-button:disabled { opacity: .48; cursor: not-allowed; }
+.balcony-return-controls { margin-top: 1rem; padding-top: .8rem; border-top: 1px dashed #6a5547; }
+.balcony-return-controls h3 { margin: 0; color: var(--yellow); font: 900 1.3rem/1 Impact, sans-serif; text-transform: uppercase; }
+.balcony-return-item { grid-template-columns: 1fr auto; }
+.return-choices { display: flex; flex-wrap: wrap; justify-content: end; gap: .25rem; }
+.return-choices button, .tip-jar-button { border: 1px solid #6a5547; padding: .4rem .5rem; background: #f0dfb7; color: #211914; cursor: pointer; font: 800 .62rem/1 Arial, sans-serif; }
+.tip-jar-button { width: 100%; margin-top: 1rem; color: var(--cream); background: #2d6a70; border-color: #8ec3bf; text-transform: none; }
 
 dialog { color: var(--ink); background: #211914; border: 1px solid #765640; box-shadow: 0 30px 100px #000; }
 dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
@@ -236,6 +257,12 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
   .immersive-stand-button { padding-inline: .65rem; }
   .immersive-previous-stand { left: 2rem; }
   .immersive-next-stand { right: 4rem; }
+  .balcony-hud { align-items: stretch; flex-wrap: wrap; }
+  .balcony-hud p { flex-basis: 100%; }
+  .balcony-hud button { flex: 1; }
+  .balcony-stage { min-height: 680px; }
+  .counter-item.balcony-return-item { grid-template-columns: 1fr; }
+  .return-choices { justify-content: start; }
 }
 
 @media (prefers-reduced-motion: reduce) {

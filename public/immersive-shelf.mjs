@@ -1,4 +1,6 @@
 import * as THREE from '/vendor/three.module.js';
+import { loadFeaturedTitles } from './featured-titles.mjs';
+import { createVhsCase } from './vhs-case.mjs';
 
 const COLUMNS = 10;
 const ROWS = 4;
@@ -16,40 +18,6 @@ function canvasTexture(width, height, draw) {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return { canvas, texture };
-}
-
-function drawCover(context, image) {
-  const width = context.canvas.width;
-  const height = context.canvas.height;
-  const imageWidth = image.naturalWidth || image.width;
-  const imageHeight = image.naturalHeight || image.height;
-  const scale = Math.max(width / imageWidth, height / imageHeight);
-  const drawWidth = imageWidth * scale;
-  const drawHeight = imageHeight * scale;
-  context.clearRect(0, 0, width, height);
-  context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
-}
-
-function drawPlaceholder(context, title) {
-  const { width, height } = context.canvas;
-  context.fillStyle = '#17130f';
-  context.fillRect(0, 0, width, height);
-  context.strokeStyle = '#c99a2e';
-  context.lineWidth = 8;
-  context.strokeRect(12, 12, width - 24, height - 24);
-  context.fillStyle = '#e7d8b1';
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  context.font = '900 25px Arial Narrow, sans-serif';
-  const words = String(title.name || 'Untitled').toUpperCase().split(/\s+/);
-  const lines = [];
-  for (const word of words) {
-    const current = lines.at(-1) || '';
-    if (!current) lines.push(word);
-    else if (context.measureText(`${current} ${word}`).width < width - 36) lines[lines.length - 1] = `${current} ${word}`;
-    else lines.push(word);
-  }
-  lines.slice(0, 4).forEach((line, index) => context.fillText(line, width / 2, height / 2 + (index - 1.5) * 32));
 }
 
 function drawSign(context, genre, year, type, theme, providers, providerImages, loading = false) {
@@ -117,7 +85,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.domElement.className = 'immersive-canvas';
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute('aria-label', `${genre} rental shelf. Use arrow keys to choose a tape and Enter to inspect it.`);
@@ -157,9 +125,21 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
   const featuredPosterGroup = new THREE.Group();
   const featuredPosterLoader = new THREE.TextureLoader();
+  const featuredPosterTextures = new Set();
   room.add(featuredPosterGroup);
-  function renderFeaturedPosters(nextTitles) {
+  function clearFeaturedPosters() {
+    featuredPosterTextures.forEach((texture) => texture.dispose());
+    featuredPosterTextures.clear();
+    featuredPosterGroup.traverse((object) => {
+      object.geometry?.dispose();
+      if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose());
+      else object.material?.dispose();
+    });
     featuredPosterGroup.clear();
+  }
+  function renderFeaturedPosters(nextTitles) {
+    if (disposed) return;
+    clearFeaturedPosters();
     featuredMovies(nextTitles).forEach((title, index) => {
       const frame = new THREE.Mesh(new THREE.BoxGeometry(4.8, 6.8, 0.08), new THREE.MeshStandardMaterial({ color: 0x171310, roughness: 0.65 }));
       frame.position.set([-9.2, 0, 9.2][index], 1.2, -2.94);
@@ -170,6 +150,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       featuredPosterGroup.add(frame);
       const posterUrl = title.posterUrl || (title.poster ? `/api/poster?${new URLSearchParams({ url: title.poster })}` : '');
       if (posterUrl) featuredPosterLoader.load(posterUrl, (texture) => {
+        if (disposed || frame.parent !== featuredPosterGroup) return texture.dispose();
+        texture.colorSpace = THREE.SRGBColorSpace;
+        featuredPosterTextures.add(texture);
         posterMaterial.map = texture;
         posterMaterial.needsUpdate = true;
       }, undefined, () => {});
@@ -177,12 +160,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   }
 
   async function loadFeaturedPosters(nextYear) {
-    try {
-      const response = await fetch(`/api/featured?year=${encodeURIComponent(nextYear)}`);
-      if (!response.ok) return;
-      const { titles: featured = [] } = await response.json();
-      renderFeaturedPosters(featured);
-    } catch {}
+    const featured = await loadFeaturedTitles(nextYear);
+    if (!disposed) renderFeaturedPosters(featured);
   }
 
   for (const x of [-6.05, 6.05]) {
@@ -261,7 +240,6 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   floor.receiveShadow = true;
   scene.add(floor);
 
-  const loader = new THREE.TextureLoader();
   const tapes = new THREE.Group();
   room.add(tapes);
   let tapeRecords = [];
@@ -286,11 +264,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
   function clearTapes() {
     for (const record of tapeRecords) {
-      record.cover.texture.dispose();
-      record.material.dispose();
-      record.front.geometry.dispose();
-      record.caseMesh.geometry.dispose();
-      record.caseMesh.material.dispose();
+      record.vhs.dispose();
       tapes.remove(record.group);
     }
     tapeRecords = [];
@@ -307,30 +281,14 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       group.rotation.y = (column - 4.5) * -0.007;
       group.userData.index = index;
 
-      const caseMaterial = new THREE.MeshStandardMaterial({ color: 0x171310, roughness: 0.7 });
-      const caseMesh = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.45, 0.28), caseMaterial);
-      caseMesh.castShadow = true;
+      const vhs = createVhsCase(title);
+      const { caseMesh, front } = vhs;
       caseMesh.userData.index = index;
-      group.add(caseMesh);
-
-      const cover = canvasTexture(256, 384, (context) => drawPlaceholder(context, title));
-      const material = new THREE.MeshStandardMaterial({ map: cover.texture, roughness: 0.64 });
-      const front = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 1.27), material);
-      front.position.z = 0.145;
       front.userData.index = index;
-      group.add(front);
+      group.add(vhs.group);
       tapes.add(group);
-      const record = { title, group, caseMesh, front, cover, material };
+      const record = { title, group, caseMesh, front, material: vhs.material, posterUrl: vhs.posterUrl, vhs };
       tapeRecords.push(record);
-
-      if (title.posterUrl) {
-        loader.load(title.posterUrl, (texture) => {
-          if (disposed || !tapeRecords.includes(record)) return texture.dispose();
-          drawCover(cover.canvas.getContext('2d'), texture.image);
-          cover.texture.needsUpdate = true;
-          texture.dispose();
-        }, undefined, () => {});
-      }
     });
     selected = Math.min(selected, Math.max(tapeRecords.length - 1, 0));
   }
@@ -441,7 +399,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     if (!hit) return;
     selected = hit.object.userData.index;
     const record = tapeRecords[selected];
-    if (record) onSelect(record.title, record.title.posterUrl);
+    if (record) onSelect(record.title, record.posterUrl);
   }
 
   function keyDown(event) {
@@ -462,7 +420,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     else if (event.key === 'ArrowDown') selected = Math.min(tapeRecords.length - 1, selected + COLUMNS);
     else if (event.key === 'Enter' || event.key === ' ') {
       const record = tapeRecords[selected];
-      if (record) onSelect(record.title, record.title.posterUrl);
+      if (record) onSelect(record.title, record.posterUrl);
     } else return;
     event.preventDefault();
   }
@@ -580,6 +538,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       renderer.domElement.removeEventListener('keydown', keyDown);
       renderer.domElement.removeEventListener('wheel', wheel);
       clearTapes();
+      clearFeaturedPosters();
       signCanvas.texture.dispose();
       standCanvas.texture.dispose();
       const geometries = new Set();
