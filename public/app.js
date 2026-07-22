@@ -5,6 +5,7 @@
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
+  const { createBoundedStandCache } = window.LocadoraStandCache;
   const genres = [
     { labelKey: 'genreAction', theme: 'Action & Adventure', genres: ['Action', 'Adventure'] },
     { labelKey: 'genreComedy', theme: 'Comedy', genres: ['Comedy'] },
@@ -35,7 +36,7 @@
     renderedTitleKeys: new Set(),
     mode: 'normal',
     hasNextStand: false,
-    standCache: new Map(),
+    standCache: createBoundedStandCache(3),
   };
 
   const $ = (selector) => document.querySelector(selector);
