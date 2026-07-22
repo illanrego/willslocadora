@@ -7,15 +7,15 @@
 
   const FALLBACK_THEME = Object.freeze({ backing: '#2f526b', trim: '#527f9e', sign: '#101827', lamp: '#c99a2e' });
   const GENRE_THEMES = Object.freeze({
-    'Action & Adventure': Object.freeze({ backing: '#70402b', trim: '#d47a3c', sign: '#30170f', lamp: '#f2a84b' }),
-    Comedy: Object.freeze({ backing: '#5b4b76', trim: '#b98645', sign: '#2a2137', lamp: '#f2c744' }),
-    Horror: Object.freeze({ backing: '#45252b', trim: '#8e343a', sign: '#1c1013', lamp: '#d6783b' }),
-    'Sci-Fi & Fantasy': Object.freeze({ backing: '#38346a', trim: '#8e8ae8', sign: '#1d1a42', lamp: '#a8b6ff' }),
-    Drama: Object.freeze({ backing: '#594133', trim: '#9b6945', sign: '#2b1d18', lamp: '#e2a65a' }),
-    'Crime & Thriller': Object.freeze({ backing: '#244b43', trim: '#6f9a7a', sign: '#102820', lamp: '#c0bf72' }),
-    Romance: Object.freeze({ backing: '#673b52', trim: '#c7758c', sign: '#351a2a', lamp: '#f2a16f' }),
-    'Family & Animation': Object.freeze({ backing: '#3f655d', trim: '#8ab86e', sign: '#203d39', lamp: '#f2d15c' }),
-    Documentary: Object.freeze({ backing: '#53634a', trim: '#a8a56c', sign: '#2d382b', lamp: '#ddd08a' }),
+    'Action & Adventure': Object.freeze({ backing: '#8a421f', trim: '#f09a3e', sign: '#3b1608', lamp: '#ffd06a' }),
+    Comedy: Object.freeze({ backing: '#a87913', trim: '#ffe27a', sign: '#503405', lamp: '#fff0a6' }),
+    Horror: Object.freeze({ backing: '#4c101b', trim: '#a92e43', sign: '#21060d', lamp: '#e86452' }),
+    'Sci-Fi & Fantasy': Object.freeze({ backing: '#49328b', trim: '#ab9cff', sign: '#21154d', lamp: '#d5ceff' }),
+    Drama: Object.freeze({ backing: '#6b302b', trim: '#d27b62', sign: '#341311', lamp: '#efaf79' }),
+    'Crime & Thriller': Object.freeze({ backing: '#5a1724', trim: '#bd4a61', sign: '#260811', lamp: '#f0b36b' }),
+    Romance: Object.freeze({ backing: '#873858', trim: '#f29ab1', sign: '#461628', lamp: '#ffd0a0' }),
+    'Family & Animation': Object.freeze({ backing: '#276550', trim: '#8ed179', sign: '#10362d', lamp: '#f4e06f' }),
+    Documentary: Object.freeze({ backing: '#4c6634', trim: '#b2c96a', sign: '#243318', lamp: '#e3d990' }),
   });
 
   function getGenreTheme(genre) {
