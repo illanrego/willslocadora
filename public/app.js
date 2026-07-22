@@ -327,6 +327,18 @@
     if (!goToCachedStand(state.stand + 1, 1)) loadShelf(state.stand + 1, true, 1);
   }
 
+  async function mountImmersiveFallback(stage) {
+    const { createTapeFallback } = await import('./tape-fallback.mjs');
+    immersiveShelf = createTapeFallback({
+      container: stage,
+      titles: immersiveTitles(),
+      heading: `${genreLabel(genres[state.genreIndex])} · ${state.year}`,
+      onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
+    });
+    $('#immersive-status').textContent = '3D is unavailable. Showing tape fronts instead.';
+    syncImmersiveStandControls();
+  }
+
   async function mountImmersive() {
     const token = ++immersiveToken;
     const stage = $('#immersive-stage');
@@ -351,7 +363,8 @@
       syncImmersiveStandControls();
     } catch (error) {
       if (token !== immersiveToken) return;
-      $('#immersive-status').textContent = `The immersive shelf could not be loaded: ${error.message}`;
+      try { await mountImmersiveFallback(stage); }
+      catch { $('#immersive-status').textContent = `The immersive shelf could not be loaded: ${error.message}`; }
     }
   }
 
@@ -559,6 +572,19 @@
     refreshBalcony();
   }
 
+  async function mountBalconyFallback(stage) {
+    const { createTapeFallback } = await import('./tape-fallback.mjs');
+    const rental = rentalState();
+    balcony = createTapeFallback({
+      container: stage,
+      titles: rental.rented?.titles || rental.counter,
+      heading: 'Balcão · tape fronts',
+      onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
+      onAction: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
+      actionLabel: state.locale === 'pt-BR' ? 'Abrir controles do balcão' : 'Open counter controls',
+    });
+  }
+
   async function mountBalcony() {
     const stage = $('#balcony-stage');
     balcony?.dispose();
@@ -575,7 +601,10 @@
         onBagSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
         onTip: () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; $('#balcony-dialog').showModal(); },
       });
-    } catch (error) { stage.textContent = `The Balcony could not be loaded: ${error.message}`; }
+    } catch (error) {
+      try { await mountBalconyFallback(stage); }
+      catch { stage.textContent = `The Balcony could not be loaded: ${error.message}`; }
+    }
   }
 
   function refreshBalcony() { if (state.mode === 'balcony') mountBalcony(); }

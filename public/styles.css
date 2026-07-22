@@ -281,3 +281,15 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .vhs-canvas.is-dragging { cursor: grabbing; }
 .vhs-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--cyan); }
 .vhs-stage-error { display: grid; place-items: center; padding: 2rem; color: #ffd9cf; font: 700 .8rem/1.5 "Courier New", monospace; text-align: center; }
+
+/* DOM-only recovery when WebGL or the Three.js module cannot load. */
+.tape-fallback { min-height: 100%; padding: 7rem 1rem 2rem; color: var(--cream); background: radial-gradient(circle at 50% 0, #28405a, #101827 58%, #06090f); text-align: center; overflow: auto; }
+.tape-fallback-note { margin: 0 0 .4rem; color: var(--yellow); font: 700 .7rem/1.4 "Courier New", monospace; text-transform: uppercase; }
+.tape-fallback-heading { margin: 0 0 1rem; font: 900 clamp(1.2rem, 4vw, 2.2rem)/1 Impact, Arial Narrow, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+.tape-fallback-action { margin: 0 0 1rem; }
+.tape-fallback-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: .9rem; max-width: 980px; margin: auto; text-align: left; }
+.tape-fallback-card { position: relative; min-height: 230px; padding: 0; overflow: hidden; border: 5px solid #181310; background: #2b2622; box-shadow: 6px 7px 0 #080706, 10px 14px 18px rgba(0,0,0,.45); cursor: pointer; }
+.tape-fallback-card img { width: 100%; height: 100%; position: absolute; inset: 0; object-fit: cover; background: #332921; }
+.tape-fallback-front { position: absolute; right: 0; bottom: 0; left: 0; display: flex; justify-content: space-between; gap: .5rem; padding: .45rem; color: #17120f; background: rgba(231,216,177,.94); font: 800 .66rem/1.1 "Courier New", monospace; }
+.tape-fallback-front strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tape-fallback-card:hover, .tape-fallback-card:focus-visible { transform: translateY(-5px); outline: 3px solid var(--yellow); outline-offset: 3px; }
