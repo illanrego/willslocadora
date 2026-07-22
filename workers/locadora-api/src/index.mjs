@@ -124,19 +124,30 @@ async function shelf(filters, env, fetchImpl) {
 async function titleMeta({ type, id, locale }, env, fetchImpl) {
   if (!['movie', 'series'].includes(type) || !/^[a-zA-Z0-9:_-]+$/.test(id) || !LOCALES.has(locale)) throw new Error('Invalid title metadata request');
   const tmdb = createTmdb(env, fetchImpl);
-  let title;
+  const tmdbType = type === 'series' ? 'tv' : 'movie';
+  let tmdbId = '';
   if (/^tt\d+$/.test(id)) {
     const found = await tmdb.request(`/find/${id}?external_source=imdb_id`, locale);
-    title = (type === 'series' ? found.tv_results : found.movie_results)?.[0];
-  } else if (/^tmdb:\d+$/.test(id)) {
-    const tmdbType = type === 'series' ? 'tv' : 'movie';
-    title = await tmdb.request(`/${tmdbType}/${id.slice(5)}`, locale);
-  }
-  if (!title) return { id, type };
+    tmdbId = String((type === 'series' ? found.tv_results : found.movie_results)?.[0]?.id || '');
+  } else if (/^tmdb:\d+$/.test(id)) tmdbId = id.slice(5);
+  if (!tmdbId) return { id, type };
+
+  const append = type === 'series' ? 'credits,watch/providers,content_ratings' : 'credits,watch/providers,release_dates';
+  const title = await tmdb.request(`/${tmdbType}/${tmdbId}?append_to_response=${append}`, locale);
+  const crew = title.credits?.crew || [];
+  const names = (items) => [...new Set(items.map((person) => person.name).filter(Boolean))];
+  const writers = names(crew.filter((person) => ['Writer', 'Screenplay', 'Story', 'Teleplay'].includes(person.job)));
+  const directors = names(crew.filter((person) => person.job === 'Director'));
+  const br = title['watch/providers']?.results?.BR || {};
+  const providers = br.flatrate || [];
+  const movieRating = title.release_dates?.results?.find((result) => result.iso_3166_1 === 'BR')?.release_dates?.find((release) => release.certification)?.certification || '';
+  const seriesRating = title.content_ratings?.results?.find((result) => result.iso_3166_1 === 'BR')?.rating || '';
   return {
     id, type, name: title.title || title.name || 'Untitled', year: yearFromDate(title.release_date || title.first_air_date),
     description: title.overview || '', poster: imageUrl(title.poster_path, 'w500'), background: imageUrl(title.backdrop_path, 'w1280'),
     imdbRating: title.vote_average ? String(title.vote_average) : '', genres: (title.genres || []).map((genre) => genre.name).filter(Boolean),
+    director: directors, writer: writers, cast: names((title.credits?.cast || []).slice(0, 10)), certificationBR: movieRating || seriesRating,
+    availabilityBR: { link: br.link || '', providers: providers.map((provider) => provider.provider_name).filter(Boolean), subscriptionProviders: providers.map((provider) => provider.provider_name).filter(Boolean), providerLogos: providers.map((provider) => ({ name: provider.provider_name, logo: imageUrl(provider.logo_path, 'w92') })).filter((provider) => provider.name && provider.logo) },
   };
 }
 
