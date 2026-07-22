@@ -11,10 +11,10 @@
     Comedy: Object.freeze({ backing: '#a87913', trim: '#ffe27a', sign: '#503405', lamp: '#fff0a6' }),
     Horror: Object.freeze({ backing: '#4c101b', trim: '#a92e43', sign: '#21060d', lamp: '#e86452' }),
     'Sci-Fi & Fantasy': Object.freeze({ backing: '#49328b', trim: '#ab9cff', sign: '#21154d', lamp: '#d5ceff' }),
-    Drama: Object.freeze({ backing: '#6b302b', trim: '#d27b62', sign: '#341311', lamp: '#efaf79' }),
+    Drama: Object.freeze({ backing: '#1e3557', trim: '#456d9c', sign: '#0e1b33', lamp: '#b7cef2' }),
     'Crime & Thriller': Object.freeze({ backing: '#5a1724', trim: '#bd4a61', sign: '#260811', lamp: '#f0b36b' }),
     Romance: Object.freeze({ backing: '#873858', trim: '#f29ab1', sign: '#461628', lamp: '#ffd0a0' }),
-    'Family & Animation': Object.freeze({ backing: '#276550', trim: '#8ed179', sign: '#10362d', lamp: '#f4e06f' }),
+    'Family & Animation': Object.freeze({ backing: '#2f526b', trim: '#527f9e', sign: '#101827', lamp: '#c99a2e' }),
     Documentary: Object.freeze({ backing: '#4c6634', trim: '#b2c96a', sign: '#243318', lamp: '#e3d990' }),
   });
 
