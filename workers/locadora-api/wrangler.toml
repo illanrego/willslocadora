@@ -2,6 +2,6 @@ name = "locadora-api"
 main = "src/index.mjs"
 compatibility_date = "2026-07-22"
 
-# Exact GitHub Pages production origin plus intentional local development origin.
+# Exact public origins plus intentional local development origin.
 [vars]
-ALLOWED_ORIGINS = "https://illanrego.github.io,http://127.0.0.1:4173"
+ALLOWED_ORIGINS = "https://illanrego.github.io,https://sitedoillan.com.br,http://127.0.0.1:4173"
