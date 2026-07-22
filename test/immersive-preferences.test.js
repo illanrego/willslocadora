@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
 
 const { GENRE_THEMES, getGenreTheme } = require('../public/genre-themes.js');
 const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = require('../public/immersive-preferences.js');
@@ -18,4 +19,10 @@ test('immersive lighting preferences clamp to readable defaults and valid bounds
   assert.deepEqual(normalizeLighting({ brightness: 155, warmth: 1000 }), { brightness: 150, warmth: 2200 });
   assert.match(kelvinToRgb(2200), /^#[0-9a-f]{6}$/i);
   assert.match(kelvinToRgb(4200), /^#[0-9a-f]{6}$/i);
+});
+
+test('localized labels do not choose the fallback shelf theme', () => {
+  const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
+  assert.match(app, /theme: 'Crime & Thriller'/);
+  assert.match(app, /getGenreTheme\(genre\.theme\)/);
 });

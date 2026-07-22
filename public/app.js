@@ -6,15 +6,15 @@
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
   const genres = [
-    { labelKey: 'genreAction', genres: ['Action', 'Adventure'] },
-    { labelKey: 'genreComedy', genres: ['Comedy'] },
-    { labelKey: 'genreHorror', genres: ['Horror'] },
-    { labelKey: 'genreSciFi', genres: ['Sci-Fi', 'Fantasy'] },
-    { labelKey: 'genreDrama', genres: ['Drama'] },
-    { labelKey: 'genreCrime', genres: ['Crime', 'Thriller', 'Mystery'] },
-    { labelKey: 'genreRomance', genres: ['Romance'] },
-    { labelKey: 'genreFamily', genres: ['Family', 'Animation'] },
-    { labelKey: 'genreDocumentary', genres: ['Documentary'] },
+    { labelKey: 'genreAction', theme: 'Action & Adventure', genres: ['Action', 'Adventure'] },
+    { labelKey: 'genreComedy', theme: 'Comedy', genres: ['Comedy'] },
+    { labelKey: 'genreHorror', theme: 'Horror', genres: ['Horror'] },
+    { labelKey: 'genreSciFi', theme: 'Sci-Fi & Fantasy', genres: ['Sci-Fi', 'Fantasy'] },
+    { labelKey: 'genreDrama', theme: 'Drama', genres: ['Drama'] },
+    { labelKey: 'genreCrime', theme: 'Crime & Thriller', genres: ['Crime', 'Thriller', 'Mystery'] },
+    { labelKey: 'genreRomance', theme: 'Romance', genres: ['Romance'] },
+    { labelKey: 'genreFamily', theme: 'Family & Animation', genres: ['Family', 'Animation'] },
+    { labelKey: 'genreDocumentary', theme: 'Documentary', genres: ['Documentary'] },
   ];
   const initialRental = loadRentalState();
   const state = {
@@ -99,8 +99,9 @@
   }
 
   function immersiveVisuals() {
+    const genre = genres[state.genreIndex];
     const providers = state.providers.map((id) => state.providerRegistry.find((provider) => provider.id === id)).filter(Boolean);
-    return { theme: getGenreTheme(genreLabel(genres[state.genreIndex])), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers };
+    return { theme: getGenreTheme(genre.theme), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers };
   }
 
   async function loadProviderRegistry() {
