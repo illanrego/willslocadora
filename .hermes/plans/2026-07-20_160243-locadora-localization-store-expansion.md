@@ -1,6 +1,6 @@
 # Locadora Localization, Store Expansion, and Rental Model Plan
 
-> **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
+> **Historical planning record (2026-07-20):** This plan predates the public Pages + Worker architecture and its SQLite/local-only persistence assumptions are superseded. Use `MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md` and `TASKS.md` for current work.
 
 **Goal:** Extend Locadora after the current rental loop is accepted with bilingual presentation, richer immersive-store controls and landmarks, multi-service discovery, then a durable local rental model and database schema.
 

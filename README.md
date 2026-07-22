@@ -1,96 +1,61 @@
-# Locadora
+# Will’s Locadora
 
-A local, genre-first 1990s video-rental interface for Stremio.
-
-Locadora is not a streaming service, torrent client, player, or Stremio add-on. It is a local discovery GUI: browse a period-aware catalogue, take titles to the counter, then hand them to native Stremio for stream resolution and playback.
+A free, Brazil-first online video-rental discovery experience: browse films as VHS, build a small rental selection, and open known titles in the visitor’s own Stremio app. Locadora is not a player and never promises playback.
 
 ## Current status
 
-A runnable MVP is implemented with no third-party application dependencies:
+The public browse experience is live:
 
-- store years from 1987–1999;
-- six genre aisles for movies and series;
-- live Stremio catalogue metadata through a loopback bridge;
-- VHS shelf, title detail, local counter queue, and responsive layout;
-- native `stremio:` detail handoff;
-- persistent PT/EN site copy with locale-aware TMDB title/synopsis enrichment;
-- safe HTTPS configuration for additional catalogue-capable add-ons;
-- Node test suite covering core rules, catalogue integration, redirect safety, and server behavior.
+- GitHub Pages serves the static frontend;
+- the dedicated read-only Cloudflare Worker keeps the TMDB key server-side;
+- genre/year/type shelves, Brazil subscription-provider filters, title metadata, posters, title logos, and Stremio handoff work publicly;
+- normal shelves, immersive Three.js shelves, and a DOM tape-card fallback are available;
+- the Balcony currently simulates `available → counter → rented → returned` in browser-local state.
 
-The default catalogue set combines public Cinemeta, TMDB, and IMDb manifests. Catalogue presence does not guarantee that a stream is available; the user's Stremio add-ons make that decision after handoff.
+The next product phase is durable account and rental data: Supabase Auth, profiles, rental history, reviews, and recommendations. See [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md).
 
-## Run locally
+## Product boundaries
 
-Requirements: Node.js 18 or newer and native Stremio.
+- TMDB supplies metadata and Brazil provider information. Provider listings are informational and never a playback guarantee.
+- Stremio owns visitors’ accounts, add-ons, streams, subtitles, casting, and playback. Locadora only opens a known `stremio:` title route.
+- Locadora never reads Stremio configuration, tokens, local files, or playback history.
+- The Worker is public and read-only. It has no Supabase credentials or user data.
 
-```bash
+## Local development
+
+Requirements: Node.js 18+.
+
+```sh
 npm start
 ```
 
-Open <http://127.0.0.1:4173>.
+Open <http://127.0.0.1:4173>. Local hosts use the local Node bridge; public hosts use the Worker configured in `public/api-config.js`.
 
-### Optional TMDB enrichment
+Run checks:
 
-Create a free non-commercial TMDB API key at <https://www.themoviedb.org/settings/api>. Keep it local — never put it in browser code, source control, or a public static host. Copy the supplied example, then put the key only in `.env`:
-
-```bash
-cp .env.example .env
-```
-
-```dotenv
-TMDB_API_KEY=your-local-key
-```
-
-`npm start` now reads `.env` locally. An explicit shell variable still wins when present.
-
-With a key, title inspection supplements the existing Stremio metadata with TMDB backdrops, title logos, expanded credits, Brazilian certification, and Brazil-region provider listings. The **Brazil streaming** filter supports multi-select OR discovery for Netflix, Prime Video, Max, Disney+, Globoplay, Paramount+, Apple TV+, MUBI, and Crunchyroll. It queries TMDB's Brazil `flatrate` catalogue first, then resolves compatible IMDb/Stremio IDs. By default it covers the selected year plus its previous nineteen years; **Ignore store year** deliberately searches the bounded 1920–2026 catalogue era instead. **Watch options** opens the Brazil link returned by TMDB (often a JustWatch result page); it is not a playback guarantee or necessarily a direct Netflix/Prime link. Trailers and clips are deliberately out of scope.
-
-The site starts in Brazilian Portuguese. Use the **Idioma / Language** selector in the header to switch between Portuguese (`pt-BR`) and English (`en-US`). TMDB metadata requests follow the selected locale and fall back to the catalogue/original value when a localized field is unavailable. Person names and provider identities are not machine-translated.
-
-> This product uses the TMDB API but is not endorsed or certified by TMDB.
-
-Run verification:
-
-```bash
+```sh
 npm test
+npm run build:pages
 ```
 
-There is no dependency-install step: the app uses browser APIs and the Node standard library.
+## Deployment
 
-## Core loop
+Pushing `main` runs `.github/workflows/deploy-pages.yml`, which builds and deploys the static Pages site. A Git push does **not** deploy the Worker.
 
-1. Choose a store year.
-2. Enter a genre aisle and browse releases from that year and the four years before it. Optionally select one or more Brazil streaming services for TMDB-confirmed `flatrate` availability (OR semantics) across the selected year and previous nineteen years, or explicitly ignore the store-year lens.
-3. Inspect a VHS case and optionally take it to the local counter queue.
-4. Select **Watch in Stremio**.
-5. Native Stremio resolves streams through its own configured add-ons.
+After changing `workers/locadora-api/`, deploy it separately:
 
-## Catalogue sources
+```sh
+cd workers/locadora-api
+npx wrangler deploy
+```
 
-The curated automatic sources are Cinemeta, The Movie Database Addon, and IMDb Catalogs. Locadora fetches multiple pages where an add-on advertises pagination, combines healthy responses, and ignores failed sources/pages. Cinemeta is currently the reliable historical backbone; community add-ons remain opportunistic.
+Worker setup and its exact CORS-origin configuration are documented in [workers/locadora-api/README.md](workers/locadora-api/README.md). Set `TMDB_API_KEY` only with Wrangler secrets; never put it in frontend code or a committed file.
 
-Torrentio is not a catalogue source: its manifest exposes streams, not title shelves. It still participates normally after **Watch in Stremio**, when native Stremio resolves the selected title through the user's installed stream add-ons.
+## Documents
 
-Open **Sources** to add another HTTPS Stremio add-on `manifest.json` URL. The localhost bridge validates the manifest, stores custom entries under ignored `.locadora/` state, and exposes only sanitized source metadata back to the browser.
-
-Security boundaries:
-
-- bridge binds only to `127.0.0.1`;
-- HTTP, embedded credentials, localhost/private-network hosts, and unsafe redirects are rejected;
-- each redirect host is DNS-checked before following;
-- browser code never receives configured manifest URLs;
-- browser code never receives the `TMDB_API_KEY`;
-- no Stremio account tokens or private Flatpak files are read.
-
-## Project documents
-
-- [PRODUCT_SPEC.md](PRODUCT_SPEC.md) — product scope and success criteria
-- [ARCHITECTURE.md](ARCHITECTURE.md) — component and security boundaries
-- [TASKS.md](TASKS.md) — live ship board
-- [docs/integration-spike.md](docs/integration-spike.md) — actual Stremio handoff/catalogue evidence
-- [docs/balcony.md](docs/balcony.md) — frontend-first 3D Balcony brief: Balcão rental pile/bag, returns, counter atmosphere, and tip jar
-- [.hermes/plans/2026-07-20_160243-locadora-localization-store-expansion.md](.hermes/plans/2026-07-20_160243-locadora-localization-store-expansion.md) — future localization, immersive-store, balcony, and rental roadmap
-
-## Product truth
-
-> Pick a store year. Browse the shelves that could exist then. Take a title to the counter; Stremio plays it.
+- [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md) — authoritative public MVP scope and data architecture.
+- [TASKS.md](TASKS.md) — current delivery board.
+- [docs/balcony.md](docs/balcony.md) — local-state Balcony interaction brief.
+- [docs/ambience.md](docs/ambience.md) — ambience/audio rules.
+- [docs/integration-spike.md](docs/integration-spike.md) — verified local Stremio handoff evidence.
+- [PRODUCT_SPEC.md](PRODUCT_SPEC.md) and [ARCHITECTURE.md](ARCHITECTURE.md) — historical local-first reference material.
