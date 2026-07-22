@@ -19,6 +19,10 @@ npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
+# Local oversized ambience masters (not suitable for GitHub repository storage)
+/public/audio/music/1990s/closing-time.mp3
+/public/audio/music/1990s/late-fee-dreams.mp3
+
 # Editor / OS
 .DS_Store
 .vscode/
