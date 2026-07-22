@@ -50,12 +50,13 @@ test('public worker normalizes title metadata without exposing its TMDB key', as
         return Response.json({ movie_results: [{ id: 603 }] });
       }
       assert.equal(url.pathname, '/3/movie/603');
-      assert.equal(url.searchParams.get('append_to_response'), 'credits,watch/providers,release_dates');
+      assert.equal(url.searchParams.get('append_to_response'), 'credits,watch/providers,release_dates,images');
       return Response.json({
         title: 'The Matrix', overview: 'A choice.', release_date: '1999-03-31', poster_path: '/matrix.jpg', vote_average: 8.2, genres: [{ id: 28, name: 'Action' }],
         credits: { crew: [{ job: 'Director', name: 'Lana Wachowski' }, { job: 'Screenplay', name: 'Lilly Wachowski' }], cast: [{ name: 'Keanu Reeves' }] },
         'watch/providers': { results: { BR: { link: 'https://www.themoviedb.org/movie/603/watch?locale=BR', flatrate: [{ provider_name: 'Netflix', logo_path: '/netflix.png' }] } } },
         release_dates: { results: [{ iso_3166_1: 'BR', release_dates: [{ certification: '14' }] }] },
+        images: { logos: [{ iso_639_1: 'pt', file_path: '/matrix-logo.png' }] },
       });
     },
   });
@@ -70,6 +71,7 @@ test('public worker normalizes title metadata without exposing its TMDB key', as
   assert.deepEqual(meta.writer, ['Lilly Wachowski']);
   assert.deepEqual(meta.cast, ['Keanu Reeves']);
   assert.equal(meta.certificationBR, '14');
+  assert.equal(meta.logo, 'https://image.tmdb.org/t/p/w500/matrix-logo.png');
   assert.deepEqual(meta.availabilityBR.providers, ['Netflix']);
   assert.equal(JSON.stringify(meta).includes('test-key'), false);
 });
