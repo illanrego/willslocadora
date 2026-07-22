@@ -5,12 +5,14 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = resolve(root, 'public');
 const dist = resolve(root, 'dist');
-const three = resolve(root, 'node_modules/three/build/three.module.js');
+const threeBuild = resolve(root, 'node_modules/three/build');
+const three = resolve(threeBuild, 'three.module.js');
 
 if (!existsSync(three)) throw new Error('Three.js browser module is missing; run npm install first.');
 rmSync(dist, { recursive: true, force: true });
 cpSync(publicDir, dist, { recursive: true });
 mkdirSync(resolve(dist, 'vendor'), { recursive: true });
+cpSync(threeBuild, resolve(dist, 'vendor'), { recursive: true });
 cpSync(three, resolve(dist, 'vendor/three.module.mjs'));
 
 const index = resolve(dist, 'index.html');
