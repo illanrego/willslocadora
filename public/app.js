@@ -70,8 +70,8 @@
     document.querySelectorAll('[data-i18n]').forEach((element) => { element.textContent = t(element.dataset.i18n); });
     document.querySelectorAll('[data-i18n-aria-label]').forEach((element) => { element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel)); });
     $('#locale-select').value = state.locale;
-    document.querySelectorAll('.genre-button').forEach((button, index) => { button.textContent = genreLabel(genres[index]); });
-    document.querySelectorAll('#immersive-genre-select option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
+    $('#genre-select').value = String(state.genreIndex);
+    document.querySelectorAll('#genre-select option, #immersive-genre-select option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
     $('#shelf-title').textContent = genreLabel(genres[state.genreIndex]);
     state.metadata.clear();
     if (refreshTitle && titleDialog.open) {
@@ -165,12 +165,7 @@
   function selectGenre(index, reload = true) {
     state.genreIndex = index;
     localStorage.setItem('locadora.genre', index);
-    document.querySelectorAll('.genre-button').forEach((button, buttonIndex) => {
-      button.classList.toggle('is-active', buttonIndex === index);
-      button.setAttribute('aria-current', buttonIndex === index ? 'page' : 'false');
-    });
-    const aisleNumber = $('#aisle-number');
-    if (aisleNumber) aisleNumber.textContent = String(index + 1).padStart(2, '0');
+    $('#genre-select').value = String(index);
     $('#immersive-genre-select').value = String(index);
     if (reload) loadShelf();
   }
@@ -407,6 +402,12 @@
       $('#immersive-filters').hidden = true;
       $('#immersive-filters-toggle').setAttribute('aria-expanded', 'false');
     }
+  }
+
+  function setNormalFilters(open) {
+    const expanded = Boolean(open);
+    $('#normal-provider-filters').hidden = !expanded;
+    $('#normal-filters-toggle').setAttribute('aria-expanded', String(expanded));
   }
 
   async function toggleStoreAudio(channel, buttonId, enabledLabel, disabledLabel) {
@@ -775,21 +776,17 @@
   }
 
   function wireEvents() {
-    const genreNav = $('#genre-nav');
+    const genreSelect = $('#genre-select');
     const immersiveGenreSelect = $('#immersive-genre-select');
     genres.forEach((genre, index) => {
-      const button = document.createElement('button');
-      button.className = `genre-button${index === state.genreIndex ? ' is-active' : ''}`;
-      button.type = 'button';
-      button.textContent = genreLabel(genre);
-      button.setAttribute('aria-current', index === state.genreIndex ? 'page' : 'false');
-      button.addEventListener('click', () => selectGenre(index));
-      genreNav.append(button);
-      const option = document.createElement('option');
-      option.value = index;
-      option.textContent = genreLabel(genre);
-      immersiveGenreSelect.append(option);
+      for (const select of [genreSelect, immersiveGenreSelect]) {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = genreLabel(genre);
+        select.append(option);
+      }
     });
+    genreSelect.value = String(state.genreIndex);
     immersiveGenreSelect.value = String(state.genreIndex);
     $('#locale-select').addEventListener('change', (event) => {
       state.locale = normalizeLocale(event.currentTarget.value);
@@ -807,6 +804,8 @@
       event.preventDefault();
       setYear($('#store-year-input').value);
     });
+    genreSelect.addEventListener('change', (event) => selectGenre(Number(event.currentTarget.value)));
+    $('#normal-filters-toggle').addEventListener('click', () => setNormalFilters($('#normal-provider-filters').hidden));
     $('#immersive-go').addEventListener('click', applyImmersiveFilters);
     $('#provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#provider-checkboxes'))));
     $('#ignore-store-year').addEventListener('change', (event) => setIgnoreStoreYear(event.currentTarget.checked));

@@ -33,6 +33,15 @@
       </div>
 
       <div class="browse-menu" aria-label="Browse controls">
+        <label class="browse-select" for="genre-select">
+          <span data-i18n="genre">Gênero</span>
+          <select id="genre-select" aria-label="Genre"></select>
+        </label>
+        <div class="format-switch" role="group" aria-label="Title format">
+          <button class="is-active" data-type="movie" type="button" data-i18n="movies">Filmes</button>
+          <button data-type="series" type="button" data-i18n="series">Séries</button>
+        </div>
+        <button id="normal-filters-toggle" class="normal-filters-toggle" type="button" aria-controls="normal-provider-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="filters">Filtros</span></button>
         <form id="year-form" class="year-machine" aria-label="Store year">
           <label class="year-label" for="store-year-input" data-i18n="storeYear">Ano da loja</label>
           <button class="year-step" id="year-back" type="button" data-i18n-aria-label="previousYear" aria-label="Ano anterior">−</button>
@@ -40,26 +49,23 @@
           <button class="year-step" id="year-forward" type="button" data-i18n-aria-label="nextYear" aria-label="Próximo ano">+</button>
           <button id="year-go" type="submit" data-i18n="go">Ir</button>
         </form>
-        <nav id="genre-nav" aria-label="Genres"></nav>
-        <div class="format-switch" role="group" aria-label="Title format">
-          <button class="is-active" data-type="movie" type="button" data-i18n="movies">Filmes</button>
-          <button data-type="series" type="button" data-i18n="series">Séries</button>
+        <div id="normal-provider-filters" class="normal-provider-filters" hidden>
+          <fieldset class="provider-picker">
+            <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
+            <div id="provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
+              <label><input type="checkbox" data-provider-id="netflix"> Netflix</label>
+              <label><input type="checkbox" data-provider-id="prime-video"> Prime Video</label>
+              <label><input type="checkbox" data-provider-id="max"> Max</label>
+              <label><input type="checkbox" data-provider-id="disney-plus"> Disney+</label>
+              <label><input type="checkbox" data-provider-id="globoplay"> Globoplay</label>
+              <label><input type="checkbox" data-provider-id="paramount-plus"> Paramount+</label>
+              <label><input type="checkbox" data-provider-id="apple-tv-plus"> Apple TV+</label>
+              <label><input type="checkbox" data-provider-id="mubi"> MUBI</label>
+              <label><input type="checkbox" data-provider-id="crunchyroll"> Crunchyroll</label>
+            </div>
+            <label class="ignore-year-control"><input id="ignore-store-year" type="checkbox"> <span data-i18n="ignoreStoreYear">Ignore store year</span></label>
+          </fieldset>
         </div>
-        <fieldset class="provider-picker">
-          <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
-          <div id="provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
-            <label><input type="checkbox" data-provider-id="netflix"> Netflix</label>
-            <label><input type="checkbox" data-provider-id="prime-video"> Prime Video</label>
-            <label><input type="checkbox" data-provider-id="max"> Max</label>
-            <label><input type="checkbox" data-provider-id="disney-plus"> Disney+</label>
-            <label><input type="checkbox" data-provider-id="globoplay"> Globoplay</label>
-            <label><input type="checkbox" data-provider-id="paramount-plus"> Paramount+</label>
-            <label><input type="checkbox" data-provider-id="apple-tv-plus"> Apple TV+</label>
-            <label><input type="checkbox" data-provider-id="mubi"> MUBI</label>
-            <label><input type="checkbox" data-provider-id="crunchyroll"> Crunchyroll</label>
-          </div>
-          <label class="ignore-year-control"><input id="ignore-store-year" type="checkbox"> <span data-i18n="ignoreStoreYear">Ignore store year</span></label>
-        </fieldset>
       </div>
     </header>
 

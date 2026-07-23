@@ -4,10 +4,13 @@ const { readFileSync } = require('node:fs');
 
 const page = readFileSync(require.resolve('../public/index.html'), 'utf8');
 
-test('normal browsing keeps genre, year, format, and streaming filters in the header menu', () => {
+test('normal browsing keeps compact select controls in the header and streaming filters behind a reveal', () => {
   const header = page.match(/<header id="store-header"[\s\S]*?<\/header>/)?.[0] || '';
   assert.match(header, /id="year-form"/);
-  assert.match(header, /id="genre-nav"/);
+  assert.match(header, /id="year-go"/);
+  assert.match(header, /id="genre-select"/);
+  assert.match(header, /id="normal-filters-toggle"[^>]*aria-controls="normal-provider-filters"/);
+  assert.match(header, /id="normal-provider-filters"[^>]*hidden/);
   assert.match(header, /class="format-switch"/);
   assert.match(header, /id="provider-checkboxes"/);
   assert.doesNotMatch(page, /<aside class="aisle-directory"/);
