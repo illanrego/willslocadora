@@ -71,7 +71,9 @@
     document.querySelectorAll('[data-i18n-aria-label]').forEach((element) => { element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel)); });
     $('#locale-select').value = state.locale;
     $('#genre-select').value = String(state.genreIndex);
-    document.querySelectorAll('#genre-select option, #immersive-genre-select option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
+    for (const select of [$('#genre-select'), $('#immersive-genre-select')]) {
+      select.querySelectorAll('option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
+    }
     $('#shelf-title').textContent = genreLabel(genres[state.genreIndex]);
     state.metadata.clear();
     if (refreshTitle && titleDialog.open) {
