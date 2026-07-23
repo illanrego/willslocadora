@@ -6,7 +6,7 @@ const ACTIONS = {
   counter: { x: 72, y: 1328, width: 276, height: 104 },
   availability: { x: 374, y: 1328, width: 276, height: 104 },
   watch: { x: 676, y: 1328, width: 276, height: 104 },
-  letterboxd: { x: 682, y: 210, width: 208, height: 52 },
+  letterboxd: { x: 722, y: 200, width: 200, height: 86 },
 };
 const PROVIDER_LOGOS = Object.freeze({
   Netflix: '/images/providers/netflix.svg',
@@ -67,8 +67,8 @@ function drawLetterboxdSticker(context) {
   const rect = ACTIONS.letterboxd;
   const centerX = rect.x + rect.width / 2;
   const centerY = rect.y + rect.height / 2;
-  const outerRadius = 34;
-  const innerRadius = 26;
+  const outerRadius = 42;
+  const innerRadius = 31;
   context.save();
   context.beginPath();
   for (let index = 0; index < 24; index += 1) {
@@ -79,7 +79,7 @@ function drawLetterboxdSticker(context) {
     if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
   }
   context.closePath();
-  context.fillStyle = '#f7edcf';
+  context.fillStyle = '#080d17';
   context.fill();
   context.strokeStyle = '#b7392d';
   context.lineWidth = 4;
@@ -185,7 +185,7 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
 
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 74px Impact, Arial Narrow, sans-serif';
-  wrappedText(context, title.displayTitle || title.name, 72, 250, 880, 75, 2);
+  wrappedText(context, title.displayTitle || title.name, 72, 250, 610, 75, 2);
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '800 23px Arial Narrow, sans-serif';
   const meta = [...(title.genres || []).slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`, title.certificationBR && `BR ${title.certificationBR}`].filter(Boolean).join('  ·  ');
