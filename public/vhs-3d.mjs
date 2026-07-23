@@ -6,8 +6,8 @@ const ACTIONS = {
   counter: { x: 72, y: 1328, width: 276, height: 104 },
   availability: { x: 374, y: 1328, width: 276, height: 104 },
   watch: { x: 676, y: 1328, width: 276, height: 104 },
-  letterboxd: { x: 712, y: 200, width: 220, height: 86 },
-  imdb: { x: 712, y: 292, width: 220, height: 86 },
+  letterboxd: { x: 856, y: 200, width: 96, height: 86 },
+  imdb: { x: 856, y: 292, width: 96, height: 86 },
 };
 const PROVIDER_LOGOS = Object.freeze({
   Netflix: '/images/providers/netflix.svg',
@@ -67,9 +67,9 @@ function wrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
 function drawSticker(context, rect, drawLogo) {
   const centerX = rect.x + rect.width / 2;
   const centerY = rect.y + rect.height / 2;
-  const outerRadiusX = 48;
+  const outerRadiusX = 68;
   const outerRadiusY = 42;
-  const innerRadiusX = 35;
+  const innerRadiusX = 55;
   const innerRadiusY = 31;
   context.save();
   context.beginPath();
