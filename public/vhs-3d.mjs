@@ -405,6 +405,18 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     renderer.domElement.setAttribute('aria-label', `${title.name} VHS ${detailFocus} inspection.`);
   }
 
+  function resetToFront() {
+    detailFocus = 'whole';
+    zoom = 1;
+    targetX = 0;
+    targetY = 0;
+    velocityY = 0;
+    group.rotation.x = 0;
+    group.rotation.y = 0;
+    updateCameraDistance();
+    renderer.domElement.setAttribute('aria-label', `${title.name} VHS case. Drag to rotate, double-click to flip, or press the arrow keys.`);
+  }
+
   function resize() {
     const width = Math.max(container.clientWidth, 1);
     const height = Math.max(container.clientHeight, 1);
@@ -524,7 +536,9 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     zoomOut() { adjustZoom(-VHS_ZOOM_STEP); },
     update(nextTitle, nextAtCounter, assets = {}) {
       title = nextTitle;
+      resetToFront();
       currentAtCounter = nextAtCounter;
+      logoImage = null;
       redraw();
       loadAsset('poster', assets.posterUrl);
       loadAsset('backdrop', assets.backdropUrl);
