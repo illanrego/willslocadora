@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { clampStoreYear, createLetterboxdUrl, createStremioUri, normalizeRentalState, rentCounterTitles, returnRentedTitle } = window.LocadoraCore;
+  const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, normalizeRentalState, rentCounterTitles, returnRentedTitle } = window.LocadoraCore;
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
@@ -710,6 +710,7 @@
         },
         onWatch: () => { if (activeViewerTitle) window.location.href = createStremioUri(activeViewerTitle); },
         onLetterboxd: () => { if (activeViewerTitle) window.open(createLetterboxdUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
+        onImdb: () => { if (activeViewerTitle) window.open(createImdbUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
         onClose: () => titleDialog.close(),
       });
     } catch (error) {

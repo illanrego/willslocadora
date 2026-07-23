@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   clampStoreYear,
+  createImdbUrl,
   createLetterboxdUrl,
   createStremioUri,
   deduplicateTitles,
@@ -93,6 +94,11 @@ test('createLetterboxdUrl uses Letterboxd’s stable external-ID redirects befor
   assert.equal(createLetterboxdUrl({ id: 'tt0133093', name: 'The Matrix' }), 'https://letterboxd.com/imdb/tt0133093/');
   assert.equal(createLetterboxdUrl({ id: 'tmdb:603', name: 'The Matrix' }), 'https://letterboxd.com/tmdb/603/');
   assert.equal(createLetterboxdUrl({ id: 'unknown', name: 'A Film, Perhaps' }), 'https://letterboxd.com/search/A%20Film%2C%20Perhaps/');
+});
+
+test('createImdbUrl uses the canonical title route before a search fallback', () => {
+  assert.equal(createImdbUrl({ id: 'tt0133093', name: 'The Matrix' }), 'https://www.imdb.com/title/tt0133093/');
+  assert.equal(createImdbUrl({ id: 'unknown', name: 'A Film, Perhaps' }), 'https://www.imdb.com/find/?q=A%20Film%2C%20Perhaps');
 });
 
 const balconyTitles = [

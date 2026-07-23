@@ -6,7 +6,8 @@ const ACTIONS = {
   counter: { x: 72, y: 1328, width: 276, height: 104 },
   availability: { x: 374, y: 1328, width: 276, height: 104 },
   watch: { x: 676, y: 1328, width: 276, height: 104 },
-  letterboxd: { x: 722, y: 200, width: 200, height: 86 },
+  letterboxd: { x: 712, y: 200, width: 220, height: 86 },
+  imdb: { x: 712, y: 292, width: 220, height: 86 },
 };
 const PROVIDER_LOGOS = Object.freeze({
   Netflix: '/images/providers/netflix.svg',
@@ -63,8 +64,7 @@ function wrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
   return y;
 }
 
-function drawLetterboxdSticker(context) {
-  const rect = ACTIONS.letterboxd;
+function drawSticker(context, rect, drawLogo) {
   const centerX = rect.x + rect.width / 2;
   const centerY = rect.y + rect.height / 2;
   const outerRadius = 42;
@@ -84,13 +84,33 @@ function drawLetterboxdSticker(context) {
   context.strokeStyle = '#b7392d';
   context.lineWidth = 4;
   context.stroke();
-  for (const [index, color] of ['#00e054', '#40bcf4', '#ff8000'].entries()) {
-    context.fillStyle = color;
-    context.beginPath();
-    context.arc(centerX - 28 + index * 28, centerY, 14, 0, Math.PI * 2);
-    context.fill();
-  }
+  drawLogo(centerX, centerY);
   context.restore();
+}
+
+function drawLetterboxdSticker(context) {
+  drawSticker(context, ACTIONS.letterboxd, (centerX, centerY) => {
+    for (const [index, color] of ['#00e054', '#40bcf4', '#ff8000'].entries()) {
+      context.fillStyle = color;
+      context.beginPath();
+      context.arc(centerX - 28 + index * 28, centerY, 14, 0, Math.PI * 2);
+      context.fill();
+    }
+  });
+}
+
+function drawImdbSticker(context) {
+  drawSticker(context, ACTIONS.imdb, (centerX, centerY) => {
+    context.fillStyle = '#f5c518';
+    context.fillRect(centerX - 46, centerY - 17, 92, 34);
+    context.fillStyle = '#080d17';
+    context.font = '900 25px Arial Black, sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('IMDb', centerX, centerY + 1);
+    context.textAlign = 'left';
+    context.textBaseline = 'alphabetic';
+  });
 }
 
 function drawFront(context, title, copy) {
@@ -182,6 +202,7 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   context.fillText(`${title.type === 'series' ? copy.homeVideoSeries : copy.featurePresentation} · ${title.year || copy.yearUnknown}`, 72, 130);
   drawBarcode(context, title.id, 596, 68, 356, 126);
   drawLetterboxdSticker(context);
+  drawImdbSticker(context);
 
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 74px Impact, Arial Narrow, sans-serif';
@@ -310,7 +331,7 @@ function drawPoster(context, image, title, logoImage = null) {
   context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 92, 1366);
 }
 
-export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, onCounter, onAvailability, onWatch, onLetterboxd, onClose, copy }) {
+export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onClose, copy }) {
   const labels = { noSynopsis: 'No synopsis was included by this catalogue source.', ...copy };
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -507,6 +528,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       const x = hit.uv.x * TEXTURE_WIDTH;
       const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
       if (inside(ACTIONS.letterboxd, x, y)) return onLetterboxd?.();
+      if (inside(ACTIONS.imdb, x, y)) return onImdb?.();
       if (inside(ACTIONS.counter, x, y)) return onCounter();
       if (inside(ACTIONS.availability, x, y)) return onAvailability();
       if (inside(ACTIONS.watch, x, y)) return onWatch();
@@ -519,7 +541,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     if (hit.object.userData.surface === 'back' && hit.uv) {
       const x = hit.uv.x * TEXTURE_WIDTH;
       const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
-      if (inside(ACTIONS.letterboxd, x, y) || inside(ACTIONS.counter, x, y) || inside(ACTIONS.availability, x, y) || inside(ACTIONS.watch, x, y)) return;
+      if (inside(ACTIONS.letterboxd, x, y) || inside(ACTIONS.imdb, x, y) || inside(ACTIONS.counter, x, y) || inside(ACTIONS.availability, x, y) || inside(ACTIONS.watch, x, y)) return;
     }
     targetY += Math.PI;
   }

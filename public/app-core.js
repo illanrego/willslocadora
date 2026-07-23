@@ -65,6 +65,12 @@
     return Array.from(unique.values());
   }
 
+  function createImdbUrl(title) {
+    const id = String(title?.id || '');
+    if (/^tt\d+$/.test(id)) return `https://www.imdb.com/title/${id}/`;
+    return `https://www.imdb.com/find/?q=${encodeURIComponent(String(title?.name || ''))}`;
+  }
+
   function createLetterboxdUrl(title) {
     const id = String(title?.id || '');
     if (/^tt\d+$/.test(id)) return `https://letterboxd.com/imdb/${id}/`;
@@ -148,5 +154,5 @@
     };
   }
 
-  return { clampStoreYear, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, rentCounterTitles, returnRentedTitle };
+  return { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, rentCounterTitles, returnRentedTitle };
 }));
