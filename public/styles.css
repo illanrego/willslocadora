@@ -139,7 +139,6 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-hud-strip { display: grid; grid-template-columns: minmax(180px, 1fr) 76px minmax(128px, .7fr) auto auto auto auto auto; gap: .25rem; align-items: stretch; min-height: 38px; }
 .immersive-hud.is-collapsed { left: auto; right: .5rem; width: auto; padding: .2rem; transform: none; }
 .immersive-hud.is-collapsed .immersive-hud-strip { display: block; min-height: 0; }
-.immersive-hud.is-collapsed .immersive-hud-strip > :not(#immersive-hud-toggle), .immersive-hud.is-collapsed > :not(.immersive-hud-strip) { display: none; }
 .immersive-hud.is-collapsed #immersive-hud-toggle { width: 34px; min-height: 32px; padding: 0; font-size: 1rem; }
 .immersive-hud-strip > button, .immersive-format button { min-height: 38px; padding-inline: .6rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); background: transparent; cursor: pointer; font-size: .62rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .immersive-hud button:hover, .immersive-hud button:focus-visible, .immersive-hud button[aria-pressed="true"], .immersive-hud button[aria-expanded="true"] { color: var(--blue-deep); background: var(--yellow); outline: 0; }

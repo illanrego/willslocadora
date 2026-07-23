@@ -4,6 +4,7 @@ const { readFileSync } = require('node:fs');
 
 const page = readFileSync(require.resolve('../public/index.html'), 'utf8');
 const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
+const css = readFileSync(require.resolve('../public/styles.css'), 'utf8');
 
 test('normal browsing keeps compact select controls in the header and streaming filters behind a reveal', () => {
   const header = page.match(/<header id="store-header"[\s\S]*?<\/header>/)?.[0] || '';
@@ -26,4 +27,9 @@ test('immersive navigation separates Balcony from settings and filters', () => {
 test('locale refresh relabels each genre selector without indexing across both option lists', () => {
   assert.doesNotMatch(app, /#genre-select option, #immersive-genre-select option/);
   assert.match(app, /for \(const select of \[\$\('#genre-select'\), \$\('#immersive-genre-select'\)\]\) \{\s*select\.querySelectorAll\('option'\)\.forEach\(\(option, index\) => \{ option\.textContent = genreLabel\(genres\[index\]\); \}\);/);
+});
+
+test('collapsed immersive HUD keeps its nested restore button visible', () => {
+  assert.doesNotMatch(css, /\.immersive-hud\.is-collapsed \.immersive-hud-strip > :not\(#immersive-hud-toggle\)/);
+  assert.match(css, /\.immersive-hud\.is-collapsed \.immersive-hud-strip > :not\(\.immersive-menu-actions\), \.immersive-hud\.is-collapsed \.immersive-menu-actions > :not\(#immersive-hud-toggle\)/);
 });
