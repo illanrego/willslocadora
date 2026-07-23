@@ -6,7 +6,7 @@ const ACTIONS = {
   counter: { x: 72, y: 1328, width: 276, height: 104 },
   availability: { x: 374, y: 1328, width: 276, height: 104 },
   watch: { x: 676, y: 1328, width: 276, height: 104 },
-  letterboxd: { x: 744, y: 54, width: 212, height: 82 },
+  letterboxd: { x: 682, y: 210, width: 208, height: 52 },
 };
 const PROVIDER_LOGOS = Object.freeze({
   Netflix: '/images/providers/netflix.svg',
@@ -65,17 +65,32 @@ function wrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
 
 function drawLetterboxdSticker(context) {
   const rect = ACTIONS.letterboxd;
-  context.fillStyle = 'rgba(16,24,39,.94)';
-  context.fillRect(rect.x, rect.y, rect.width, rect.height);
-  context.strokeStyle = '#f7edcf';
+  const centerX = rect.x + rect.width / 2;
+  const centerY = rect.y + rect.height / 2;
+  const outerRadius = 34;
+  const innerRadius = 26;
+  context.save();
+  context.beginPath();
+  for (let index = 0; index < 24; index += 1) {
+    const angle = -Math.PI / 2 + index * Math.PI / 12;
+    const radius = index % 2 ? innerRadius : outerRadius;
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius;
+    if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
+  }
+  context.closePath();
+  context.fillStyle = '#f7edcf';
+  context.fill();
+  context.strokeStyle = '#b7392d';
   context.lineWidth = 4;
-  context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+  context.stroke();
   for (const [index, color] of ['#00e054', '#40bcf4', '#ff8000'].entries()) {
     context.fillStyle = color;
     context.beginPath();
-    context.arc(rect.x + 62 + index * 44, rect.y + 41, 21, 0, Math.PI * 2);
+    context.arc(centerX - 28 + index * 28, centerY, 14, 0, Math.PI * 2);
     context.fill();
   }
+  context.restore();
 }
 
 function drawFront(context, title, copy) {
@@ -91,7 +106,6 @@ function drawFront(context, title, copy) {
   context.fillStyle = '#66583f';
   context.font = '700 30px Courier New, monospace';
   context.fillText(`${title.year || copy.yearUnknown} · ${String(title.type || copy.video).toUpperCase()}`, 108, 1350);
-  drawLetterboxdSticker(context);
 }
 
 function drawButton(context, rect, label, fill, ink) {
@@ -167,6 +181,7 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   context.font = '700 18px Courier New, monospace';
   context.fillText(`${title.type === 'series' ? copy.homeVideoSeries : copy.featurePresentation} · ${title.year || copy.yearUnknown}`, 72, 130);
   drawBarcode(context, title.id, 596, 68, 356, 126);
+  drawLetterboxdSticker(context);
 
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 74px Impact, Arial Narrow, sans-serif';
@@ -293,7 +308,6 @@ function drawPoster(context, image, title, logoImage = null) {
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '700 24px Courier New, monospace';
   context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 92, 1366);
-  drawLetterboxdSticker(context);
 }
 
 export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, onCounter, onAvailability, onWatch, onLetterboxd, onClose, copy }) {
@@ -489,14 +503,10 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     }
     const hit = pick(event);
     if (!hit) return onClose();
-    if (hit.object.userData.surface === 'front' && hit.uv) {
-      const x = hit.uv.x * TEXTURE_WIDTH;
-      const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
-      if (inside(ACTIONS.letterboxd, x, y)) return onLetterboxd?.();
-    }
     if (hit.object.userData.surface === 'back' && hit.uv) {
       const x = hit.uv.x * TEXTURE_WIDTH;
       const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
+      if (inside(ACTIONS.letterboxd, x, y)) return onLetterboxd?.();
       if (inside(ACTIONS.counter, x, y)) return onCounter();
       if (inside(ACTIONS.availability, x, y)) return onAvailability();
       if (inside(ACTIONS.watch, x, y)) return onWatch();
@@ -509,7 +519,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     if (hit.object.userData.surface === 'back' && hit.uv) {
       const x = hit.uv.x * TEXTURE_WIDTH;
       const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
-      if (inside(ACTIONS.counter, x, y) || inside(ACTIONS.availability, x, y) || inside(ACTIONS.watch, x, y)) return;
+      if (inside(ACTIONS.letterboxd, x, y) || inside(ACTIONS.counter, x, y) || inside(ACTIONS.availability, x, y) || inside(ACTIONS.watch, x, y)) return;
     }
     targetY += Math.PI;
   }
