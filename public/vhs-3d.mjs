@@ -67,15 +67,18 @@ function wrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
 function drawSticker(context, rect, drawLogo) {
   const centerX = rect.x + rect.width / 2;
   const centerY = rect.y + rect.height / 2;
-  const outerRadius = 42;
-  const innerRadius = 31;
+  const outerRadiusX = 48;
+  const outerRadiusY = 42;
+  const innerRadiusX = 35;
+  const innerRadiusY = 31;
   context.save();
   context.beginPath();
   for (let index = 0; index < 24; index += 1) {
     const angle = -Math.PI / 2 + index * Math.PI / 12;
-    const radius = index % 2 ? innerRadius : outerRadius;
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius;
+    const radiusX = index % 2 ? innerRadiusX : outerRadiusX;
+    const radiusY = index % 2 ? innerRadiusY : outerRadiusY;
+    const x = centerX + Math.cos(angle) * radiusX;
+    const y = centerY + Math.sin(angle) * radiusY;
     if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
   }
   context.closePath();
