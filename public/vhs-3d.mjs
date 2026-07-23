@@ -6,6 +6,7 @@ const ACTIONS = {
   counter: { x: 72, y: 1328, width: 276, height: 104 },
   availability: { x: 374, y: 1328, width: 276, height: 104 },
   watch: { x: 676, y: 1328, width: 276, height: 104 },
+  letterboxd: { x: 744, y: 54, width: 212, height: 82 },
 };
 const PROVIDER_LOGOS = Object.freeze({
   Netflix: '/images/providers/netflix.svg',
@@ -62,6 +63,21 @@ function wrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
   return y;
 }
 
+function drawLetterboxdSticker(context) {
+  const rect = ACTIONS.letterboxd;
+  context.fillStyle = 'rgba(16,24,39,.94)';
+  context.fillRect(rect.x, rect.y, rect.width, rect.height);
+  context.strokeStyle = '#f7edcf';
+  context.lineWidth = 4;
+  context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+  for (const [index, color] of ['#00e054', '#40bcf4', '#ff8000'].entries()) {
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(rect.x + 62 + index * 44, rect.y + 41, 21, 0, Math.PI * 2);
+    context.fill();
+  }
+}
+
 function drawFront(context, title, copy) {
   context.fillStyle = '#171310';
   context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
@@ -75,6 +91,7 @@ function drawFront(context, title, copy) {
   context.fillStyle = '#66583f';
   context.font = '700 30px Courier New, monospace';
   context.fillText(`${title.year || copy.yearUnknown} · ${String(title.type || copy.video).toUpperCase()}`, 108, 1350);
+  drawLetterboxdSticker(context);
 }
 
 function drawButton(context, rect, label, fill, ink) {
@@ -276,9 +293,10 @@ function drawPoster(context, image, title, logoImage = null) {
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '700 24px Courier New, monospace';
   context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 92, 1366);
+  drawLetterboxdSticker(context);
 }
 
-export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, onCounter, onAvailability, onWatch, onClose, copy }) {
+export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, onCounter, onAvailability, onWatch, onLetterboxd, onClose, copy }) {
   const labels = { noSynopsis: 'No synopsis was included by this catalogue source.', ...copy };
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -471,6 +489,11 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     }
     const hit = pick(event);
     if (!hit) return onClose();
+    if (hit.object.userData.surface === 'front' && hit.uv) {
+      const x = hit.uv.x * TEXTURE_WIDTH;
+      const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
+      if (inside(ACTIONS.letterboxd, x, y)) return onLetterboxd?.();
+    }
     if (hit.object.userData.surface === 'back' && hit.uv) {
       const x = hit.uv.x * TEXTURE_WIDTH;
       const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;

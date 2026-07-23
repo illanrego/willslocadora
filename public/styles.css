@@ -297,6 +297,13 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .ignore-year-control { padding: .25rem .4rem; border-left: 1px solid rgba(246,235,204,.2); color: var(--muted); white-space: nowrap; }
 .shop-floor { display: block; min-height: 680px; }
 .shelf-room { min-height: 680px; }
+.vhs-item { position: relative; }
+.letterboxd-sticker { position: absolute; z-index: 3; top: .45rem; right: .4rem; display: flex; align-items: center; justify-content: center; width: 2rem; height: 1.1rem; padding: .16rem; border: 1px solid rgba(255,255,255,.8); border-radius: 999px; background: rgba(16,24,39,.9); box-shadow: 1px 2px 0 rgba(0,0,0,.55); cursor: pointer; transform: rotate(7deg); }
+.letterboxd-sticker span { width: .54rem; height: .54rem; margin-left: -.13rem; border: 1px solid rgba(16,24,39,.75); border-radius: 50%; }
+.letterboxd-sticker span:first-child { margin-left: 0; background: #00e054; }
+.letterboxd-sticker span:nth-child(2) { background: #40bcf4; }
+.letterboxd-sticker span:last-child { background: #ff8000; }
+.letterboxd-sticker:hover, .letterboxd-sticker:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; transform: rotate(7deg) scale(1.12); }
 
 /* Immersive HUD: browse, secondary panels, and the counter are distinct destinations. */
 .immersive-hud { width: min(1120px, calc(100% - 1.5rem)); padding: .4rem; border: 1px solid rgba(246,235,204,.35); border-bottom: 3px solid var(--red); }

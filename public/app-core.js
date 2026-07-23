@@ -65,6 +65,14 @@
     return Array.from(unique.values());
   }
 
+  function createLetterboxdUrl(title) {
+    const id = String(title?.id || '');
+    if (/^tt\d+$/.test(id)) return `https://letterboxd.com/imdb/${id}/`;
+    const tmdbMatch = id.match(/^tmdb:(\d+)$/);
+    if (tmdbMatch) return `https://letterboxd.com/tmdb/${tmdbMatch[1]}/`;
+    return `https://letterboxd.com/search/${encodeURIComponent(String(title?.name || ''))}/`;
+  }
+
   function createStremioUri(title) {
     const validType = title && (title.type === 'movie' || title.type === 'series');
     const validId = title && /^[a-zA-Z0-9:_-]+$/.test(String(title.id || ''));
@@ -140,5 +148,5 @@
     };
   }
 
-  return { clampStoreYear, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, rentCounterTitles, returnRentedTitle };
+  return { clampStoreYear, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, rentCounterTitles, returnRentedTitle };
 }));

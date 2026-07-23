@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { clampStoreYear, createStremioUri, normalizeRentalState, rentCounterTitles, returnRentedTitle } = window.LocadoraCore;
+  const { clampStoreYear, createLetterboxdUrl, createStremioUri, normalizeRentalState, rentCounterTitles, returnRentedTitle } = window.LocadoraCore;
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
@@ -270,6 +270,9 @@
       node.querySelector('.case-year').textContent = title.year || '—';
       node.querySelector('.case-label strong').textContent = title.name;
       node.querySelector('.case-label small').textContent = `${title.year || 'Year unknown'} · ${title.type}`;
+      const letterboxd = node.querySelector('.letterboxd-sticker');
+      letterboxd.href = createLetterboxdUrl(title);
+      letterboxd.setAttribute('aria-label', `Open ${title.name} on Letterboxd`);
       button.setAttribute('aria-label', `Inspect ${title.name}, ${title.year || 'year unknown'}`);
       button.addEventListener('click', () => openTitle(title, true, posterTextureUrl(image.currentSrc || image.src)));
       article.dataset.titleId = title.id;
@@ -706,6 +709,7 @@
           if (url) window.open(url, '_blank', 'noopener,noreferrer');
         },
         onWatch: () => { if (activeViewerTitle) window.location.href = createStremioUri(activeViewerTitle); },
+        onLetterboxd: () => { if (activeViewerTitle) window.open(createLetterboxdUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
         onClose: () => titleDialog.close(),
       });
     } catch (error) {
