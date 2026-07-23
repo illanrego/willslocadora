@@ -169,7 +169,8 @@
       button.classList.toggle('is-active', buttonIndex === index);
       button.setAttribute('aria-current', buttonIndex === index ? 'page' : 'false');
     });
-    $('#aisle-number').textContent = String(index + 1).padStart(2, '0');
+    const aisleNumber = $('#aisle-number');
+    if (aisleNumber) aisleNumber.textContent = String(index + 1).padStart(2, '0');
     $('#immersive-genre-select').value = String(index);
     if (reload) loadShelf();
   }

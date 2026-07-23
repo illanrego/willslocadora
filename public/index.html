@@ -11,61 +11,60 @@
   <a class="skip-link" href="#shelf" data-i18n="skipShelf">Pular para a prateleira</a>
   <div class="store-shell">
     <header id="store-header" class="store-header">
-      <a class="brand" href="/" aria-label="Will's Locadora home">
-        <strong>WILL'S LOCADORA</strong>
-        <span class="brand-tag" data-i18n="brandTag">Seja gentil. Rebobine.</span>
-      </a>
+      <div class="store-masthead">
+        <a class="brand" href="/" aria-label="Will's Locadora home">
+          <strong>WILL'S LOCADORA</strong>
+          <span class="brand-tag" data-i18n="brandTag">Seja gentil. Rebobine.</span>
+        </a>
+        <nav class="header-actions" aria-label="Store actions">
+          <button class="mode-button" id="immersive-toggle" type="button" aria-pressed="false" data-i18n="immersiveMode">Modo imersivo</button>
+          <button class="counter-button" id="counter-open" type="button">
+            <span data-i18n="counter">Balcão</span> <span id="counter-count" aria-label="items at counter">0</span>
+          </button>
+          <button class="utility-button" id="sources-open" type="button" data-i18n="sources">Fontes</button>
+          <label class="locale-picker" for="locale-select">
+            <span data-i18n="language">Idioma</span>
+            <select id="locale-select" aria-label="Idioma">
+              <option value="pt-BR" data-i18n="portuguese">Português</option>
+              <option value="en-US" data-i18n="english">English</option>
+            </select>
+          </label>
+        </nav>
+      </div>
 
-      <form id="year-form" class="year-machine" aria-label="Store year">
-        <label class="year-label" for="store-year-input" data-i18n="storeYear">Ano da loja</label>
-        <button class="year-step" id="year-back" type="button" data-i18n-aria-label="previousYear" aria-label="Ano anterior">−</button>
-        <input id="store-year-input" type="number" min="1920" max="2026" step="1" value="1999" inputmode="numeric" autocomplete="off" aria-label="Store year">
-        <button class="year-step" id="year-forward" type="button" data-i18n-aria-label="nextYear" aria-label="Próximo ano">+</button>
-        <button id="year-go" type="submit" data-i18n="go">Ir</button>
-      </form>
-
-      <nav class="header-actions" aria-label="Store actions">
-        <button class="mode-button" id="immersive-toggle" type="button" aria-pressed="false" data-i18n="immersiveMode">Modo imersivo</button>
-        <button class="counter-button" id="counter-open" type="button">
-          <span data-i18n="counter">Balcão</span> <span id="counter-count" aria-label="items at counter">0</span>
-        </button>
-        <button class="utility-button" id="sources-open" type="button" data-i18n="sources">Fontes</button>
-        <label class="locale-picker" for="locale-select">
-          <span data-i18n="language">Idioma</span>
-          <select id="locale-select" aria-label="Idioma">
-            <option value="pt-BR" data-i18n="portuguese">Português</option>
-            <option value="en-US" data-i18n="english">English</option>
-          </select>
-        </label>
-      </nav>
+      <div class="browse-menu" aria-label="Browse controls">
+        <form id="year-form" class="year-machine" aria-label="Store year">
+          <label class="year-label" for="store-year-input" data-i18n="storeYear">Ano da loja</label>
+          <button class="year-step" id="year-back" type="button" data-i18n-aria-label="previousYear" aria-label="Ano anterior">−</button>
+          <input id="store-year-input" type="number" min="1920" max="2026" step="1" value="1999" inputmode="numeric" autocomplete="off" aria-label="Store year">
+          <button class="year-step" id="year-forward" type="button" data-i18n-aria-label="nextYear" aria-label="Próximo ano">+</button>
+          <button id="year-go" type="submit" data-i18n="go">Ir</button>
+        </form>
+        <nav id="genre-nav" aria-label="Genres"></nav>
+        <div class="format-switch" role="group" aria-label="Title format">
+          <button class="is-active" data-type="movie" type="button" data-i18n="movies">Filmes</button>
+          <button data-type="series" type="button" data-i18n="series">Séries</button>
+        </div>
+        <fieldset class="provider-picker">
+          <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
+          <div id="provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
+            <label><input type="checkbox" data-provider-id="netflix"> Netflix</label>
+            <label><input type="checkbox" data-provider-id="prime-video"> Prime Video</label>
+            <label><input type="checkbox" data-provider-id="max"> Max</label>
+            <label><input type="checkbox" data-provider-id="disney-plus"> Disney+</label>
+            <label><input type="checkbox" data-provider-id="globoplay"> Globoplay</label>
+            <label><input type="checkbox" data-provider-id="paramount-plus"> Paramount+</label>
+            <label><input type="checkbox" data-provider-id="apple-tv-plus"> Apple TV+</label>
+            <label><input type="checkbox" data-provider-id="mubi"> MUBI</label>
+            <label><input type="checkbox" data-provider-id="crunchyroll"> Crunchyroll</label>
+          </div>
+          <label class="ignore-year-control"><input id="ignore-store-year" type="checkbox"> <span data-i18n="ignoreStoreYear">Ignore store year</span></label>
+        </fieldset>
+      </div>
     </header>
 
     <main>
       <section id="normal-mode" class="shop-floor" aria-label="Video store aisles">
-        <aside class="aisle-directory">
-          <div class="directory-sign"><span>Aisle</span><strong id="aisle-number">01</strong></div>
-          <nav id="genre-nav" aria-label="Genres"></nav>
-          <div class="format-switch" role="group" aria-label="Title format">
-            <button class="is-active" data-type="movie" type="button" data-i18n="movies">Filmes</button>
-            <button data-type="series" type="button" data-i18n="series">Séries</button>
-          </div>
-          <fieldset class="provider-picker">
-            <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
-            <div id="provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
-              <label><input type="checkbox" data-provider-id="netflix"> Netflix</label>
-              <label><input type="checkbox" data-provider-id="prime-video"> Prime Video</label>
-              <label><input type="checkbox" data-provider-id="max"> Max</label>
-              <label><input type="checkbox" data-provider-id="disney-plus"> Disney+</label>
-              <label><input type="checkbox" data-provider-id="globoplay"> Globoplay</label>
-              <label><input type="checkbox" data-provider-id="paramount-plus"> Paramount+</label>
-              <label><input type="checkbox" data-provider-id="apple-tv-plus"> Apple TV+</label>
-              <label><input type="checkbox" data-provider-id="mubi"> MUBI</label>
-              <label><input type="checkbox" data-provider-id="crunchyroll"> Crunchyroll</label>
-            </div>
-            <label class="ignore-year-control"><input id="ignore-store-year" type="checkbox"> <span data-i18n="ignoreStoreYear">Ignore store year</span></label>
-          </fieldset>
-        </aside>
-
         <div class="shelf-room">
           <div class="fluorescent" aria-hidden="true"></div>
           <header class="shelf-heading">
@@ -97,24 +96,32 @@
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
-            <label class="immersive-picker" for="immersive-genre-select">
-              <span data-i18n="genre">Gênero</span>
-              <select id="immersive-genre-select" aria-label="Immersive genre"></select>
-            </label>
-            <label class="immersive-picker immersive-year-picker" for="immersive-year-input">
-              <span data-i18n="year">Ano</span>
-              <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
-            </label>
-            <div class="immersive-format" role="group" aria-label="Immersive shelf format">
-              <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
-              <button data-type="series" type="button" data-i18n="series">Séries</button>
+            <div class="immersive-browse-controls">
+              <label class="immersive-picker" for="immersive-genre-select">
+                <span data-i18n="genre">Gênero</span>
+                <select id="immersive-genre-select" aria-label="Immersive genre"></select>
+              </label>
+              <label class="immersive-picker immersive-year-picker" for="immersive-year-input">
+                <span data-i18n="year">Ano</span>
+                <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
+              </label>
+              <div class="immersive-format" role="group" aria-label="Immersive shelf format">
+                <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
+                <button data-type="series" type="button" data-i18n="series">Séries</button>
+              </div>
+              <button id="immersive-go" type="button" data-i18n="go">Ir</button>
             </div>
-            <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Hide immersive controls">⌃</button>
-            <button id="immersive-go" type="button" data-i18n="go">Ir</button>
-            <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false" data-i18n="filters">Filtros</button>
-            <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false" data-i18n="sound">Som</button>
-            <button id="balcony-toggle" type="button" aria-controls="balcony-room" data-i18n="balcony">Balcão 3D</button>
-            <button id="normal-mode-return" type="button" data-i18n="return">Voltar</button>
+            <nav class="immersive-menu-actions" aria-label="Immersive actions">
+              <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="filters">Filtros</span></button>
+              <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false"><span aria-hidden="true">⚙</span><span data-i18n="settings">Ajustes</span></button>
+              <span class="immersive-menu-divider" aria-hidden="true"></span>
+              <button id="normal-mode-return" type="button" data-i18n="return">Voltar</button>
+              <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Hide immersive controls">⌃</button>
+            </nav>
+            <div class="immersive-destination">
+              <span class="immersive-destination-copy"><span data-i18n="counter">Balcão</span><small>3D</small></span>
+              <button id="balcony-toggle" type="button" aria-controls="balcony-room" data-i18n="enter">Entrar</button>
+            </div>
           </div>
           <div id="immersive-filters" class="immersive-filters" hidden>
             <fieldset class="immersive-picker immersive-provider-picker">
