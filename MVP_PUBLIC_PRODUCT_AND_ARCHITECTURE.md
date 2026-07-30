@@ -163,7 +163,7 @@ watchlist_item
 - completed_at (nullable)
 ```
 
-The active watchlist is a special personal shelf between the public shelves and the Balcão. Returning a matching rented title as `watched` automatically completes and removes it from the active watchlist; `not_watched` and `unknown` leave it there. A saved title is interest, not watched history, rating, or rental history.
+The active watchlist is a special personal shelf between the public shelves and the Balcão. Returning a matching rented title as `watched` automatically completes and removes it from the active watchlist; `not_watched` and `unknown` leave it there. Saving a previously completed title reactivates that same watchlist record rather than creating a duplicate. A saved title is interest, not watched history, rating, or rental history.
 
 ### Reviews and community
 
@@ -426,7 +426,7 @@ Resolved MVP decisions:
 
 - The first Letterboxd import is watchlist-only; diary/ratings/reviews are deferred.
 - Active rentals have no due date, allow at most three titles per user, and measure days held from per-title timestamps.
-- The active watchlist is a shelf beside the Balcão. A watched return automatically removes the title; unknown and not-watched returns retain it.
+- The active watchlist is a shelf beside the Balcão. A watched return automatically removes the title; unknown and not-watched returns retain it; re-saving a completed title reactivates its existing record.
 - Startpage-to-Locadora watchlist saving is private owner tooling through a narrow Startpage Worker → separate private Locadora integration API, never the public read-only Worker or a public feature in the first release.
 - Accounts require a unique public username; reviews are public by default under that username unless the author explicitly marks one private. Email remains private.
 - Ordinary cursewords are automatically censored in displayed review text, not grounds for deleting the review by themselves. Reports go to an admin queue; moderators may hide/remove content for policy violations beyond this automatic censoring.
