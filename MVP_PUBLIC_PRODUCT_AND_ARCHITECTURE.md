@@ -65,21 +65,21 @@ Require an account only for actions that need durable personal data:
 - recording watched/not watched;
 - saving a personal watchlist;
 - rating/reviewing;
-- viewing personal rental history and recommendations.
+- viewing personal rental history.
 
-The initial sign-in is passwordless email. Account setup also requires a unique public username, used as the visible byline on the member's public reviews. Supabase persists the browser session, so a returning visitor normally stays signed in; a new email link/code is only required on a new device/browser, after logout, cleared browser data, or expiry.
+The initial sign-in is Clerk-managed email + password. Account setup also requires a unique public username, used as the visible byline on the member's public reviews. Clerk owns the browser session; Locadora does not implement password handling, email verification, password-recovery emails, or its own session cookies in MVP.
 
 ### Minimal personal data
 
 Required:
 
-- email address in Supabase Auth;
-- internal authentication user ID.
+- email address and password credential in Clerk;
+- Clerk user ID.
 - unique public username.
 
 Not collected for MVP:
 
-- password;
+- Locadora-held password or password hash;
 - real name;
 - address;
 - phone number;
@@ -88,7 +88,7 @@ Not collected for MVP:
 - Stremio details;
 - playback or device tracking.
 
-Email is private authentication/contact data and is never displayed on reviews or public pages. The required username is the public review byline and may later also appear on a membership card; it is not a full public profile.
+Email is private Clerk-held authentication/contact data and is never displayed on reviews or public pages. The Locadora database stores the Clerk user ID and unique public username, not a password credential. The required username is the public review byline and may later also appear on a membership card; it is not a full public profile.
 
 ## Rental loop
 
@@ -112,12 +112,12 @@ There is no due date or payment in MVP. A visitor can keep an active title indef
 ### Authentication and profile
 
 ```text
-Auth user
+Clerk user
 - id
-- email
+- email (held by Clerk)
 
 profile
-- user_id (PK/FK to auth user)
+- user_id (PK; Clerk user ID)
 - username (unique; required; public review byline)
 - created_at
 ```
@@ -277,33 +277,36 @@ After the public Locadora watchlist exists, a narrow server-to-server integratio
 ```text
 GitHub Pages (public static portfolio deployment)
   ├─ public Locadora UI
-  ├─ Supabase Auth (passwordless email/session)
-  ├─ Supabase Postgres through anon key + Row Level Security
+  ├─ Clerk (email + password authentication and session)
   └─ dedicated locadora-api Cloudflare Worker
        ├─ TMDB_API_KEY secret
        ├─ public catalogue manifests / metadata fetches
        ├─ data normalization and validation
        ├─ strict cache policy
        └─ exact CORS allowlist for the GitHub Pages origin
+  └─ dedicated private locadora-data Cloudflare Worker
+       ├─ verifies Clerk user tokens
+       ├─ holds the Supabase service-role secret
+       └─ reads/writes Supabase Postgres for Locadora data
 ```
 
 GitHub Pages stays the public frontend for portfolio reasons.
 
 ## Supabase responsibilities
 
-Use hosted Supabase Auth + Postgres for MVP. Supabase is open source and can be self-hosted later if needed.
+Use hosted Supabase Postgres for MVP. Clerk, not Supabase Auth, owns email/password authentication and sessions. Supabase is open source and can be self-hosted later if needed.
 
-The browser may use the public Supabase anon key. It must never have a service-role key.
+The browser has no Supabase credential. Only the private `locadora-data` Worker receives the Supabase service-role secret; the public `locadora-api` Worker never receives it.
 
-Row Level Security must ensure:
+The private data Worker must enforce:
 
 - a user can read/write only their own profile, rentals, rental items, private reviews, reactions, and reports;
 - users can read only public reviews and their aggregated title statistics;
 - public review creation requires an authenticated user;
 - moderator/admin actions use a separate controlled role/server path;
-- rental/recommendation queries never expose another user’s personal history.
+- rental/history queries never expose another user’s personal history.
 
-Use passwordless email with a custom verified sender/domain SMTP configuration for real public email delivery. Do not rely on a development sender for launch.
+Configure Clerk for email + password sign-in without Locadora-operated email delivery, verification, or password recovery in MVP.
 
 ## Cloudflare Worker responsibilities
 
@@ -333,7 +336,7 @@ Worker functions:
 7. cache safely;
 8. return clean errors and never log secrets.
 
-The Worker does not:
+The public Worker does not:
 
 - access Supabase service-role credentials;
 - own user authentication or rental writes;
@@ -398,15 +401,14 @@ The Balcony is the next frontend-first, non-free-roam counter experiment. It use
 Ship when a person can:
 
 1. browse the public GitHub Pages store;
-2. sign in with passwordless email and choose a unique public username when they choose to rent or review;
+2. sign in with Clerk email + password and choose a unique public username when they choose to rent, save a watchlist title, or review;
 3. rent and retain up to three active titles without a due date;
 4. return each item as watched, not watched, or unknown;
 5. view their rental history;
-6. receive basic deterministic picks from their rental data;
-7. write an optional rating or short review that is public under their username unless they explicitly make it private;
-8. read public title reviews, see ordinary cursewords automatically censored, and report harmful content;
-9. import a personal Letterboxd watchlist CSV and export a Locadora list/history CSV;
-10. open a known title in their own Stremio installation without Locadora touching personal Stremio data.
+6. write an optional rating or short review that is public under their username unless they explicitly make it private;
+7. read public title reviews, see ordinary cursewords automatically censored, and report harmful content;
+8. import a personal Letterboxd watchlist CSV and export a Locadora list/history CSV;
+9. open a known title in their own Stremio installation without Locadora touching personal Stremio data.
 
 ## Explicitly later
 

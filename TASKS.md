@@ -30,13 +30,14 @@ The public-MVP authority is [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_
 
 ## Next — durable public rental loop
 
-- [ ] Provision Supabase Auth/Postgres and define migrations for profiles, watchlist items, rentals, rental items, reviews, reactions, and reports.
-- [ ] Implement passwordless sign-in and unique public username onboarding only when a visitor rents, saves a watchlist title, or reviews.
-- [ ] Implement Row Level Security and test own-data/private-review/public-review boundaries.
+- [ ] Provision Clerk email/password authentication and Supabase Postgres; define migrations for profiles, watchlist items, rentals, rental items, reviews, reactions, and reports.
+- [ ] Add a private `locadora-data` Worker that verifies Clerk user tokens and is the sole holder of the Supabase service-role secret; retain the existing `locadora-api` Worker as public/read-only.
+- [ ] Implement Clerk sign-in and unique public username onboarding only when a visitor rents, saves a watchlist title, or reviews; no Locadora-run verification or recovery email flow in MVP.
+- [ ] Test own-data/private-review/public-review boundaries at the private data Worker.
 - [ ] Replace local-only rental state with authenticated watchlist, up-to-three active rentals, open-ended returns, watched status, per-title days-held history, and watched-return watchlist completion.
 - [ ] Add the personal watchlist shelf between public shelves and the Balcão; provide the floating CRT-side entry point and preserve Balcão parity between 3D and 2D fallback.
 - [ ] Add the CRT “Clique para pesquisar título” display and the visible “Alugar títulos” Balcão action in both 3D and 2D fallback.
-- [ ] Add deterministic recommendations from durable rental behavior.
+
 - [ ] Add ratings, public-by-default reviews, private review option, helpful reactions, reports, censorship display, and moderator flow.
 - [ ] Add user-controlled Letterboxd watchlist CSV import and Locadora CSV export.
 - [ ] After the core watchlist is live, add a private owner-only Startpage Worker → separate Locadora integration API; do not put Supabase write secrets in the public read-only Worker or expose it to regular Locadora users.
@@ -47,4 +48,5 @@ The public-MVP authority is [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_
 - [ ] Direct or automatic Letterboxd synchronization.
 - [ ] Social graph, follows, DMs, replies, or public user profiles.
 - [ ] AI recommendations.
+- [ ] Deterministic recommendations from durable rental behavior.
 - [ ] Desktop packaging and expanded/free-roam 3D before the rental loop is proven.

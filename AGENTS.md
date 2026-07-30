@@ -26,7 +26,7 @@ Build Will’s Locadora: a free, Brazil-first public video-rental discovery expe
 1. Keep the public browse and Worker contract reliable.
 2. Let the user playtest the rental ritual and visual direction.
 3. Before durable rental work, resolve package-size and due-date decisions.
-4. Add Supabase Auth, data model, RLS, rentals, reviews, and deterministic recommendations in small verified stages.
+4. Add Clerk authentication, a private data Worker backed by Supabase Postgres, rentals, and reviews in small verified stages; recommendations remain later work.
 
 ## Deployment and verification
 
