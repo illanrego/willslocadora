@@ -9,6 +9,13 @@ test('rapid title changes reuse one VHS renderer even after the dialog closes', 
   assert.doesNotMatch(app, /titleDialog\.addEventListener\('close',[\s\S]*activeVhsViewer\?\.dispose\(\)/);
 });
 
+test('Balcony search computer faces the customer', () => {
+  const balcony = readFileSync(require.resolve('../public/balcony.mjs'), 'utf8');
+  assert.match(balcony, /const crt = new THREE\.Group\(\); crt\.position\.set\(4, COUNTER_TOP \+ 1\.07, \.25\); crt\.rotation\.y = Math\.PI;/);
+  assert.match(balcony, /const keyboard = new THREE\.Group\(\); keyboard\.position\.set\(4, COUNTER_TOP \+ \.06, -\.93\); keyboard\.rotation\.y = Math\.PI;/);
+});
+
+
 test('reused VHS viewer resets to the new tape front without retaining its previous title logo', () => {
   const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
   assert.match(viewer, /function resetToFront\(\) \{[\s\S]*group\.rotation\.y = 0;[\s\S]*\}/);
