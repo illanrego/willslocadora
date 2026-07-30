@@ -6,7 +6,7 @@
 
 ## One-line concept
 
-A Brazil-first online video rental store where people browse films as VHS, rent a small weekend selection, return it as watched or unwatched, and gradually build a personal rental history and community taste signal.
+A Brazil-first online video rental store where people browse films as VHS, hold a small selection, return it as watched or unwatched, and gradually build a personal rental history and community taste signal.
 
 ## Core product truth
 
@@ -15,7 +15,7 @@ Locadora is not a player and not a Letterboxd clone.
 It recreates the decision ritual of renting films:
 
 ```text
-browse → choose a small weekend selection → rent → return → remember what happened
+browse → choose up to three titles → rent → return → remember what happened
 ```
 
 The key distinction is that a rental is meaningful even when the film is not watched. A user can return a film as `not_watched` without being penalized. That is an honest signal: the film was attractive enough to rent but lost the competition for attention.
@@ -26,7 +26,7 @@ The key distinction is that a rental is meaningful even when the film is not wat
 
 - 1990s video-store browsing and VHS presentation.
 - Brazil-first discovery, including informational streaming availability.
-- Weekend rental simulation, due dates, return state, and rental history.
+- Open-ended, three-title rental simulation, return state, and rental history.
 - Personal recommendations based on rental behaviour.
 - Optional ratings and short reviews written inside Locadora.
 - A deliberately light title-based community layer.
@@ -63,6 +63,7 @@ Require an account only for actions that need durable personal data:
 - renting titles;
 - returning a rental;
 - recording watched/not watched;
+- saving a personal watchlist;
 - rating/reviewing;
 - viewing personal rental history and recommendations.
 
@@ -91,18 +92,20 @@ Email is private authentication/contact data and is never displayed on reviews o
 
 ## Rental loop
 
-Initial default: a weekend rental simulation, not a real purchase or real inventory reservation.
+Initial default: an open-ended rental simulation, not a real purchase or real inventory reservation.
 
 ```text
-Friday/weekend selection
-  → choose a small set of titles
-  → create rental with a due date (normally Monday)
+Choose titles over time
+  → keep at most three active titles at once
+  → retain each title until the visitor chooses to return it
+  → record each title's rental and return timestamps
+  → derive the number of days held from those timestamps
   → return each title later
   → mark watched / not watched / leave unknown
   → optionally rate or write a short rental note
 ```
 
-The exact package constraint (strict 2–3 titles versus any small number) remains a product decision. Pricing is simulated and descriptive at first, e.g. a Friday-to-Monday rental charging one daily price per title. There are no payments in MVP.
+There is no due date or payment in MVP. A visitor can keep an active title indefinitely, but may not hold more than three titles at once. The three-title limit is enforced server-side across all active rental items.
 
 ## Core data model
 
@@ -125,12 +128,9 @@ profile
 rental
 - id
 - user_id
-- rented_at
-- due_at
+- opened_at
 - returned_at (nullable)
 - status: active | returned
-- pricing_rule_snapshot
-- displayed_total (simulated)
 
 rental_item
 - id
@@ -144,7 +144,26 @@ rental_item
 - watched_status: unknown | watched | not_watched
 ```
 
-The title snapshots preserve meaningful rental history even if upstream metadata changes.
+Only one active rental exists per user, with at most three active `rental_item` rows. The title snapshots preserve meaningful rental history even if upstream metadata changes, while `returned_at - rented_at` provides the days held.
+
+### Personal watchlist
+
+```text
+watchlist_item
+- id
+- user_id
+- canonical title key (unique per user)
+- tmdb_id
+- title_type: movie | series
+- title_title_snapshot
+- release_year_snapshot
+- source: locadora | letterboxd | startpage
+- source_note (nullable)
+- added_at
+- completed_at (nullable)
+```
+
+The active watchlist is a special personal shelf between the public shelves and the Balcão. Returning a matching rented title as `watched` automatically completes and removes it from the active watchlist; `not_watched` and `unknown` leave it there. A saved title is interest, not watched history, rating, or rental history.
 
 ### Reviews and community
 
@@ -180,10 +199,10 @@ Ratings/reviews are optional and should be offered during return, never demanded
 No AI is required for MVP. Start deterministic and explainable:
 
 - genres, directors, cast, and eras repeatedly chosen and marked watched;
-- films commonly rented together for a weekend;
+- films commonly held together;
 - people who rented this also rented…;
 - alternatives to titles a user rented but returned unwatched;
-- a user’s recurring weekend/genre patterns.
+- a user’s recurring genre patterns.
 
 Do not infer a negative opinion from `not_watched`. Treat it as an incomplete-interest signal, not a dislike.
 
@@ -246,6 +265,12 @@ Locadora can generate a Letterboxd-compatible CSV for manual user import, such a
 - user-selected ratings/reviews written in Locadora.
 
 This is an export file, not an automatic post to Letterboxd.
+
+### Private Startpage integration
+
+Startpage is a separate production application with its own frontend, Worker, and Supabase setup. Locadora must not share databases, browser sessions, or credentials with it.
+
+After the public Locadora watchlist exists, a narrow server-to-server integration may let the owner's Startpage Rec List send a user-confirmed, resolved TMDB title to the owner's Locadora watchlist. Startpage's Worker holds the integration credential; the browser never does. This is private owner tooling only: it is not shown, documented as a public account feature, or made available to ordinary Locadora members in the first public release. A future public version would need explicit user account linking, not reuse this owner credential.
 
 ## Hosting architecture
 
@@ -366,7 +391,7 @@ No feature, account, rental history, or recommendation is paywalled in MVP.
 
 ## Balcony visual direction
 
-The Balcony is the next frontend-first, non-free-roam counter experiment. It uses local state to make one active Balcão pile move through `counter → rented → returned`, before the public backend exists. It also holds the distinct voluntary 3D tip jar, a return area, a staff-side CRT counter, and a subtle username/rental-card cue. Its detailed visual brief, interaction model, supporter-thank-you outcomes, and local-state acceptance checkpoint are in [`docs/balcony.md`](docs/balcony.md).
+The Balcony is the next frontend-first, non-free-roam counter experiment. It uses local state to make one active Balcão pile move through `counter → rented → returned`, before the public backend exists. It also holds the distinct voluntary 3D tip jar, a return area, a staff-side CRT counter, and a subtle username/rental-card cue. The CRT visibly says “Clique para pesquisar título”; a physical/visible Balcão action says “Alugar títulos”. The 3D Balcão and its 2D fallback must offer the same rental, search, watchlist, return, and counter actions. The personal watchlist shelf sits between ordinary shelves and the Balcão, with a floating access button beside the CRT. Its detailed visual brief, interaction model, supporter-thank-you outcomes, and local-state acceptance checkpoint are in [`docs/balcony.md`](docs/balcony.md).
 
 ## MVP scope
 
@@ -374,7 +399,7 @@ Ship when a person can:
 
 1. browse the public GitHub Pages store;
 2. sign in with passwordless email and choose a unique public username when they choose to rent or review;
-3. rent a weekend selection with a due date;
+3. rent and retain up to three active titles without a due date;
 4. return each item as watched, not watched, or unknown;
 5. view their rental history;
 6. receive basic deterministic picks from their rental data;
@@ -397,13 +422,11 @@ Ship when a person can:
 
 ## Decisions
 
-Still required before rental implementation:
-
-1. Is the initial weekend deal a strict 2–3 title package or any small number of titles?
-2. Is the return due date always Monday, or based on the day of the week?
-
 Resolved MVP decisions:
 
 - The first Letterboxd import is watchlist-only; diary/ratings/reviews are deferred.
+- Active rentals have no due date, allow at most three titles per user, and measure days held from per-title timestamps.
+- The active watchlist is a shelf beside the Balcão. A watched return automatically removes the title; unknown and not-watched returns retain it.
+- Startpage-to-Locadora watchlist saving is private owner tooling through a narrow Worker-to-Worker API, never a public feature in the first release.
 - Accounts require a unique public username; reviews are public by default under that username unless the author explicitly marks one private. Email remains private.
 - Ordinary cursewords are automatically censored in displayed review text, not grounds for deleting the review by themselves. Reports go to an admin queue; moderators may hide/remove content for policy violations beyond this automatic censoring.
