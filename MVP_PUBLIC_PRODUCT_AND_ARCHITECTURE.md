@@ -270,7 +270,7 @@ This is an export file, not an automatic post to Letterboxd.
 
 Startpage is a separate production application with its own frontend, Worker, and Supabase setup. Locadora must not share databases, browser sessions, or credentials with it.
 
-After the public Locadora watchlist exists, a narrow server-to-server integration may let the owner's Startpage Rec List send a user-confirmed, resolved TMDB title to the owner's Locadora watchlist. Startpage's Worker holds the integration credential; the browser never does. This is private owner tooling only: it is not shown, documented as a public account feature, or made available to ordinary Locadora members in the first public release. A future public version would need explicit user account linking, not reuse this owner credential.
+After the public Locadora watchlist exists, a narrow server-to-server integration may let the owner's Startpage Rec List send a user-confirmed, resolved TMDB title to the owner's Locadora watchlist. Startpage's Worker holds the integration credential; the browser never does. Its target must be a separate private integration service or Supabase Edge Function—not the public read-only `locadora-api` Worker, which never holds a Supabase service-role secret. This is private owner tooling only: it is not shown, documented as a public account feature, or made available to ordinary Locadora members in the first public release. A future public version would need explicit user account linking, not reuse this owner credential.
 
 ## Hosting architecture
 
@@ -427,6 +427,6 @@ Resolved MVP decisions:
 - The first Letterboxd import is watchlist-only; diary/ratings/reviews are deferred.
 - Active rentals have no due date, allow at most three titles per user, and measure days held from per-title timestamps.
 - The active watchlist is a shelf beside the Balcão. A watched return automatically removes the title; unknown and not-watched returns retain it.
-- Startpage-to-Locadora watchlist saving is private owner tooling through a narrow Worker-to-Worker API, never a public feature in the first release.
+- Startpage-to-Locadora watchlist saving is private owner tooling through a narrow Startpage Worker → separate private Locadora integration API, never the public read-only Worker or a public feature in the first release.
 - Accounts require a unique public username; reviews are public by default under that username unless the author explicitly marks one private. Email remains private.
 - Ordinary cursewords are automatically censored in displayed review text, not grounds for deleting the review by themselves. Reports go to an admin queue; moderators may hide/remove content for policy violations beyond this automatic censoring.

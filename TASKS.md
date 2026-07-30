@@ -39,7 +39,7 @@ The public-MVP authority is [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_
 - [ ] Add deterministic recommendations from durable rental behavior.
 - [ ] Add ratings, public-by-default reviews, private review option, helpful reactions, reports, censorship display, and moderator flow.
 - [ ] Add user-controlled Letterboxd watchlist CSV import and Locadora CSV export.
-- [ ] After the core watchlist is live, add the private owner-only Startpage Worker-to-Worker watchlist API; do not expose it to regular Locadora users.
+- [ ] After the core watchlist is live, add a private owner-only Startpage Worker → separate Locadora integration API; do not put Supabase write secrets in the public read-only Worker or expose it to regular Locadora users.
 
 ## Explicitly later
 
