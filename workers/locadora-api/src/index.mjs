@@ -122,6 +122,27 @@ async function shelf(filters, env, fetchImpl) {
   return { titles, hasNextStand: discovered.length === MAX_TITLES };
 }
 
+async function searchCatalogue({ query, locale }, env, fetchImpl) {
+  const value = String(query || '').trim();
+  if (value.length < 2 || value.length > 80 || !LOCALES.has(locale)) throw new Error('Invalid catalogue search');
+  const tmdb = createTmdb(env, fetchImpl);
+  const results = await Promise.all(['movie', 'tv'].map((tmdbType) => tmdb.request(`/${`search/${tmdbType}`}?${new URLSearchParams({ query: value, include_adult: 'false' })}`, locale)));
+  const titles = results.flatMap((result, index) => (result.results || []).map((title) => ({
+    id: `tmdb:${title.id}`,
+    type: index === 0 ? 'movie' : 'series',
+    name: title.title || title.name || 'Untitled',
+    year: yearFromDate(title.release_date || title.first_air_date),
+    poster: imageUrl(title.poster_path, 'w500'),
+    background: imageUrl(title.backdrop_path, 'w1280'),
+    description: title.overview || '',
+    imdbRating: title.vote_average ? String(title.vote_average) : '',
+    genres: [],
+    source: 'tmdb-search',
+  }))).filter((title) => /^tmdb:\d+$/.test(title.id));
+  const unique = [...new Map(titles.map((title) => [`${title.type}:${title.id}`, title])).values()];
+  return { query: value, titles: unique.slice(0, 12) };
+}
+
 async function titleMeta({ type, id, locale }, env, fetchImpl) {
   if (!['movie', 'series'].includes(type) || !/^[a-zA-Z0-9:_-]+$/.test(id) || !LOCALES.has(locale)) throw new Error('Invalid title metadata request');
   const tmdb = createTmdb(env, fetchImpl);
@@ -196,6 +217,10 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
         if (url.pathname === '/v1/image') {
           const result = await image(url.searchParams.get('url') || '', fetchImpl);
           return new Response(result.body, { status: 200, headers: { ...policy.headers, 'content-type': result.contentType, 'cache-control': 'public, max-age=86400, s-maxage=604800', 'x-content-type-options': 'nosniff' } });
+        }
+        if (url.pathname === '/v1/search') {
+          const result = await searchCatalogue({ query: url.searchParams.get('q') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl);
+          return json(result, 200, { ...policy.headers, 'cache-control': 'public, max-age=300, s-maxage=900' });
         }
         if (url.pathname === '/v1/title') {
           const meta = await titleMeta({ type: url.searchParams.get('type'), id: url.searchParams.get('id') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl);

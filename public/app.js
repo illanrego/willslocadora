@@ -44,6 +44,7 @@
   const emptyState = $('#empty-state');
   const titleDialog = $('#title-dialog');
   const counterDialog = $('#counter-dialog');
+  const balconySearchDialog = $('#balcony-search-dialog');
   const sourcesDialog = $('#sources-dialog');
   let activeVhsViewer = null;
   let activeViewerTitle = null;
@@ -145,6 +146,33 @@
     return body;
   }
 
+  function openBalconySearch() {
+    $('#balcony-search-results').replaceChildren();
+    $('#balcony-search-status').textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.';
+    if (!balconySearchDialog.open) balconySearchDialog.showModal();
+    $('#balcony-search-input').focus();
+  }
+
+  async function searchBalconyCatalogue() {
+    const input = $('#balcony-search-input');
+    const query = input.value.trim();
+    const status = $('#balcony-search-status');
+    const results = $('#balcony-search-results');
+    results.replaceChildren();
+    if (query.length < 2) { status.textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.'; return; }
+    status.textContent = state.locale === 'pt-BR' ? 'Consultando o catálogo…' : 'Searching the catalogue…';
+    try {
+      const { titles = [] } = await api(`/api/search?${new URLSearchParams({ q: query, locale: state.locale })}`);
+      status.textContent = titles.length ? (state.locale === 'pt-BR' ? `${titles.length} fita(s) encontrada(s).` : `${titles.length} tape(s) found.`) : (state.locale === 'pt-BR' ? 'Nenhuma fita encontrada.' : 'No tapes found.');
+      titles.forEach((title) => {
+        const item = document.createElement('article'); item.className = 'counter-item';
+        const image = document.createElement('img'); image.alt = ''; image.src = posterTextureUrl(title.poster || posterFallback(title));
+        const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.type === 'series' ? t('series') : t('movies')} · ${title.year || '—'}`; text.append(name, meta);
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'; inspect.addEventListener('click', () => { balconySearchDialog.close(); openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); });
+        item.append(image, text, inspect); results.append(item);
+      });
+    } catch { status.textContent = state.locale === 'pt-BR' ? 'O catálogo está indisponível agora.' : 'The catalogue is unavailable right now.'; }
+  }
 
   function setYear(value, reload = true) {
     state.year = clampStoreYear(value);
@@ -599,6 +627,7 @@
       heading: 'Balcão · tape fronts',
       onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
       onAction: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
+      onSearch: openBalconySearch,
       actionLabel: state.locale === 'pt-BR' ? 'Abrir controles do balcão' : 'Open counter controls',
     });
   }
@@ -616,6 +645,7 @@
         year: state.year,
         copy: { ownerCaption: t('ownerCaption'), collectiveAwards: t('collectiveAwards'), collectiveAwardLines: [t('collectiveAwardOne'), t('collectiveAwardTwo'), t('collectiveAwardThree')] },
         onCounterSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
+        onSearch: openBalconySearch,
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
         onBagSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
         onTip: () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; $('#balcony-dialog').showModal(); },
@@ -824,6 +854,7 @@
     $('#balcony-toggle').addEventListener('click', () => setMode('balcony'));
     $('#balcony-return-shelf').addEventListener('click', () => setMode('immersive'));
     $('#balcony-panel-open').addEventListener('click', () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); });
+    $('#balcony-search-form').addEventListener('submit', (event) => { event.preventDefault(); searchBalconyCatalogue(); });
     $('#balcony-zoom-in').addEventListener('click', () => balcony?.zoomIn());
     $('#balcony-zoom-out').addEventListener('click', () => balcony?.zoomOut());
     $('#rent-counter').addEventListener('click', rentCounter);

@@ -3,7 +3,7 @@ function posterUrl(title) {
   return source ? window.locadoraPosterUrl(source) : '';
 }
 
-export function createTapeFallback({ container, titles = [], heading = 'Tape presentation', onSelect, onAction, actionLabel = 'Open controls' }) {
+export function createTapeFallback({ container, titles = [], heading = 'Tape presentation', onSelect, onAction, onSearch, actionLabel = 'Open controls' }) {
   const section = document.createElement('section');
   section.className = 'tape-fallback';
   const label = document.createElement('p');
@@ -19,6 +19,11 @@ export function createTapeFallback({ container, titles = [], heading = 'Tape pre
     const action = document.createElement('button');
     action.type = 'button'; action.className = 'tape-fallback-action'; action.textContent = actionLabel;
     action.addEventListener('click', onAction); section.append(action);
+  }
+  if (onSearch) {
+    const search = document.createElement('button');
+    search.type = 'button'; search.className = 'tape-fallback-action'; search.textContent = 'Search catalogue';
+    search.addEventListener('click', onSearch); section.append(search);
   }
   section.append(grid); container.replaceChildren(section);
 

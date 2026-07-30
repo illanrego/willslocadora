@@ -9,6 +9,7 @@ It owns no Supabase credentials, user data, Stremio configuration, arbitrary URL
 - `GET /v1/shelf`
 - `GET /v1/title`
 - `GET /v1/featured`
+- `GET /v1/search` — bounded whole-catalogue title lookup
 - `GET /v1/image` — validated TMDB image proxy only
 
 ## Deployment configuration

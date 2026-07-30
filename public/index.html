@@ -232,6 +232,19 @@
     <button id="tip-jar" class="tip-jar-button" type="button" data-i18n="tipJar">Mantenha as luzes da Locadora acesas.</button>
   </dialog>
 
+  <dialog id="balcony-search-dialog" class="panel-dialog balcony-search-dialog">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow">CATÁLOGO GERAL</span><h2>Terminal</h2></div>
+      <button class="dialog-close" value="close" aria-label="Close catalogue terminal">×</button>
+    </form>
+    <form id="balcony-search-form" class="source-form">
+      <label for="balcony-search-input">Buscar título</label>
+      <div><input id="balcony-search-input" type="search" minlength="2" maxlength="80" autocomplete="off" placeholder="Ex.: Matrix"><button type="submit">Buscar</button></div>
+    </form>
+    <p id="balcony-search-status" class="panel-copy" role="status" aria-live="polite">Digite ao menos duas letras.</p>
+    <div id="balcony-search-results" class="counter-list"></div>
+  </dialog>
+
   <dialog id="sources-dialog" class="panel-dialog sources-dialog">
     <form method="dialog" class="panel-header">
       <div><span class="eyebrow">Back room</span><h2>Catalogue sources</h2></div>
