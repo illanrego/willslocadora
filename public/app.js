@@ -52,6 +52,7 @@
   let immersiveShelf = null;
   let immersiveToken = 0;
   let balcony = null;
+  let returnToBalconySearch = false;
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
 
@@ -146,9 +147,11 @@
     return body;
   }
 
-  function openBalconySearch() {
-    $('#balcony-search-results').replaceChildren();
-    $('#balcony-search-status').textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.';
+  function openBalconySearch(preserve = false) {
+    if (!preserve) {
+      $('#balcony-search-results').replaceChildren();
+      $('#balcony-search-status').textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.';
+    }
     if (!balconySearchDialog.open) balconySearchDialog.showModal();
     $('#balcony-search-input').focus();
   }
@@ -168,7 +171,7 @@
         const item = document.createElement('article'); item.className = 'counter-item';
         const image = document.createElement('img'); image.alt = ''; image.src = posterTextureUrl(title.poster || posterFallback(title));
         const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.type === 'series' ? t('series') : t('movies')} · ${title.year || '—'}`; text.append(name, meta);
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'; inspect.addEventListener('click', () => { balconySearchDialog.close(); openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); });
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'; inspect.addEventListener('click', () => { returnToBalconySearch = true; balconySearchDialog.close(); openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); });
         item.append(image, text, inspect); results.append(item);
       });
     } catch { status.textContent = state.locale === 'pt-BR' ? 'O catálogo está indisponível agora.' : 'The catalogue is unavailable right now.'; }
@@ -885,6 +888,9 @@
     });
     titleDialog.addEventListener('close', () => {
       viewerToken += 1;
+      if (!returnToBalconySearch) return;
+      returnToBalconySearch = false;
+      window.requestAnimationFrame(() => openBalconySearch(true));
     });
     $('#counter-open').addEventListener('click', () => { renderCounter(); counterDialog.showModal(); });
     if (window.locadoraIsPublic) {

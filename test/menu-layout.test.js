@@ -24,8 +24,10 @@ test('balcony search terminal is an accessible native dialog', () => {
   assert.match(page, /<input id="balcony-search-input"[^>]*type="search"[^>]*minlength="2"/);
   assert.match(page, /id="balcony-search-status"[^>]*role="status"/);
   assert.match(page, /id="balcony-search-results"/);
-  assert.match(app, /function openBalconySearch\(\)/);
+  assert.match(app, /function openBalconySearch\(preserve = false\)/);
   assert.match(app, /api\(`\/api\/search\?\$\{new URLSearchParams/);
+  assert.match(app, /let returnToBalconySearch = false;/);
+  assert.match(app, /openBalconySearch\(true\)/);
 });
 test('immersive navigation separates Balcony from settings and filters', () => {
   assert.match(page, /class="immersive-destination[\s\S]*id="balcony-toggle"/);
