@@ -21,6 +21,8 @@
           <button class="counter-button" id="counter-open" type="button">
             <span data-i18n="counter">Balcão</span> <span id="counter-count" aria-label="items at counter">0</span>
           </button>
+          <button class="utility-button" id="watchlist-open" type="button">Minha lista</button>
+          <button class="utility-button" id="account-open" type="button">Entrar</button>
           <button class="utility-button" id="sources-open" type="button" data-i18n="sources">Fontes</button>
           <label class="locale-picker" for="locale-select">
             <span data-i18n="language">Idioma</span>
@@ -193,6 +195,7 @@
           <button id="balcony-return-shelf" type="button" data-i18n="returnShelf">Voltar à estante imersiva</button>
         </header>
         <div id="balcony-stage" class="balcony-stage"></div>
+        <button id="balcony-watchlist-open" class="balcony-watchlist-button" type="button">Minha lista</button>
       </section>
     </main>
 
@@ -207,6 +210,29 @@
   <dialog id="title-dialog" class="title-dialog">
     <form method="dialog" class="title-dialog-close"><button class="dialog-close" value="close" aria-label="Close title">×</button></form>
     <div id="title-detail"></div>
+  </dialog>
+
+  <dialog id="account-dialog" class="panel-dialog">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow">MEMBRO</span><h2>Sua Locadora</h2></div>
+      <button class="dialog-close" value="close" aria-label="Close account">×</button>
+    </form>
+    <p id="account-status" class="panel-copy" role="status" aria-live="polite">Entre para guardar sua lista e alugar fitas.</p>
+    <button id="account-sign-in" class="account-action" type="button">Entrar ou criar conta</button>
+    <form id="username-form" class="source-form" hidden>
+      <label for="username-input">Nome público</label>
+      <div><input id="username-input" name="username" minlength="3" maxlength="24" pattern="[a-zA-Z0-9_-]+" autocomplete="username" placeholder="will_rego"><button type="submit">Salvar</button></div>
+    </form>
+    <button id="account-sign-out" class="account-action" type="button" hidden>Sair</button>
+  </dialog>
+
+  <dialog id="watchlist-dialog" class="panel-dialog">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow">PRATELEIRA PESSOAL</span><h2>Minha lista</h2></div>
+      <button class="dialog-close" value="close" aria-label="Close watchlist">×</button>
+    </form>
+    <p id="watchlist-status" class="panel-copy" role="status" aria-live="polite"></p>
+    <div id="watchlist-list" class="counter-list"></div>
   </dialog>
 
   <dialog id="counter-dialog" class="panel-dialog">
@@ -272,6 +298,8 @@
   </template>
 
   <script src="/api-config.js"></script>
+  <script src="/auth-config.js"></script>
+  <script src="/account.js"></script>
   <script src="/app-core.js"></script>
   <script src="/i18n.js"></script>
   <script src="/genre-themes.js"></script>

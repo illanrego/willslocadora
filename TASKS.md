@@ -30,13 +30,15 @@ The public-MVP authority is [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_
 
 ## Next — durable public rental loop
 
-- [ ] Provision Clerk email/password authentication and Supabase Postgres; define migrations for profiles, watchlist items, rentals, rental items, reviews, reactions, and reports.
-- [ ] Add a private `locadora-data` Worker that verifies Clerk user tokens and is the sole holder of the Supabase service-role secret; retain the existing `locadora-api` Worker as public/read-only.
-- [ ] Implement Clerk sign-in and unique public username onboarding only when a visitor rents, saves a watchlist title, or reviews; no Locadora-run verification or recovery email flow in MVP.
-- [ ] Test own-data/private-review/public-review boundaries at the private data Worker.
-- [ ] Replace local-only rental state with authenticated watchlist, up-to-three active rentals, open-ended returns, watched status, per-title days-held history, and watched-return watchlist completion.
-- [ ] Add the personal watchlist shelf between public shelves and the Balcão; provide the floating CRT-side entry point and preserve Balcão parity between 3D and 2D fallback.
-- [ ] Add the CRT “Clique para pesquisar título” display and the visible “Alugar títulos” Balcão action in both 3D and 2D fallback.
+- [~] Supabase migration is committed for Clerk-linked profiles, watchlist items, rentals, and rental items; provisioning the actual Supabase project remains an operator step.
+- [x] Private `locadora-data` Worker verifies Clerk user tokens and is the only component designed to receive the Supabase service-role secret; the existing `locadora-api` Worker remains public/read-only.
+- [x] Static Clerk sign-in, public-username onboarding, and configuration-gated account controls are wired for rental/watchlist actions; no Locadora-run verification or recovery email flow exists.
+- [x] Worker unit tests cover own-data routing, username validation, canonical watchlist writes, rental request validation, and the three return outcomes. Live Clerk/Supabase boundary testing waits for provisioned credentials.
+- [x] Local-only rental history is cleared on boot; signed-in members use the authenticated watchlist, up-to-three active rentals, open-ended returns, watched status, and watched-return watchlist completion.
+- [~] A personal watchlist dialog is reachable from the normal header and a floating Balcão control; title saving remains available when the 3D VHS view falls back to DOM. The physical shelf placement still needs a visual playtest/refinement.
+- [x] CRT “Clique para pesquisar título” and the “Alugar títulos” Balcão action remain present in both 3D and 2D fallback.
+
+- [ ] Provision Clerk + Supabase, set Worker secrets, deploy `locadora-data`, populate `auth-config.js`, and manually playtest the complete live account loop before calling this feature public.
 
 - [ ] Add ratings, public-by-default reviews, private review option, helpful reactions, reports, censorship display, and moderator flow.
 - [ ] Add user-controlled Letterboxd watchlist CSV import and Locadora CSV export.

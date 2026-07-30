@@ -390,3 +390,15 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .tape-fallback-front { position: absolute; right: 0; bottom: 0; left: 0; display: flex; justify-content: space-between; gap: .5rem; padding: .45rem; color: #17120f; background: rgba(231,216,177,.94); font: 800 .66rem/1.1 "Courier New", monospace; }
 .tape-fallback-front strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tape-fallback-card:hover, .tape-fallback-card:focus-visible { transform: translateY(-5px); outline: 3px solid var(--yellow); outline-offset: 3px; }
+
+/* Member actions stay visible in both the 3D Balcão and the WebGL-free fallback. */
+.balcony-room { position: relative; }
+.balcony-watchlist-button { position: absolute; z-index: 3; right: clamp(.75rem, 5vw, 4rem); bottom: 1rem; min-height: 42px; padding: .55rem .8rem; border: 1px solid var(--yellow); color: var(--cream); background: rgba(16,24,39,.92); box-shadow: 3px 4px 0 rgba(0,0,0,.45); font: 900 .64rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.balcony-watchlist-button:hover, .balcony-watchlist-button:focus-visible { color: var(--ink); background: var(--yellow); outline: 0; }
+.account-action { min-height: 42px; margin-top: 1rem; padding: .6rem .85rem; border: 1px solid var(--yellow); color: var(--ink); background: var(--yellow); font: 900 .65rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.title-member-actions { position: absolute; z-index: 3; left: .75rem; bottom: .75rem; display: flex; gap: .4rem; }
+.title-member-actions button { min-height: 34px; padding: .4rem .55rem; border: 1px solid rgba(231,216,177,.55); color: var(--cream); background: rgba(16,24,39,.88); font: 900 .58rem/1 "Courier New", monospace; text-transform: uppercase; cursor: pointer; }
+.title-member-actions button:hover, .title-member-actions button:focus-visible { color: var(--ink); background: var(--yellow); outline: 0; }
+.watchlist-item { grid-template-columns: 1fr auto; }
+.watchlist-item time { color: var(--muted); font-size: .7rem; }
+@media (max-width: 560px) { .balcony-watchlist-button { right: .75rem; bottom: .75rem; } }

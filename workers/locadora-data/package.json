@@ -1,0 +1,13 @@
+{
+  "name": "locadora-data",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test ../../test/locadora-data-worker.test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@clerk/backend": "^3.14.0",
+    "@supabase/supabase-js": "^2.111.0"
+  }
+}

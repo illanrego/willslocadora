@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, normalizeRentalState, rentCounterTitles, returnRentedTitle } = window.LocadoraCore;
+  const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, normalizeRentalState } = window.LocadoraCore;
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
@@ -29,7 +29,9 @@
     providerRegistry: [],
     titles: [],
     counter: initialRental.counter,
-    rental: { rented: initialRental.rented, returned: initialRental.returned },
+    // Anonymous browsing can stage titles at the counter, but rentals/history are server-owned after sign-in.
+    rental: { rented: null, returned: [] },
+    member: { configured: false, signedIn: false, profile: null, watchlist: [], history: [] },
     request: null,
     stand: 0,
     metadata: new Map(),
@@ -105,6 +107,104 @@
     localStorage.setItem('locadora.counter', JSON.stringify(state.counter));
     localStorage.setItem('locadora.rental', JSON.stringify(rentalState()));
     $('#counter-count').textContent = state.counter.length;
+  }
+
+  function remoteTitle(title) {
+    const match = String(title?.id || '').match(/^tmdb:(\d+)$/);
+    if (!match) return null;
+    return { tmdbId: Number(match[1]), type: title.type, name: title.name, year: title.year || null };
+  }
+
+  function localRentalTitle(item) {
+    return { id: `tmdb:${item.tmdbId}`, type: item.type, name: item.name, year: item.year, rentalItemId: item.id, rentedAt: item.rentedAt };
+  }
+
+  function applyMemberData(data) {
+    state.member = { ...state.member, profile: data.profile, watchlist: data.watchlist || [], history: data.history || [] };
+    state.rental.rented = data.activeRental ? { id: data.activeRental.id, titles: data.activeRental.items.map(localRentalTitle) } : null;
+    state.rental.returned = (data.history || []).map(localRentalTitle);
+    if (data.activeRental) state.counter = [];
+    saveCounter();
+    renderAccount();
+  }
+
+  async function refreshMemberData() {
+    if (!state.member.signedIn) return;
+    applyMemberData(await window.LocadoraAccount.request('/v1/state'));
+    renderWatchlist();
+    renderBalconyPanel();
+    refreshBalcony();
+  }
+
+  function requireMember() {
+    if (!state.member.configured) throw new Error('Personal accounts are not configured yet');
+    if (!state.member.signedIn) throw new Error('Sign in to use your personal Locadora');
+    if (!state.member.profile) throw new Error('Choose a public username first');
+  }
+
+  function renderAccount() {
+    const { configured, signedIn, profile } = state.member;
+    $('#account-open').textContent = profile?.username || (signedIn ? 'Conta' : 'Entrar');
+    $('#account-sign-in').hidden = !configured || signedIn;
+    $('#account-sign-out').hidden = !signedIn;
+    $('#username-form').hidden = !signedIn || Boolean(profile);
+    $('#account-status').textContent = !configured
+      ? 'Personal accounts will open here once the Locadora account service is configured.'
+      : !signedIn ? 'Entre para guardar sua lista e alugar fitas.'
+        : profile ? `Você está na Locadora como ${profile.username}.`
+          : 'Escolha um nome público para usar sua lista e alugar fitas.';
+  }
+
+  function renderWatchlist() {
+    const list = $('#watchlist-list');
+    list.replaceChildren();
+    if (!state.member.signedIn) {
+      $('#watchlist-status').textContent = state.member.configured ? 'Entre para abrir sua prateleira pessoal.' : 'A prateleira pessoal será ativada quando as contas forem configuradas.';
+      return;
+    }
+    $('#watchlist-status').textContent = state.member.profile ? `${state.member.watchlist.length} título(s) guardado(s).` : 'Escolha um nome público antes de guardar títulos.';
+    if (!state.member.watchlist.length) { list.textContent = 'Sua prateleira está vazia.'; return; }
+    state.member.watchlist.forEach((title) => {
+      const item = document.createElement('article'); item.className = 'counter-item watchlist-item';
+      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name;
+      const meta = document.createElement('time'); meta.dateTime = title.addedAt; meta.textContent = `${title.year || '—'} · ${title.type}`;
+      text.append(name, meta);
+      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitle(localRentalTitle(title)));
+      item.append(text, inspect); list.append(item);
+    });
+  }
+
+  function openAccount() { renderAccount(); if (!$('#account-dialog').open) $('#account-dialog').showModal(); }
+  function openWatchlist() { renderWatchlist(); if (!$('#watchlist-dialog').open) $('#watchlist-dialog').showModal(); }
+
+  async function saveWatchlist(title) {
+    try {
+      requireMember();
+      const remote = remoteTitle(title);
+      if (!remote) throw new Error('This title does not have a canonical TMDB record yet');
+      await window.LocadoraAccount.request('/v1/watchlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: remote, source: 'locadora' }) });
+      await refreshMemberData();
+      openWatchlist();
+    } catch (error) { $('#account-status').textContent = error.message; openAccount(); }
+  }
+
+  async function initMemberAccount() {
+    try {
+      const accountState = await window.LocadoraAccount.init();
+      state.member = { ...state.member, ...accountState };
+      renderAccount();
+      if (accountState.signedIn) await refreshMemberData();
+      window.LocadoraAccount.onChange(async (next) => {
+        const signedOut = state.member.signedIn && !next.signedIn;
+        state.member = { ...state.member, ...next, ...(signedOut ? { profile: null, watchlist: [], history: [] } : {}) };
+        if (signedOut) state.rental = { rented: null, returned: [] };
+        renderAccount();
+        if (next.signedIn) await refreshMemberData();
+      });
+    } catch (error) {
+      $('#account-status').textContent = error.message;
+      renderAccount();
+    }
   }
 
   function loadLighting() {
@@ -607,18 +707,24 @@
     if (state.mode === 'balcony') refreshBalcony();
   }
 
-  function rentCounter() {
-    applyRental(rentCounterTitles(rentalState()));
-    saveCounter();
-    renderBalconyPanel();
-    refreshBalcony();
+  async function rentCounter() {
+    try {
+      requireMember();
+      const titles = state.counter.map(remoteTitle);
+      if (titles.length !== state.counter.length) throw new Error('Every selected tape needs a canonical TMDB record');
+      await window.LocadoraAccount.request('/v1/rentals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ titles }) });
+      state.counter = [];
+      await refreshMemberData();
+    } catch (error) { $('#account-status').textContent = error.message; openAccount(); }
   }
 
-  function returnRental(title, watchedStatus) {
-    applyRental(returnRentedTitle(rentalState(), `${title.type}:${title.id}`, watchedStatus));
-    saveCounter();
-    renderBalconyPanel();
-    refreshBalcony();
+  async function returnRental(title, watchedStatus) {
+    try {
+      requireMember();
+      if (!title.rentalItemId) throw new Error('This rental needs to be refreshed');
+      await window.LocadoraAccount.request(`/v1/rental-items/${title.rentalItemId}/return`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watchedStatus }) });
+      await refreshMemberData();
+    } catch (error) { $('#account-status').textContent = error.message; openAccount(); }
   }
 
   async function mountBalconyFallback(stage) {
@@ -719,6 +825,11 @@
       controls.append(button);
     }
     stage.append(controls);
+    const memberActions = document.createElement('div');
+    memberActions.className = 'title-member-actions';
+    const save = document.createElement('button');
+    save.type = 'button'; save.textContent = 'Guardar na lista'; save.addEventListener('click', () => saveWatchlist(activeViewerTitle));
+    memberActions.append(save); stage.append(memberActions);
     detail.append(stage);
     if (!titleDialog.open) titleDialog.showModal();
 
@@ -749,7 +860,8 @@
     } catch (error) {
       if (token !== viewerToken) return;
       stage.classList.add('vhs-stage-error');
-      stage.textContent = `The 3D tape could not be loaded: ${error.message}`;
+      const notice = document.createElement('p'); notice.textContent = `The 3D tape could not be loaded: ${error.message}`;
+      stage.replaceChildren(notice, memberActions);
       return;
     }
 
@@ -893,6 +1005,27 @@
       window.requestAnimationFrame(() => openBalconySearch(true));
     });
     $('#counter-open').addEventListener('click', () => { renderCounter(); counterDialog.showModal(); });
+    $('#watchlist-open').addEventListener('click', openWatchlist);
+    $('#balcony-watchlist-open').addEventListener('click', openWatchlist);
+    $('#account-open').addEventListener('click', openAccount);
+    $('#account-sign-in').addEventListener('click', async () => {
+      try { await window.LocadoraAccount.signIn(); }
+      catch (error) { $('#account-status').textContent = error.message; }
+    });
+    $('#account-sign-out').addEventListener('click', async () => {
+      try { await window.LocadoraAccount.signOut(); $('#account-dialog').close(); }
+      catch (error) { $('#account-status').textContent = error.message; }
+    });
+    $('#username-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const input = $('#username-input');
+      try {
+        const { profile } = await window.LocadoraAccount.request('/v1/profile', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: input.value }) });
+        state.member.profile = profile;
+        renderAccount();
+        await refreshMemberData();
+      } catch (error) { $('#account-status').textContent = error.message; }
+    });
     if (window.locadoraIsPublic) {
       $('#sources-open').hidden = true;
     } else {
@@ -925,6 +1058,7 @@
   }
 
   wireEvents();
+  initMemberAccount();
   window.addEventListener('pagehide', disposeVhsViewer, { once: true });
   loadProviderRegistry();
   saveCounter();
