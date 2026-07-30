@@ -97,15 +97,15 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   box(13.8, 3.6, 2.4, laminate, 0, -.05, -.3, room); box(14.2, .28, 2.7, countertop, 0, 1.61, -.3, room);
   box(1.45, .035, .9, paper, -3.85, COUNTER_TOP + .018, .25, room);
   const cardFace = new THREE.Mesh(new THREE.PlaneGeometry(1.22, .68), new THREE.MeshBasicMaterial({ map: labelTexture('MEMBRO', { width: 420, height: 120, background: '#d6b84d', color: '#173552' }) })); cardFace.position.set(-3.85, COUNTER_TOP + .038, .25); cardFace.rotation.x = -Math.PI / 2; room.add(cardFace);
-  // The catalogue CRT and keyboard face the customer (+Z).
-  const crt = new THREE.Group(); crt.position.set(4, COUNTER_TOP + 1.07, .25); crt.rotation.y = Math.PI; crt.userData.action = 'search'; room.add(crt);
+  // The catalogue CRT sits back on the counter, leaving the front edge for its keyboard.
+  const crt = new THREE.Group(); crt.position.set(4, COUNTER_TOP + 1.07, -.55); crt.rotation.y = Math.PI; crt.userData.action = 'search'; room.add(crt);
   const beige = new THREE.MeshStandardMaterial({ color: 0xc6bfa7, roughness: .65 });
   box(2.25, 1.82, 1.38, beige, 0, 0, 0, crt);
   const screen = box(1.7, 1.23, .09, new THREE.MeshStandardMaterial({ color: 0x07151b, emissive: 0x16414a, emissiveIntensity: 1.15, roughness: .2, metalness: .1 }), 0, .03, -.735, crt); screen.castShadow = false;
   for (let row = 0; row < 3; row += 1) for (let col = 0; col < 5; col += 1) box(.16, .045, .025, dark, -.36 + col * .18, .2 + row * .12, .704, crt);
   const rearLabel = new THREE.Mesh(new THREE.PlaneGeometry(.62, .18), new THREE.MeshBasicMaterial({ map: labelTexture('CRT-90', { width: 240, height: 80, background: '#6d674f' }) })); rearLabel.position.set(0, -.45, .704); crt.add(rearLabel);
   box(2.35, .18, 1.5, beige, 0, -.98, 0, crt);
-  const keyboard = new THREE.Group(); keyboard.position.set(4, COUNTER_TOP + .06, -.93); keyboard.rotation.y = Math.PI; keyboard.userData.action = 'search'; room.add(keyboard);
+  const keyboard = new THREE.Group(); keyboard.position.set(4, COUNTER_TOP + .06, .65); keyboard.rotation.y = Math.PI; keyboard.userData.action = 'search'; room.add(keyboard);
   box(2.18, .08, .76, new THREE.MeshStandardMaterial({ color: 0xb9b6a8, roughness: .72 }), 0, 0, 0, keyboard);
   const keyMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e0cf, roughness: .62 });
   for (let row = 0; row < 4; row += 1) for (let col = 0; col < 10; col += 1) box(.16, .045, .12, keyMaterial, -.78 + col * .175, .06, -.24 + row * .15, keyboard);

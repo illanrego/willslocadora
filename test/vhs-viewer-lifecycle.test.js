@@ -11,8 +11,8 @@ test('rapid title changes reuse one VHS renderer even after the dialog closes', 
 
 test('Balcony search computer faces the customer', () => {
   const balcony = readFileSync(require.resolve('../public/balcony.mjs'), 'utf8');
-  assert.match(balcony, /const crt = new THREE\.Group\(\); crt\.position\.set\(4, COUNTER_TOP \+ 1\.07, \.25\); crt\.rotation\.y = Math\.PI;/);
-  assert.match(balcony, /const keyboard = new THREE\.Group\(\); keyboard\.position\.set\(4, COUNTER_TOP \+ \.06, -\.93\); keyboard\.rotation\.y = Math\.PI;/);
+  assert.match(balcony, /const crt = new THREE\.Group\(\); crt\.position\.set\(4, COUNTER_TOP \+ 1\.07, -\.55\); crt\.rotation\.y = Math\.PI;/);
+  assert.match(balcony, /const keyboard = new THREE\.Group\(\); keyboard\.position\.set\(4, COUNTER_TOP \+ \.06, \.65\); keyboard\.rotation\.y = Math\.PI;/);
 });
 
 
