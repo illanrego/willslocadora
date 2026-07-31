@@ -1103,8 +1103,9 @@
     $('#balcony-watchlist-open').addEventListener('click', openWatchlist);
     $('#account-open').addEventListener('click', openAccount);
     $('#account-sign-in').addEventListener('click', async () => {
+      $('#account-dialog').close();
       try { await window.LocadoraAccount.signIn(); }
-      catch (error) { $('#account-status').textContent = error.message; }
+      catch (error) { $('#account-status').textContent = error.message; openAccount(); }
     });
     $('#account-sign-out').addEventListener('click', async () => {
       try { await window.LocadoraAccount.signOut(); $('#account-dialog').close(); }

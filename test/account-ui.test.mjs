@@ -15,6 +15,10 @@ test('account dialog has a member overview with active rentals and expandable hi
   assert.match(app, /function loadMoreAccountHistory\(\)/);
 });
 
+test('account sign-in closes the Locadora dialog before opening Clerk', () => {
+  assert.match(app, /#account-sign-in'\)\.addEventListener\('click', async \(\) => \{\s*\$\('#account-dialog'\)\.close\(\);\s*try \{ await window\.LocadoraAccount\.signIn\(\);/);
+});
+
 test('private account API supports paged history and authenticated username availability feedback', () => {
   assert.match(worker, /url\.pathname === '\/v1\/history'/);
   assert.match(worker, /url\.pathname\.match\(\/\^\\\/v1\\\/usernames/);
