@@ -26,6 +26,14 @@ test('a rent confirmation interrupted by identity setup resumes the same basket'
   assert.match(app, /body: JSON\.stringify\(\{ titles \}\)/);
 });
 
+test('signed-out rental state clears persisted and 3D Balcony surfaces', () => {
+  assert.match(app, /if \(signedOut\) \{\s*state\.rental = \{ rented: null, returned: \[\] \};\s*pendingRental = false;\s*saveCounter\(\);\s*renderBalconyPanel\(\);\s*refreshBalcony\(\);\s*\}/);
+});
+
+test('returning a rented tape posts the watched outcome and refreshes canonical member state', () => {
+  assert.match(app, /async function returnRental\(title, watchedStatus\) \{[\s\S]*\/v1\/rental-items\/\$\{title\.rentalItemId\}\/return[\s\S]*body: JSON\.stringify\(\{ watchedStatus \}\)[\s\S]*await refreshMemberData\(\);/);
+});
+
 test('account errors and rental prompts survive the account rerender', () => {
   assert.match(app, /function openAccount\(message = ''\)/);
   assert.match(app, /if \(message\) \$\('#account-status'\)\.textContent = message/);

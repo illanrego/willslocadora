@@ -280,7 +280,13 @@
       window.LocadoraAccount.onChange(async (next) => {
         const signedOut = state.member.signedIn && !next.signedIn;
         state.member = { ...state.member, ...next, ...(signedOut ? { profile: null, watchlist: [], history: [], historyHasMore: false } : {}) };
-        if (signedOut) { state.rental = { rented: null, returned: [] }; pendingRental = false; }
+        if (signedOut) {
+          state.rental = { rented: null, returned: [] };
+          pendingRental = false;
+          saveCounter();
+          renderBalconyPanel();
+          refreshBalcony();
+        }
         renderAccount();
         if (next.signedIn) {
           await refreshMemberData();
