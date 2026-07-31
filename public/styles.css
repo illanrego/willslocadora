@@ -401,6 +401,13 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .balcony-watchlist-button { position: absolute; z-index: 3; right: clamp(.75rem, 5vw, 4rem); bottom: 1rem; min-height: 42px; padding: .55rem .8rem; border: 1px solid var(--yellow); color: var(--cream); background: rgba(16,24,39,.92); box-shadow: 3px 4px 0 rgba(0,0,0,.45); font: 900 .64rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
 .balcony-watchlist-button:hover, .balcony-watchlist-button:focus-visible { color: var(--ink); background: var(--yellow); outline: 0; }
 .account-action { min-height: 42px; margin-top: 1rem; padding: .6rem .85rem; border: 1px solid var(--yellow); color: var(--ink); background: var(--yellow); font: 900 .65rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.username-availability { min-height: 1.2em; margin: .5rem 0 0; color: var(--yellow); font-size: .75rem; }
+.account-overview { margin-top: 1rem; border-top: 1px solid #564236; }
+.account-basic-data { padding: .85rem 0; color: var(--cream); font: 700 .72rem/1.5 "Courier New", monospace; }
+.account-rentals h3, .account-history summary { margin: 0; color: var(--yellow); font: 900 1.25rem/1 Impact, sans-serif; letter-spacing: .03em; text-transform: uppercase; }
+.account-history { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #6a5547; }
+.account-history summary { cursor: pointer; }
+.account-history-more { width: 100%; min-height: 38px; margin: .25rem 0 .75rem; border: 1px solid #6a5547; color: var(--cream); background: transparent; cursor: pointer; font: 900 .62rem/1 "Courier New", monospace; text-transform: uppercase; }
 .title-member-actions { position: absolute; z-index: 3; left: .75rem; bottom: .75rem; display: flex; gap: .4rem; }
 .title-member-actions button { min-height: 34px; padding: .4rem .55rem; border: 1px solid rgba(231,216,177,.55); color: var(--cream); background: rgba(16,24,39,.88); font: 900 .58rem/1 "Courier New", monospace; text-transform: uppercase; cursor: pointer; }
 .title-member-actions button:hover, .title-member-actions button:focus-visible { color: var(--ink); background: var(--yellow); outline: 0; }

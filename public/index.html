@@ -223,7 +223,20 @@
     <form id="username-form" class="source-form" hidden>
       <label for="username-input">Nome público</label>
       <div><input id="username-input" name="username" minlength="3" maxlength="24" pattern="[a-zA-Z0-9_-]+" autocomplete="username" placeholder="will_rego"><button type="submit">Salvar</button></div>
+      <p id="username-availability" class="username-availability" role="status" aria-live="polite"></p>
     </form>
+    <section id="account-overview" class="account-overview" hidden>
+      <div id="account-basic-data" class="account-basic-data"></div>
+      <section class="account-rentals" aria-labelledby="account-active-heading">
+        <h3 id="account-active-heading">Fitas alugadas</h3>
+        <div id="account-active-rentals" class="counter-list"></div>
+      </section>
+      <details class="account-history">
+        <summary>Histórico da Locadora</summary>
+        <div id="account-history" class="counter-list"></div>
+        <button id="account-history-more" class="account-history-more" type="button" hidden>Carregar histórico</button>
+      </details>
+    </section>
     <button id="account-sign-out" class="account-action" type="button" hidden>Sair</button>
   </dialog>
 

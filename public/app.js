@@ -31,7 +31,7 @@
     counter: initialRental.counter,
     // Anonymous browsing can stage titles at the counter, but rentals/history are server-owned after sign-in.
     rental: { rented: null, returned: [] },
-    member: { configured: false, signedIn: false, profile: null, watchlist: [], history: [] },
+    member: { configured: false, signedIn: false, profile: null, watchlist: [], history: [], historyHasMore: false },
     request: null,
     stand: 0,
     metadata: new Map(),
@@ -55,6 +55,8 @@
   let immersiveToken = 0;
   let balcony = null;
   let returnToBalconySearch = false;
+  let usernameAvailabilityTimer = 0;
+  let usernameAvailabilityToken = 0;
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
 
@@ -121,7 +123,7 @@
   }
 
   function applyMemberData(data) {
-    state.member = { ...state.member, profile: data.profile, watchlist: data.watchlist || [], history: data.history || [] };
+    state.member = { ...state.member, profile: data.profile, watchlist: data.watchlist || [], history: data.history || [], historyHasMore: Boolean(data.historyHasMore) };
     state.rental.rented = data.activeRental ? { id: data.activeRental.id, titles: data.activeRental.items.map(localRentalTitle) } : null;
     state.rental.returned = (data.history || []).map(localRentalTitle);
     if (data.activeRental) state.counter = [];
@@ -148,12 +150,79 @@
     $('#account-open').textContent = profile?.username || (signedIn ? 'Conta' : 'Entrar');
     $('#account-sign-in').hidden = !configured || signedIn;
     $('#account-sign-out').hidden = !signedIn;
-    $('#username-form').hidden = !signedIn || Boolean(profile);
+    $('#username-form').hidden = !signedIn;
+    $('#username-input').value = profile?.username || '';
     $('#account-status').textContent = !configured
       ? 'Personal accounts will open here once the Locadora account service is configured.'
       : !signedIn ? 'Entre para guardar sua lista e alugar fitas.'
         : profile ? `Você está na Locadora como ${profile.username}.`
           : 'Escolha um nome público para usar sua lista e alugar fitas.';
+    renderAccountOverview();
+  }
+
+  function accountDate(value) {
+    if (!value) return '—';
+    return new Intl.DateTimeFormat(state.locale, { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value));
+  }
+
+  function accountTitleItem(title, meta) {
+    const item = document.createElement('article'); item.className = 'counter-item watchlist-item';
+    const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name;
+    const detail = document.createElement('span'); detail.textContent = `${title.year || '—'} · ${meta}`;
+    text.append(name, detail);
+    const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitle(localRentalTitle(title)));
+    item.append(text, inspect);
+    return item;
+  }
+
+  function renderAccountOverview() {
+    const overview = $('#account-overview');
+    const { profile, history = [], historyHasMore, signedIn } = state.member;
+    overview.hidden = !signedIn || !profile;
+    if (overview.hidden) return;
+    $('#account-basic-data').textContent = `MEMBRO: ${profile.username} · DESDE ${accountDate(profile.createdAt)}`;
+    const active = $('#account-active-rentals'); active.replaceChildren();
+    const rental = state.rental.rented;
+    if (!rental?.titles.length) active.textContent = 'Nenhuma fita alugada agora.';
+    else active.append(...rental.titles.map((title) => accountTitleItem(title, `alugada em ${accountDate(title.rentedAt)}`)));
+    const historyList = $('#account-history'); historyList.replaceChildren();
+    if (!history.length) historyList.textContent = 'Ainda não há devoluções no seu histórico.';
+    else historyList.append(...history.map((title) => accountTitleItem(title, `${title.watchedStatus === 'watched' ? 'assistida' : title.watchedStatus === 'not_watched' ? 'não assistida' : 'sem confirmação'} · devolvida em ${accountDate(title.returnedAt)}`)));
+    $('#account-history-more').hidden = !historyHasMore;
+  }
+
+  async function loadMoreAccountHistory() {
+    const button = $('#account-history-more');
+    button.disabled = true;
+    try {
+      const data = await window.LocadoraAccount.request(`/v1/history?offset=${state.member.history.length}`);
+      const existing = new Set(state.member.history.map((title) => title.rentalItemId || title.id));
+      state.member.history.push(...(data.history || []).map(localRentalTitle).filter((title) => !existing.has(title.rentalItemId || title.id)));
+      state.member.historyHasMore = Boolean(data.hasMore);
+      renderAccountOverview();
+    } catch (error) { $('#account-status').textContent = error.message; }
+    finally { button.disabled = false; }
+  }
+
+  function usernameCandidate(value) {
+    const username = String(value || '').trim().toLowerCase();
+    return /^[a-z0-9_-]{3,24}$/.test(username) ? username : '';
+  }
+
+  async function checkUsernameAvailability(value) {
+    const status = $('#username-availability');
+    const username = usernameCandidate(value);
+    const token = ++usernameAvailabilityToken;
+    if (!username) { status.textContent = value ? 'Use 3–24 lowercase letters, numbers, _ or -.' : ''; return; }
+    if (username === state.member.profile?.username) { status.textContent = 'Esse é o seu nome público atual.'; return; }
+    status.textContent = 'Checando disponibilidade…';
+    try {
+      const result = await window.LocadoraAccount.request(`/v1/usernames/${encodeURIComponent(username)}`);
+      if (token !== usernameAvailabilityToken) return;
+      status.textContent = result.available ? 'Nome disponível.' : 'Esse nome já está em uso.';
+    } catch (error) {
+      if (token === usernameAvailabilityToken) status.textContent = error.message;
+    }
   }
 
   function renderWatchlist() {
@@ -197,7 +266,7 @@
       if (accountState.signedIn) await refreshMemberData();
       window.LocadoraAccount.onChange(async (next) => {
         const signedOut = state.member.signedIn && !next.signedIn;
-        state.member = { ...state.member, ...next, ...(signedOut ? { profile: null, watchlist: [], history: [] } : {}) };
+        state.member = { ...state.member, ...next, ...(signedOut ? { profile: null, watchlist: [], history: [], historyHasMore: false } : {}) };
         if (signedOut) state.rental = { rented: null, returned: [] };
         renderAccount();
         if (next.signedIn) await refreshMemberData();
@@ -1041,16 +1110,22 @@
       try { await window.LocadoraAccount.signOut(); $('#account-dialog').close(); }
       catch (error) { $('#account-status').textContent = error.message; }
     });
+    $('#username-input').addEventListener('input', (event) => {
+      window.clearTimeout(usernameAvailabilityTimer);
+      usernameAvailabilityTimer = window.setTimeout(() => checkUsernameAvailability(event.currentTarget.value), 250);
+    });
     $('#username-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const input = $('#username-input');
       try {
         const { profile } = await window.LocadoraAccount.request('/v1/profile', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: input.value }) });
         state.member.profile = profile;
+        $('#username-availability').textContent = 'Nome público salvo.';
         renderAccount();
         await refreshMemberData();
       } catch (error) { $('#account-status').textContent = error.message; }
     });
+    $('#account-history-more').addEventListener('click', loadMoreAccountHistory);
     if (window.locadoraIsPublic) {
       $('#sources-open').hidden = true;
     } else {

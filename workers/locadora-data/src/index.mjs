@@ -2,6 +2,7 @@ import { verifyToken } from '@clerk/backend';
 import { createClient } from '@supabase/supabase-js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
+const HISTORY_PAGE_SIZE = 20;
 
 function allowedOrigins(value) {
   return new Set(String(value || '').split(',').map((origin) => origin.trim()).filter(Boolean));
@@ -48,6 +49,7 @@ class ApiError extends Error {
 
 function databaseError(error) {
   if (!error) return;
+  if (error.code === '23505') throw new ApiError(409, 'That public username is already taken');
   if (error.message === 'active_title_limit') throw new ApiError(409, 'You can have up to three active titles');
   if (error.message === 'title_already_rented') throw new ApiError(409, 'That title is already active at your counter');
   if (error.message === 'profile_required') throw new ApiError(409, 'Choose a public username first');
@@ -163,19 +165,34 @@ export function createSupabaseRepository(env) {
       databaseError(result.error);
       return { id: result.data.id, returnedAt: result.data.returned_at, watchedStatus: result.data.watched_status };
     },
+    async isUsernameAvailable(userId, username) {
+      const result = await database.from('profiles').select('user_id').eq('username', username).maybeSingle();
+      databaseError(result.error);
+      return !result.data || result.data.user_id === userId;
+    },
+    async listHistory(userId, offset) {
+      const result = await database.from('rental_items')
+        .select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at, returned_at, watched_status')
+        .eq('user_id', userId).not('returned_at', 'is', null)
+        .order('returned_at', { ascending: false }).range(offset, offset + HISTORY_PAGE_SIZE);
+      databaseError(result.error);
+      const rows = result.data || [];
+      return { history: rows.slice(0, HISTORY_PAGE_SIZE).map(mapRentalItemRow), hasMore: rows.length > HISTORY_PAGE_SIZE };
+    },
     async getState(userId) {
-      const [profileResult, watchlistResult, rentalResult, historyResult] = await Promise.all([
+      const [profileResult, watchlistResult, rentalResult, history] = await Promise.all([
         database.from('profiles').select('user_id, username, created_at').eq('user_id', userId).maybeSingle(),
         database.from('watchlist_items').select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, source, source_note, added_at').eq('user_id', userId).is('completed_at', null).order('added_at', { ascending: false }),
         database.from('rentals').select('id, opened_at, rental_items(id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at)').eq('user_id', userId).is('returned_at', null).maybeSingle(),
-        database.from('rental_items').select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at, returned_at, watched_status').eq('user_id', userId).not('returned_at', 'is', null).order('returned_at', { ascending: false }).limit(50),
+        this.listHistory(userId, 0),
       ]);
-      [profileResult, watchlistResult, rentalResult, historyResult].forEach(({ error }) => databaseError(error));
+      [profileResult, watchlistResult, rentalResult].forEach(({ error }) => databaseError(error));
       return {
         profile: profileResult.data ? { userId: profileResult.data.user_id, username: profileResult.data.username, createdAt: profileResult.data.created_at } : null,
         watchlist: (watchlistResult.data || []).map(mapWatchlistRow),
         activeRental: rentalResult.data ? { id: rentalResult.data.id, openedAt: rentalResult.data.opened_at, items: (rentalResult.data.rental_items || []).map(mapRentalItemRow) } : null,
-        history: (historyResult.data || []).map(mapRentalItemRow),
+        history: history.history,
+        historyHasMore: history.hasMore,
       };
     },
   };
@@ -187,11 +204,13 @@ export function createLocadoraDataWorker({ authenticate = authenticateClerk, cre
       const url = new URL(request.url);
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(request, env) });
       const isStateRequest = request.method === 'GET' && url.pathname === '/v1/state';
+      const isHistoryRequest = request.method === 'GET' && url.pathname === '/v1/history';
+      const usernameMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/usernames\/([a-z0-9_-]{3,24})$/) : null;
       const isProfileRequest = request.method === 'PUT' && url.pathname === '/v1/profile';
       const isWatchlistRequest = request.method === 'POST' && url.pathname === '/v1/watchlist';
       const isRentalRequest = request.method === 'POST' && url.pathname === '/v1/rentals';
       const returnMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/rental-items\/([^/]+)\/return$/) : null;
-      if (!isStateRequest && !isProfileRequest && !isWatchlistRequest && !isRentalRequest && !returnMatch) return response(request, env, { error: 'Not found' }, 404);
+      if (!isStateRequest && !isHistoryRequest && !usernameMatch && !isProfileRequest && !isWatchlistRequest && !isRentalRequest && !returnMatch) return response(request, env, { error: 'Not found' }, 404);
 
       const userId = await authenticate(request, env);
       if (!userId) return response(request, env, { error: 'Authentication required' }, 401);
@@ -199,6 +218,12 @@ export function createLocadoraDataWorker({ authenticate = authenticateClerk, cre
       try {
         const repository = createRepository(env);
         if (isStateRequest) return response(request, env, await repository.getState(userId));
+        if (isHistoryRequest) {
+          const offset = Number(url.searchParams.get('offset'));
+          if (!Number.isInteger(offset) || offset < 0 || offset > 10000) return response(request, env, { error: 'Invalid history offset' }, 400);
+          return response(request, env, await repository.listHistory(userId, offset));
+        }
+        if (usernameMatch) return response(request, env, { username: usernameMatch[1], available: await repository.isUsernameAvailable(userId, usernameMatch[1]) });
         const body = await readJson(request);
         if (isWatchlistRequest) {
           const title = normalizeTitle({ ...body?.title, source: body?.source, sourceNote: body?.sourceNote });

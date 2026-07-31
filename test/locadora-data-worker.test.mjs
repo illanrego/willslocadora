@@ -201,3 +201,32 @@ test('data Worker accepts only the three settled return outcomes', async () => {
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), { error: 'Invalid rental return' });
 });
+
+test('data Worker exposes only the signed-in member history in pages', async () => {
+  const calls = [];
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => 'user_clerk_123',
+    createRepository: () => ({
+      async listHistory(userId, offset) {
+        calls.push({ userId, offset });
+        return { history: [{ id: 'item-1', name: 'The Matrix' }], hasMore: true };
+      },
+    }),
+  });
+  const response = await worker.fetch(jsonRequest('/v1/history?offset=20'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [{ userId: 'user_clerk_123', offset: 20 }]);
+  assert.deepEqual(await response.json(), { history: [{ id: 'item-1', name: 'The Matrix' }], hasMore: true });
+});
+
+test('data Worker checks public username availability for the authenticated member', async () => {
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => 'user_clerk_123',
+    createRepository: () => ({ isUsernameAvailable: async (userId, username) => userId === 'user_clerk_123' && username === 'will_rego' }),
+  });
+  const response = await worker.fetch(jsonRequest('/v1/usernames/will_rego'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { username: 'will_rego', available: true });
+});
