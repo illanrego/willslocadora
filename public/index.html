@@ -102,6 +102,7 @@
         </div>
         <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" hidden>← Previous stand</button>
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
+        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="balcony-dialog">Cesta <span id="immersive-basket-count">0</span></button>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
             <div class="immersive-browse-controls">
@@ -235,19 +236,12 @@
     <div id="watchlist-list" class="counter-list"></div>
   </dialog>
 
-  <dialog id="counter-dialog" class="panel-dialog">
-    <form method="dialog" class="panel-header">
-      <div><span class="eyebrow">Checkout desk</span><h2>Your counter</h2></div>
-      <button class="dialog-close" value="close" aria-label="Close counter">×</button>
-    </form>
-    <div id="counter-list" class="counter-list"></div>
-  </dialog>
-
   <dialog id="balcony-dialog" class="panel-dialog balcony-dialog">
     <form method="dialog" class="panel-header">
       <div><span class="eyebrow" data-i18n="balcony">Balcão 3D</span><h2 data-i18n="counter">Balcão</h2></div>
       <button class="dialog-close" value="close" aria-label="Close balcony controls">×</button>
     </form>
+    <button id="counter-search" class="counter-search-button" type="button">Buscar no catálogo</button>
     <p id="balcony-panel-status" class="panel-copy" role="status" aria-live="polite"></p>
     <div id="balcony-counter-list" class="counter-list"></div>
     <button id="rent-counter" class="balcony-rent-button" type="button" data-i18n="rent">Alugar</button>

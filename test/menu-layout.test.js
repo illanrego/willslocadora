@@ -44,3 +44,28 @@ test('collapsed immersive HUD keeps its nested restore button visible', () => {
   assert.doesNotMatch(css, /\.immersive-hud\.is-collapsed \.immersive-hud-strip > :not\(#immersive-hud-toggle\)/);
   assert.match(css, /\.immersive-hud\.is-collapsed \.immersive-hud-strip > :not\(\.immersive-menu-actions\), \.immersive-hud\.is-collapsed \.immersive-menu-actions > :not\(#immersive-hud-toggle\)/);
 });
+
+test('the normal counter opens the same rental desk, including catalogue search and returns', () => {
+  assert.match(page, /id="counter-search"[^>]*>/);
+  assert.match(page, /id="rent-counter"/);
+  assert.match(page, /id="balcony-rented-list"/);
+  assert.match(app, /function openRentalDesk\(\) \{\s*renderBalconyPanel\(\);\s*\$\('#balcony-dialog'\)\.showModal\(\);\s*\}/);
+  assert.match(app, /\$\('#counter-open'\)\.addEventListener\('click', openRentalDesk\)/);
+  assert.match(app, /\$\('#counter-search'\)\.addEventListener\('click', openBalconySearch\)/);
+});
+
+test('immersive mode keeps its menu compact and exposes the basket independently', () => {
+  assert.match(page, /id="immersive-basket-open"[^>]*aria-controls="balcony-dialog"/);
+  assert.match(app, /setImmersiveHudCollapsed\(true\)/);
+  assert.match(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openRentalDesk\)/);
+  assert.match(css, /\.immersive-hud \{[^}]*position: absolute;/);
+  assert.match(css, /\.immersive-basket-button/);
+});
+
+test('VHS inspection offers the basket as a floating action and labels its tape-back action consistently', () => {
+  assert.match(app, /basket\.textContent = 'Botar na cesta';/);
+  assert.match(app, /memberActions\.append\(basket, save\)/);
+  assert.match(app, /basket\.addEventListener\('click', \(\) => \{[\s\S]*toggleCounter\(current\)/);
+  const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
+  assert.match(viewer, /atCounter \? copy\.returnTape : copy\.toBasket/);
+});

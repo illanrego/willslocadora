@@ -274,7 +274,7 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '16px Courier New, monospace';
   context.fillText(copy.catalogueOnly, 72, 1288);
-  drawButton(context, ACTIONS.counter, atCounter ? copy.returnTape : copy.toCounter, LOCADORA_PALETTE.cream, LOCADORA_PALETTE.ink);
+  drawButton(context, ACTIONS.counter, atCounter ? copy.returnTape : copy.toBasket, LOCADORA_PALETTE.cream, LOCADORA_PALETTE.ink);
   drawButton(context, ACTIONS.availability, copy.watchOptions, LOCADORA_PALETTE.red, LOCADORA_PALETTE.white);
   drawButton(context, ACTIONS.watch, copy.stremio, LOCADORA_PALETTE.yellow, LOCADORA_PALETTE.ink);
 

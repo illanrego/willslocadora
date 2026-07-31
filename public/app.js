@@ -45,7 +45,7 @@
   const shelf = $('#shelf');
   const emptyState = $('#empty-state');
   const titleDialog = $('#title-dialog');
-  const counterDialog = $('#counter-dialog');
+
   const balconySearchDialog = $('#balcony-search-dialog');
   const sourcesDialog = $('#sources-dialog');
   let activeVhsViewer = null;
@@ -107,6 +107,7 @@
     localStorage.setItem('locadora.counter', JSON.stringify(state.counter));
     localStorage.setItem('locadora.rental', JSON.stringify(rentalState()));
     $('#counter-count').textContent = state.counter.length;
+    $('#immersive-basket-count').textContent = state.counter.length;
   }
 
   function remoteTitle(title) {
@@ -593,6 +594,7 @@
       balcony?.dispose();
       balcony = null;
       $('#balcony-stage').replaceChildren();
+      setImmersiveHudCollapsed(true);
       mountImmersive();
     }
     else if (isBalcony) {
@@ -698,12 +700,18 @@
     return state.counter.some((item) => item.id === title.id && item.type === title.type);
   }
 
+  function syncTitleBasketAction() {
+    const basket = $('#title-detail .title-basket-action');
+    if (basket) basket.textContent = isAtCounter(activeViewerTitle) ? 'Tirar da cesta' : 'Botar na cesta';
+  }
+
   function toggleCounter(title) {
     if (state.rental.rented) return;
     if (isAtCounter(title)) state.counter = state.counter.filter((item) => item.id !== title.id || item.type !== title.type);
     else if (!state.rental.rented?.titles.some((item) => item.id === title.id && item.type === title.type)) state.counter.push(title);
     saveCounter();
-    renderCounter();
+    syncTitleBasketAction();
+    if ($('#balcony-dialog').open) renderBalconyPanel();
     if (state.mode === 'balcony') refreshBalcony();
   }
 
@@ -735,7 +743,7 @@
       titles: rental.rented?.titles || rental.counter,
       heading: 'Balcão · tape fronts',
       onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
-      onAction: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
+      onAction: openRentalDesk,
       onSearch: openBalconySearch,
       actionLabel: state.locale === 'pt-BR' ? 'Abrir controles do balcão' : 'Open counter controls',
     });
@@ -753,10 +761,10 @@
         rental: rentalState(),
         year: state.year,
         copy: { ownerCaption: t('ownerCaption'), collectiveAwards: t('collectiveAwards'), collectiveAwardLines: [t('collectiveAwardOne'), t('collectiveAwardTwo'), t('collectiveAwardThree')] },
-        onCounterSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
+        onCounterSelect: openRentalDesk,
         onSearch: openBalconySearch,
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
-        onBagSelect: () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); },
+        onBagSelect: openRentalDesk,
         onTip: () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; $('#balcony-dialog').showModal(); },
         onOwner: () => { $('#balcony-panel-status').textContent = t('ownerNotice'); $('#balcony-dialog').showModal(); },
         onCollectiveAwards: () => { $('#balcony-panel-status').textContent = t('collectiveAwardsNotice'); $('#balcony-dialog').showModal(); },
@@ -768,6 +776,11 @@
   }
 
   function refreshBalcony() { if (state.mode === 'balcony') mountBalcony(); }
+
+  function openRentalDesk() {
+    renderBalconyPanel();
+    $('#balcony-dialog').showModal();
+  }
 
   function renderBalconyPanel() {
     const counterList = $('#balcony-counter-list');
@@ -805,6 +818,7 @@
     if (activeVhsViewer) {
       if (!titleDialog.open) titleDialog.showModal();
       activeVhsViewer.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
+      syncTitleBasketAction();
       if (hydrate) loadTitleMetadata(title).then(() => {
         if (token === viewerToken && titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
       }).catch(() => {});
@@ -827,10 +841,19 @@
     stage.append(controls);
     const memberActions = document.createElement('div');
     memberActions.className = 'title-member-actions';
+    const basket = document.createElement('button');
+    basket.type = 'button'; basket.className = 'title-basket-action'; basket.textContent = 'Botar na cesta';
+    basket.addEventListener('click', () => {
+      const current = activeViewerTitle;
+      if (!current) return;
+      toggleCounter(current);
+      activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))));
+    });
     const save = document.createElement('button');
     save.type = 'button'; save.textContent = 'Guardar na lista'; save.addEventListener('click', () => saveWatchlist(activeViewerTitle));
-    memberActions.append(save); stage.append(memberActions);
+    memberActions.append(basket, save); stage.append(memberActions);
     detail.append(stage);
+    syncTitleBasketAction();
     if (!titleDialog.open) titleDialog.showModal();
 
     try {
@@ -1004,7 +1027,9 @@
       returnToBalconySearch = false;
       window.requestAnimationFrame(() => openBalconySearch(true));
     });
-    $('#counter-open').addEventListener('click', () => { renderCounter(); counterDialog.showModal(); });
+    $('#counter-open').addEventListener('click', openRentalDesk);
+    $('#counter-search').addEventListener('click', openBalconySearch);
+    $('#immersive-basket-open').addEventListener('click', openRentalDesk);
     $('#watchlist-open').addEventListener('click', openWatchlist);
     $('#balcony-watchlist-open').addEventListener('click', openWatchlist);
     $('#account-open').addEventListener('click', openAccount);
