@@ -114,14 +114,26 @@
     });
   }
 
+  function updateRentalBasket(value, title, activeRental = null) {
+    const titles = normalizeRentalTitles(value).slice(0, 3);
+    if (activeRental?.titles?.length) return { titles, changed: false, reason: 'active_rental' };
+    const normalized = normalizeRentalTitle(title);
+    const key = rentalTitleKey(normalized);
+    if (!key) return { titles, changed: false, reason: 'invalid_title' };
+    const existing = titles.findIndex((item) => rentalTitleKey(item) === key);
+    if (existing >= 0) return { titles: titles.filter((_, index) => index !== existing), changed: true, reason: 'removed' };
+    if (titles.length >= 3) return { titles, changed: false, reason: 'full' };
+    return { titles: [...titles, normalized], changed: true, reason: 'added' };
+  }
+
   function normalizeRentalState(value) {
     let source = value;
     if (typeof value === 'string') {
       try { source = JSON.parse(value); } catch { source = {}; }
     }
     source = source && typeof source === 'object' ? source : {};
-    const counter = normalizeRentalTitles(source.counter);
-    const rentedTitles = normalizeRentalTitles(source.rented && source.rented.titles);
+    const counter = normalizeRentalTitles(source.counter).slice(0, 3);
+    const rentedTitles = normalizeRentalTitles(source.rented && source.rented.titles).slice(0, 3);
     const rentedKeys = new Set(rentedTitles.map(rentalTitleKey));
     const returned = (Array.isArray(source.returned) ? source.returned : []).map((entry) => {
       const title = normalizeRentalTitle(entry && entry.title);
@@ -154,5 +166,5 @@
     };
   }
 
-  return { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, rentCounterTitles, returnRentedTitle };
+  return { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, rentCounterTitles, returnRentedTitle, updateRentalBasket };
 }));

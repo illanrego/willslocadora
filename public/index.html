@@ -106,7 +106,7 @@
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
             <div class="immersive-browse-controls">
-              <label class="immersive-picker" for="immersive-genre-select">
+              <label class="immersive-picker immersive-genre-picker" for="immersive-genre-select">
                 <span data-i18n="genre">Gênero</span>
                 <select id="immersive-genre-select" aria-label="Immersive genre"></select>
               </label>
@@ -125,7 +125,7 @@
               <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false"><span aria-hidden="true">⚙</span><span data-i18n="settings">Ajustes</span></button>
               <span class="immersive-menu-divider" aria-hidden="true"></span>
               <button id="normal-mode-return" type="button" data-i18n="return">Voltar</button>
-              <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Hide immersive controls">⌃</button>
+              <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Ocultar menu">Ocultar</button>
             </nav>
             <div class="immersive-destination">
               <span class="immersive-destination-copy"><span data-i18n="counter">Balcão</span><small>3D</small></span>
@@ -213,9 +213,9 @@
     <div id="title-detail"></div>
   </dialog>
 
-  <dialog id="account-dialog" class="panel-dialog">
+  <dialog id="account-dialog" class="panel-dialog member-dialog">
     <form method="dialog" class="panel-header">
-      <div><span class="eyebrow">MEMBRO</span><h2>Sua Locadora</h2></div>
+      <div><span class="eyebrow">CARTEIRINHA · HISTÓRICO · LOCAÇÕES</span><h2>Seção do membro</h2></div>
       <button class="dialog-close" value="close" aria-label="Close account">×</button>
     </form>
     <p id="account-status" class="panel-copy" role="status" aria-live="polite">Entre para guardar sua lista e alugar fitas.</p>
@@ -226,7 +226,16 @@
       <p id="username-availability" class="username-availability" role="status" aria-live="polite"></p>
     </form>
     <section id="account-overview" class="account-overview" hidden>
-      <div id="account-basic-data" class="account-basic-data"></div>
+      <div class="member-card" aria-label="Dados da carteirinha">
+        <div class="member-card-mark" aria-hidden="true">WL</div>
+        <div><span>Nome público</span><strong id="account-basic-data"></strong></div>
+        <div><span>Membro desde</span><strong id="account-member-since">—</strong></div>
+      </div>
+      <div class="member-stats" aria-label="Resumo da conta">
+        <div><strong id="account-active-count">0/3</strong><span>Fitas alugadas</span></div>
+        <div><strong id="account-history-count">0</strong><span>Registros recentes</span></div>
+        <div><strong id="account-watchlist-count">0</strong><span>Na minha lista</span></div>
+      </div>
       <section class="account-rentals" aria-labelledby="account-active-heading">
         <h3 id="account-active-heading">Fitas alugadas</h3>
         <div id="account-active-rentals" class="counter-list"></div>
@@ -254,10 +263,15 @@
       <div><span class="eyebrow" data-i18n="balcony">Balcão 3D</span><h2 data-i18n="counter">Balcão</h2></div>
       <button class="dialog-close" value="close" aria-label="Close balcony controls">×</button>
     </form>
-    <button id="counter-search" class="counter-search-button" type="button">Buscar no catálogo</button>
+    <ol class="rental-flow" aria-label="Como alugar">
+      <li><span>1</span><strong>Escolha</strong><small>na estante ou busca</small></li>
+      <li class="is-current"><span>2</span><strong>Monte a cesta</strong><small id="rental-capacity">0 de 3 fitas</small></li>
+      <li><span>3</span><strong>Alugue</strong><small>um único pacote</small></li>
+    </ol>
+    <button id="counter-search" class="counter-search-button" type="button">Pesquisar títulos</button>
     <p id="balcony-panel-status" class="panel-copy" role="status" aria-live="polite"></p>
     <div id="balcony-counter-list" class="counter-list"></div>
-    <button id="rent-counter" class="balcony-rent-button" type="button" data-i18n="rent">Alugar</button>
+    <button id="rent-counter" class="balcony-rent-button" type="button">Alugar pacote</button>
     <section class="balcony-return-controls" aria-labelledby="balcony-return-heading">
       <h3 id="balcony-return-heading" data-i18n="returns">Devoluções</h3>
       <div id="balcony-rented-list" class="counter-list"></div>

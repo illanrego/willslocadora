@@ -1,7 +1,7 @@
-# The Balcony — frontend-first counter prototype
+# The Balcony — implemented rental counter
 
-**Status:** approved next visual/UI experiment. Build with local UI state first; no database or public backend is required.
-**Purpose:** turn Locadora’s existing browse → counter → Stremio experience into a tangible 3D rental ritual before adding other product layers.
+**Status:** implemented in the 2D and 3D experiences. The signed-in rental state is authoritative in the private `locadora-data` Worker; the anonymous basket remains local until confirmation.
+**Purpose:** make Locadora’s browse → basket → counter → return loop tangible, legible, and identical in normal and immersive modes.
 
 ## Core rule
 
@@ -10,14 +10,32 @@ There is no `Separados` / Picks shelf.
 The Balcony has one pre-rental title collection: **Balcão**. A tape reaches Balcão when the visitor deliberately adds it from a VHS detail view. These are the titles currently being considered for the next rental.
 
 ```text
-browse a VHS
-  → add it to Balcão
-  → click Alugar
-  → local state changes from counter to rented
-  → return it later through the return area
+ESTANTE / BUSCA
+  │  inspecionar uma fita ou usar "Botar na cesta"
+  ▼
+CESTA LOCAL (0–3 títulos distintos)
+  │  revisar, remover ou continuar pesquisando
+  ▼
+BALCÃO — "Alugar pacote"
+  │
+  ├─ sem sessão ─► Seção do membro ─► Clerk ─┐
+  ├─ sem perfil ─► escolher nome público ────┤
+  └─ membro pronto ──────────────────────────┘
+                                              │ retoma a confirmação já iniciada
+                                              ▼
+PACOTE ATIVO (1 locação, todas as fitas juntas)
+  │  devolver cada fita como assistida / não assistida / não informar
+  ▼
+HISTÓRICO + LISTA ATUALIZADOS
 ```
 
-This is a frontend/local-state prototype. Its job is to test the 3D room, tape piles, actions, and emotional logic—not to simulate payment, inventory, or a real account yet.
+Rules:
+
+- The basket never contains more than three distinct titles.
+- `Alugar pacote` sends all current basket titles in one authenticated request and creates one active rental.
+- Authentication or initial profile setup does not discard the basket; after completion, the pending explicit rental confirmation resumes.
+- While a package is active, no second basket/package can be started.
+- There is no payment, due date, or playback guarantee in this ritual.
 
 ## Spatial composition
 
@@ -28,7 +46,7 @@ It should look like a real Brazilian video-store counter after dark: practical, 
 - visibly tall, imperfect piles of VHS cases on the counter;
 - dense tape walls and posters behind the desk;
 - plain painted/laminate counter surfaces, metal railing, paper notices, and small store clutter;
-- an old CRT computer seen from **behind**—a physical staff-side object, not a dashboard screen facing the visitor;
+- an old CRT computer with a small, readable `PESQUISAR TÍTULOS` screen—still a physical counter object, not a dashboard;
 - warm fluorescent/amber practical light with restrained blue spill from the shop floor;
 - membership paperwork/card cues and a physical return area.
 
@@ -48,14 +66,15 @@ This is the primary interactive pile/crate on the counter. It contains every tit
 
 A clear physical desk action—button, stamped receipt control, or counter bell—runs `Alugar`.
 
-For this prototype:
+For the implemented flow:
 
-- `Alugar` moves every title currently in Balcão from `counter` state to `rented` state in local UI state.
-- The physical response matters: animate the pile being processed, print/slide out a fake receipt, then pack the tapes into a Locadora plastic bag.
+- `Alugar pacote` is a hanging, clickable plaque directly below the selected tapes and also the primary action in the native Balcão dialog.
+- It sends all one-to-three titles together to the authenticated rental endpoint; the database creates one package atomically.
+- If identity/profile setup interrupts confirmation, the same basket remains and confirmation resumes after setup.
 - The bag occupies the **same exact counter position** previously used by the Balcão pile. It becomes the visible active-rental object: the counter has been cleared because the visitor is taking that rental home.
 - Use a slightly translucent white/cream plastic bag with the Locadora mark, handles, believable VHS silhouettes/spines, and the receipt peeking out. It should feel like a real video-store handoff, not a shopping-cart icon.
 - Selecting the bag starts the return flow for its tapes. Returning the last tape removes the bag and leaves the counter ready for a new Balcão pile.
-- Do not enforce a package limit yet. We will learn from the space whether two, three, or a small flexible stack feels right.
+- The cap is three active titles in one package, enforced in the client, Worker request validation, and database function.
 - Do not show money/payment handling. The rental ritual is free and simulated.
 
 ### 3. Devoluções — return pile / return chute
@@ -69,21 +88,19 @@ Include a clearly separate physical return location: a drop slot, wire basket, o
 
 ### 4. Membership desk
 
-Include a modest physical membership cue:
+Include a physical membership cue tied to the real member section:
 
-- brass or laminated `Seu Cartão` plaque / card holder;
-- a small stack of blank rental cards or membership forms;
-- later it will show the signed-in username, but the prototype can use a local mock name;
+- the Member Section shows the signed-in username, membership date, active capacity, recent history count, and saved-list count;
+- active rentals and progressively loaded history stay private behind the authenticated Worker;
 - it is not a public profile or social feature.
 
-### 5. CRT computer, seen from behind
+### 5. CRT catalogue terminal
 
-The counter includes an old beige/black CRT monitor, keyboard, cables, and perhaps a receipt printer.
+The counter includes an old beige/black CRT monitor and keyboard.
 
-- The visitor primarily sees its rear shell and screen glow from the staff side, as in a real counter—not a big product UI screen.
-- It makes the counter feel operated and real.
-- It should not become a second dashboard or canvas-only control surface.
-- The receipt printer can support the `Alugar` animation later.
+- Its screen clearly reads `PESQUISAR TÍTULOS` and opens the same native search used by the 2D Balcão.
+- The CRT remains a physical, compact prop rather than a second dashboard or canvas-only control surface.
+- A subtle hover lift plus pointer cursor communicates that it is clickable.
 
 ### 6. Voluntary 3D tip jar
 

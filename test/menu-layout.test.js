@@ -54,12 +54,31 @@ test('the normal counter opens the same rental desk, including catalogue search 
   assert.match(app, /\$\('#counter-search'\)\.addEventListener\('click', openBalconySearch\)/);
 });
 
-test('immersive mode keeps its menu compact and exposes the basket independently', () => {
+test('immersive mode opens a legible browse console and exposes the basket independently', () => {
+  assert.match(page, /class="immersive-picker immersive-genre-picker"/);
   assert.match(page, /id="immersive-basket-open"[^>]*aria-controls="balcony-dialog"/);
-  assert.match(app, /setImmersiveHudCollapsed\(true\)/);
+  assert.match(app, /setImmersiveHudCollapsed\(false\)/);
   assert.match(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openRentalDesk\)/);
+  assert.match(css, /\.immersive-genre-picker/);
+  assert.match(css, /\.immersive-genre-picker select/);
   assert.match(css, /\.immersive-hud \{[^}]*position: absolute;/);
   assert.match(css, /\.immersive-basket-button/);
+});
+
+test('the rental desk explains the three-step one-pack flow and enforces a three-tape capacity', () => {
+  assert.match(page, /class="rental-flow"/);
+  assert.match(page, /id="rental-capacity"/);
+  assert.match(page, /id="rent-counter"[^>]*>Alugar pacote<\/button>/);
+  assert.match(app, /updateRentalBasket/);
+  assert.match(app, /pendingRental/);
+  assert.match(app, /resumePendingRental/);
+});
+
+test('the member destination is a detailed Member Section rather than a generic account panel', () => {
+  assert.match(page, /<h2>Seção do membro<\/h2>/);
+  assert.match(page, /id="account-member-since"/);
+  assert.match(page, /id="account-active-count"/);
+  assert.match(page, /id="account-history-count"/);
 });
 
 test('VHS inspection offers the basket as a floating action and labels its tape-back action consistently', () => {

@@ -19,6 +19,19 @@ test('account sign-in closes the Locadora dialog before opening Clerk', () => {
   assert.match(app, /#account-sign-in'\)\.addEventListener\('click', async \(\) => \{\s*\$\('#account-dialog'\)\.close\(\);\s*try \{ await window\.LocadoraAccount\.signIn\(\);/);
 });
 
+test('a rent confirmation interrupted by identity setup resumes the same basket', () => {
+  assert.match(app, /pendingRental = true/);
+  assert.match(app, /async function resumePendingRental\(\)/);
+  assert.match(app, /await resumePendingRental\(\)/);
+  assert.match(app, /body: JSON\.stringify\(\{ titles \}\)/);
+});
+
+test('account errors and rental prompts survive the account rerender', () => {
+  assert.match(app, /function openAccount\(message = ''\)/);
+  assert.match(app, /if \(message\) \$\('#account-status'\)\.textContent = message/);
+  assert.doesNotMatch(app, /textContent = error\.message; openAccount\(\)/);
+});
+
 test('private account API supports paged history and authenticated username availability feedback', () => {
   assert.match(worker, /url\.pathname === '\/v1\/history'/);
   assert.match(worker, /url\.pathname\.match\(\/\^\\\/v1\\\/usernames/);

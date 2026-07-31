@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, normalizeRentalState } = window.LocadoraCore;
+  const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, normalizeRentalState, updateRentalBasket } = window.LocadoraCore;
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
@@ -57,6 +57,8 @@
   let returnToBalconySearch = false;
   let usernameAvailabilityTimer = 0;
   let usernameAvailabilityToken = 0;
+  let pendingRental = false;
+  let rentalRequestInFlight = false;
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
 
@@ -119,7 +121,11 @@
   }
 
   function localRentalTitle(item) {
-    return { id: `tmdb:${item.tmdbId}`, type: item.type, name: item.name, year: item.year, rentalItemId: item.id, rentedAt: item.rentedAt };
+    return {
+      id: `tmdb:${item.tmdbId}`, type: item.type, name: item.name, year: item.year,
+      rentalItemId: item.id, rentedAt: item.rentedAt, returnedAt: item.returnedAt,
+      watchedStatus: item.watchedStatus, poster: item.poster || '',
+    };
   }
 
   function applyMemberData(data) {
@@ -180,9 +186,13 @@
     const { profile, history = [], historyHasMore, signedIn } = state.member;
     overview.hidden = !signedIn || !profile;
     if (overview.hidden) return;
-    $('#account-basic-data').textContent = `MEMBRO: ${profile.username} · DESDE ${accountDate(profile.createdAt)}`;
-    const active = $('#account-active-rentals'); active.replaceChildren();
+    $('#account-basic-data').textContent = profile.username;
+    $('#account-member-since').textContent = accountDate(profile.createdAt);
     const rental = state.rental.rented;
+    $('#account-active-count').textContent = `${rental?.titles.length || 0}/3`;
+    $('#account-history-count').textContent = String(history.length);
+    $('#account-watchlist-count').textContent = String(state.member.watchlist.length);
+    const active = $('#account-active-rentals'); active.replaceChildren();
     if (!rental?.titles.length) active.textContent = 'Nenhuma fita alugada agora.';
     else active.append(...rental.titles.map((title) => accountTitleItem(title, `alugada em ${accountDate(title.rentedAt)}`)));
     const historyList = $('#account-history'); historyList.replaceChildren();
@@ -196,8 +206,8 @@
     button.disabled = true;
     try {
       const data = await window.LocadoraAccount.request(`/v1/history?offset=${state.member.history.length}`);
-      const existing = new Set(state.member.history.map((title) => title.rentalItemId || title.id));
-      state.member.history.push(...(data.history || []).map(localRentalTitle).filter((title) => !existing.has(title.rentalItemId || title.id)));
+      const existing = new Set(state.member.history.map((title) => title.id));
+      state.member.history.push(...(data.history || []).filter((title) => !existing.has(title.id)));
       state.member.historyHasMore = Boolean(data.hasMore);
       renderAccountOverview();
     } catch (error) { $('#account-status').textContent = error.message; }
@@ -244,7 +254,7 @@
     });
   }
 
-  function openAccount() { renderAccount(); if (!$('#account-dialog').open) $('#account-dialog').showModal(); }
+  function openAccount(message = '') { renderAccount(); if (message) $('#account-status').textContent = message; if (!$('#account-dialog').open) $('#account-dialog').showModal(); }
   function openWatchlist() { renderWatchlist(); if (!$('#watchlist-dialog').open) $('#watchlist-dialog').showModal(); }
 
   async function saveWatchlist(title) {
@@ -255,7 +265,7 @@
       await window.LocadoraAccount.request('/v1/watchlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: remote, source: 'locadora' }) });
       await refreshMemberData();
       openWatchlist();
-    } catch (error) { $('#account-status').textContent = error.message; openAccount(); }
+    } catch (error) { openAccount(error.message); }
   }
 
   async function initMemberAccount() {
@@ -263,13 +273,19 @@
       const accountState = await window.LocadoraAccount.init();
       state.member = { ...state.member, ...accountState };
       renderAccount();
-      if (accountState.signedIn) await refreshMemberData();
+      if (accountState.signedIn) {
+        await refreshMemberData();
+        await resumePendingRental();
+      }
       window.LocadoraAccount.onChange(async (next) => {
         const signedOut = state.member.signedIn && !next.signedIn;
         state.member = { ...state.member, ...next, ...(signedOut ? { profile: null, watchlist: [], history: [], historyHasMore: false } : {}) };
-        if (signedOut) state.rental = { rented: null, returned: [] };
+        if (signedOut) { state.rental = { rented: null, returned: [] }; pendingRental = false; }
         renderAccount();
-        if (next.signedIn) await refreshMemberData();
+        if (next.signedIn) {
+          await refreshMemberData();
+          await resumePendingRental();
+        }
       });
     } catch (error) {
       $('#account-status').textContent = error.message;
@@ -341,8 +357,19 @@
         const item = document.createElement('article'); item.className = 'counter-item';
         const image = document.createElement('img'); image.alt = ''; image.src = posterTextureUrl(title.poster || posterFallback(title));
         const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.type === 'series' ? t('series') : t('movies')} · ${title.year || '—'}`; text.append(name, meta);
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'; inspect.addEventListener('click', () => { returnToBalconySearch = true; balconySearchDialog.close(); openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); });
-        item.append(image, text, inspect); results.append(item);
+        const actions = document.createElement('div'); actions.className = 'return-choices';
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToBalconySearch = true; balconySearchDialog.close(); openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); });
+        const add = document.createElement('button'); add.type = 'button'; add.className = 'primary-inline-action'; add.dataset.titleKey = `${title.type}:${title.id}`; add.textContent = isAtCounter(title) ? 'Tirar da cesta' : 'Botar na cesta'; add.disabled = Boolean(state.rental.rented) || (!isAtCounter(title) && state.counter.length >= 3); add.addEventListener('click', () => {
+          const result = toggleCounter(title);
+          const selectedKeys = new Set(state.counter.map((item) => `${item.type}:${item.id}`));
+          results.querySelectorAll('.primary-inline-action').forEach((button) => {
+            const selected = selectedKeys.has(button.dataset.titleKey);
+            button.textContent = selected ? 'Tirar da cesta' : 'Botar na cesta';
+            button.disabled = Boolean(state.rental.rented) || (!selected && state.counter.length >= 3);
+          });
+          status.textContent = basketMessage(result.reason);
+        });
+        actions.append(inspect, add); item.append(image, text, actions); results.append(item);
       });
     } catch { status.textContent = state.locale === 'pt-BR' ? 'O catálogo está indisponível agora.' : 'The catalogue is unavailable right now.'; }
   }
@@ -586,7 +613,7 @@
     hud.classList.toggle('is-collapsed', Boolean(collapsed));
     $('#immersive-hud-toggle').setAttribute('aria-expanded', String(!collapsed));
     $('#immersive-hud-toggle').setAttribute('aria-label', collapsed ? 'Show immersive controls' : 'Hide immersive controls');
-    $('#immersive-hud-toggle').textContent = collapsed ? '⌄' : '⌃';
+    $('#immersive-hud-toggle').textContent = collapsed ? 'Menu da estante' : 'Ocultar';
     if (collapsed) {
       setImmersiveFilters(false);
       setImmersiveSettings(false);
@@ -663,7 +690,7 @@
       balcony?.dispose();
       balcony = null;
       $('#balcony-stage').replaceChildren();
-      setImmersiveHudCollapsed(true);
+      setImmersiveHudCollapsed(false);
       mountImmersive();
     }
     else if (isBalcony) {
@@ -771,28 +798,77 @@
 
   function syncTitleBasketAction() {
     const basket = $('#title-detail .title-basket-action');
-    if (basket) basket.textContent = isAtCounter(activeViewerTitle) ? 'Tirar da cesta' : 'Botar na cesta';
+    if (!basket) return;
+    const locked = Boolean(state.rental.rented);
+    basket.disabled = locked || (!isAtCounter(activeViewerTitle) && state.counter.length >= 3);
+    basket.textContent = locked ? 'Pacote ativo' : isAtCounter(activeViewerTitle) ? 'Tirar da cesta' : state.counter.length >= 3 ? 'Cesta cheia · 3/3' : 'Botar na cesta';
+  }
+
+  function basketMessage(reason) {
+    if (reason === 'full') return 'A cesta comporta no máximo 3 fitas. Remova uma para escolher outra.';
+    if (reason === 'active_rental') return 'Você já tem um pacote ativo. Devolva as fitas antes de montar outro.';
+    if (reason === 'added') return `${state.counter.length} de 3 fitas na cesta.`;
+    if (reason === 'removed') return `${state.counter.length} de 3 fitas na cesta.`;
+    return 'Essa fita não pode ser adicionada agora.';
   }
 
   function toggleCounter(title) {
-    if (state.rental.rented) return;
-    if (isAtCounter(title)) state.counter = state.counter.filter((item) => item.id !== title.id || item.type !== title.type);
-    else if (!state.rental.rented?.titles.some((item) => item.id === title.id && item.type === title.type)) state.counter.push(title);
+    const result = updateRentalBasket(state.counter, title, state.rental.rented);
+    state.counter = result.titles;
     saveCounter();
     syncTitleBasketAction();
+    const status = $('#balcony-panel-status');
+    if (status) status.textContent = basketMessage(result.reason);
     if ($('#balcony-dialog').open) renderBalconyPanel();
     if (state.mode === 'balcony') refreshBalcony();
+    return result;
+  }
+
+  function requestRentalIdentity() {
+    pendingRental = true;
+    if ($('#balcony-dialog').open) $('#balcony-dialog').close();
+    const message = !state.member.configured
+      ? 'As contas de membro ainda não estão configuradas.'
+      : !state.member.signedIn
+        ? 'Entre para confirmar as fitas que já estão na sua cesta.'
+        : 'Escolha seu nome público para confirmar este pacote.';
+    openAccount(message);
   }
 
   async function rentCounter() {
+    if (rentalRequestInFlight || !state.counter.length || state.rental.rented) { openRentalDesk(); return; }
+    if (!state.member.configured || !state.member.signedIn || !state.member.profile) { requestRentalIdentity(); return; }
+    const button = $('#rent-counter');
+    rentalRequestInFlight = true;
+    button.disabled = true;
+    button.textContent = 'Registrando pacote…';
     try {
-      requireMember();
       const titles = state.counter.map(remoteTitle);
-      if (titles.length !== state.counter.length) throw new Error('Every selected tape needs a canonical TMDB record');
+      if (titles.length !== state.counter.length) throw new Error('Todas as fitas precisam de um registro válido do catálogo.');
       await window.LocadoraAccount.request('/v1/rentals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ titles }) });
+      pendingRental = false;
       state.counter = [];
+      saveCounter();
       await refreshMemberData();
-    } catch (error) { $('#account-status').textContent = error.message; openAccount(); }
+      if ($('#balcony-dialog').open) renderBalconyPanel();
+    } catch (error) {
+      pendingRental = false;
+      $('#balcony-panel-status').textContent = error.message;
+      openRentalDesk();
+    } finally {
+      rentalRequestInFlight = false;
+      renderBalconyPanel();
+    }
+  }
+
+  async function resumePendingRental() {
+    if (!pendingRental || !state.member.signedIn || !state.counter.length || state.rental.rented || rentalRequestInFlight) return;
+    if (!state.member.profile) {
+      openAccount('Falta só escolher seu nome público para confirmar este pacote.');
+      return;
+    }
+    if ($('#account-dialog').open) $('#account-dialog').close();
+    await rentCounter();
   }
 
   async function returnRental(title, watchedStatus) {
@@ -801,7 +877,7 @@
       if (!title.rentalItemId) throw new Error('This rental needs to be refreshed');
       await window.LocadoraAccount.request(`/v1/rental-items/${title.rentalItemId}/return`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watchedStatus }) });
       await refreshMemberData();
-    } catch (error) { $('#account-status').textContent = error.message; openAccount(); }
+    } catch (error) { openAccount(error.message); }
   }
 
   async function mountBalconyFallback(stage) {
@@ -829,13 +905,13 @@
         container: stage,
         rental: rentalState(),
         year: state.year,
-        copy: { ownerCaption: t('ownerCaption'), collectiveAwards: t('collectiveAwards'), collectiveAwardLines: [t('collectiveAwardOne'), t('collectiveAwardTwo'), t('collectiveAwardThree')] },
+        copy: { collectiveAwards: t('collectiveAwards'), collectiveAwardLines: [t('collectiveAwardOne'), t('collectiveAwardTwo'), t('collectiveAwardThree')] },
         onCounterSelect: openRentalDesk,
+        onRent: rentCounter,
         onSearch: openBalconySearch,
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
         onBagSelect: openRentalDesk,
         onTip: () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; $('#balcony-dialog').showModal(); },
-        onOwner: () => { $('#balcony-panel-status').textContent = t('ownerNotice'); $('#balcony-dialog').showModal(); },
         onCollectiveAwards: () => { $('#balcony-panel-status').textContent = t('collectiveAwardsNotice'); $('#balcony-dialog').showModal(); },
       });
     } catch (error) {
@@ -856,25 +932,34 @@
     const rentedList = $('#balcony-rented-list');
     counterList.replaceChildren(); rentedList.replaceChildren();
     const rented = state.rental.rented;
-    $('#rent-counter').disabled = !state.counter.length || Boolean(rented);
+    const capacity = state.counter.length;
+    const rentButton = $('#rent-counter');
+    rentButton.disabled = !capacity || Boolean(rented) || rentalRequestInFlight;
+    rentButton.textContent = rentalRequestInFlight ? 'Registrando pacote…' : `Alugar pacote · ${capacity} ${capacity === 1 ? 'fita' : 'fitas'}`;
+    $('#rental-capacity').textContent = `${capacity} de 3 fitas`;
+    const flowSteps = [...document.querySelectorAll('.rental-flow li')];
+    flowSteps.forEach((step, index) => step.classList.toggle('is-current', rented ? index === 2 : index === (capacity ? 1 : 0)));
     $('#balcony-panel-status').textContent = rented
-      ? (state.locale === 'pt-BR' ? `${rented.titles.length} fita(s) na sacola Locadora. Devolva uma por vez.` : `${rented.titles.length} tape(s) in the Locadora bag. Return one at a time.`)
-      : (state.locale === 'pt-BR' ? `${state.counter.length} fita(s) no Balcão.` : `${state.counter.length} tape(s) at the counter.`);
-    if (!state.counter.length) counterList.textContent = state.locale === 'pt-BR' ? 'Nenhuma fita selecionada no Balcão.' : 'No tapes selected at the counter.';
+      ? `${rented.titles.length} de 3 fitas no pacote ativo. Devolva cada fita quando terminar.`
+      : capacity
+        ? `${capacity} de 3 fitas prontas. O botão abaixo aluga todas juntas em um único pacote.`
+        : 'Escolha fitas nas estantes ou pesquise no terminal. Sua cesta comporta até 3.';
+    if (!capacity) counterList.textContent = 'Sua cesta está vazia.';
     state.counter.forEach((title) => {
-      const item = document.createElement('article'); item.className = 'counter-item';
-      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name;
+      const item = document.createElement('article'); item.className = 'counter-item basket-item';
+      const image = document.createElement('img'); image.alt = ''; image.src = posterTextureUrl(title.poster || posterFallback(title));
+      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · ${title.type === 'series' ? 'Série' : 'Filme'}`; text.append(name, meta);
       const actions = document.createElement('div'); actions.className = 'return-choices';
-      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'; inspect.addEventListener('click', () => openTitle(title));
-      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = state.locale === 'pt-BR' ? 'Remover' : 'Remove'; remove.addEventListener('click', () => toggleCounter(title));
-      text.append(name); actions.append(inspect, remove); item.append(text, actions); counterList.append(item);
+      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Ver fita'; inspect.addEventListener('click', () => openTitle(title));
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remover'; remove.addEventListener('click', () => toggleCounter(title));
+      actions.append(inspect, remove); item.append(image, text, actions); counterList.append(item);
     });
-    if (!rented) { rentedList.textContent = state.locale === 'pt-BR' ? 'A sacola está vazia.' : 'The bag is empty.'; return; }
+    if (!rented) { rentedList.textContent = 'Nenhum pacote alugado agora.'; return; }
     rented.titles.forEach((title) => {
       const item = document.createElement('article'); item.className = 'counter-item balcony-return-item';
-      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; text.append(name);
+      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · escolha como devolver`; text.append(name, meta);
       const choices = document.createElement('div'); choices.className = 'return-choices';
-      ['watched', 'not_watched', 'unknown'].forEach((status) => { const button = document.createElement('button'); button.type = 'button'; button.textContent = status === 'watched' ? (state.locale === 'pt-BR' ? 'Assistida' : 'Watched') : status === 'not_watched' ? (state.locale === 'pt-BR' ? 'Não assistida' : 'Not watched') : (state.locale === 'pt-BR' ? 'Não sei' : 'Unknown'); button.addEventListener('click', () => returnRental(title, status)); choices.append(button); });
+      ['watched', 'not_watched', 'unknown'].forEach((status) => { const button = document.createElement('button'); button.type = 'button'; button.textContent = status === 'watched' ? 'Assistida' : status === 'not_watched' ? 'Não assistida' : 'Não sei'; button.addEventListener('click', () => returnRental(title, status)); choices.append(button); });
       item.append(text, choices); rentedList.append(item);
     });
   }
@@ -1101,11 +1186,11 @@
     $('#immersive-basket-open').addEventListener('click', openRentalDesk);
     $('#watchlist-open').addEventListener('click', openWatchlist);
     $('#balcony-watchlist-open').addEventListener('click', openWatchlist);
-    $('#account-open').addEventListener('click', openAccount);
+    $('#account-open').addEventListener('click', () => openAccount());
     $('#account-sign-in').addEventListener('click', async () => {
       $('#account-dialog').close();
       try { await window.LocadoraAccount.signIn(); }
-      catch (error) { $('#account-status').textContent = error.message; openAccount(); }
+      catch (error) { openAccount(error.message); }
     });
     $('#account-sign-out').addEventListener('click', async () => {
       try { await window.LocadoraAccount.signOut(); $('#account-dialog').close(); }
@@ -1124,6 +1209,7 @@
         $('#username-availability').textContent = 'Nome público salvo.';
         renderAccount();
         await refreshMemberData();
+        await resumePendingRental();
       } catch (error) { $('#account-status').textContent = error.message; }
     });
     $('#account-history-more').addEventListener('click', loadMoreAccountHistory);

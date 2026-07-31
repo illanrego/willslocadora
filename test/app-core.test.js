@@ -13,6 +13,7 @@ const {
   normalizeRentalState,
   rentCounterTitles,
   returnRentedTitle,
+  updateRentalBasket,
 } = require('../public/app-core.js');
 
 test('clampStoreYear supports the full catalogue era through 2026', () => {
@@ -106,11 +107,38 @@ const balconyTitles = [
   { id: 'tt0114369', type: 'movie', name: 'Se7en', year: 1995 },
 ];
 
+test('rental basket toggles distinct titles and never exceeds three', () => {
+  const third = { id: 'tt0120737', type: 'movie', name: 'The Lord of the Rings', year: 2001 };
+  const fourth = { id: 'tt0109830', type: 'movie', name: 'Forrest Gump', year: 1994 };
+  let result = updateRentalBasket([], balconyTitles[0]);
+  result = updateRentalBasket(result.titles, balconyTitles[1]);
+  result = updateRentalBasket(result.titles, third);
+  const full = updateRentalBasket(result.titles, fourth);
+
+  assert.deepEqual(full.titles.map((title) => title.id), ['tt0133093', 'tt0114369', 'tt0120737']);
+  assert.equal(full.reason, 'full');
+  assert.deepEqual(updateRentalBasket(full.titles, balconyTitles[1]).titles.map((title) => title.id), ['tt0133093', 'tt0120737']);
+});
+
+test('rental basket refuses new selections while a pack is active', () => {
+  const result = updateRentalBasket([], balconyTitles[0], { titles: [balconyTitles[1]] });
+  assert.deepEqual(result, { titles: [], changed: false, reason: 'active_rental' });
+});
+
 test('rentCounterTitles moves the complete counter into one rented bag', () => {
   const rental = rentCounterTitles({ counter: balconyTitles, rented: null, returned: [] });
   assert.deepEqual(rental.counter, []);
   assert.equal(rental.rented.titles.length, 2);
   assert.deepEqual(rental.rented.titles.map((title) => title.id), ['tt0133093', 'tt0114369']);
+});
+
+test('persisted and rented packs are capped at three titles without truncating return history', () => {
+  const four = [...balconyTitles, { id: 'tt3', type: 'movie', name: 'Three' }, { id: 'tt4', type: 'movie', name: 'Four' }];
+  const normalized = normalizeRentalState({ counter: four, rented: null, returned: four.map((title) => ({ title, watchedStatus: 'watched' })) });
+  assert.equal(normalized.counter.length, 3);
+  assert.equal(normalized.returned.length, 4);
+  const rental = rentCounterTitles({ counter: four, rented: null, returned: [] });
+  assert.equal(rental.rented.titles.length, 3);
 });
 
 test('returnRentedTitle keeps the bag while another title remains', () => {

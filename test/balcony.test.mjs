@@ -1,18 +1,27 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const balcony = readFileSync(new URL('../public/balcony.mjs', import.meta.url), 'utf8');
 const page = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
 
-test('Balcony wall displays focus in the scene and can be closed', () => {
-  assert.match(balcony, /userData\.action = 'owner'/);
+test('Balcony wall keeps collective history but removes the temporary owner banner', () => {
+  assert.doesNotMatch(balcony, /userData\.action = 'owner'/);
+  assert.doesNotMatch(balcony, /illan-pixel-portrait/);
+  assert.equal(existsSync(new URL('../public/images/illan-pixel-portrait.png', import.meta.url)), false);
   assert.match(balcony, /userData\.action = 'collective-awards'/);
-  assert.match(balcony, /focusFrame\(ownerFrame\)/);
   assert.match(balcony, /focusFrame\(awardsFrame\)/);
   assert.match(balcony, /function closeFocus\(\)/);
   assert.match(balcony, /if \(!hit\) \{ closeFocus\(\); return; \}/);
   assert.match(balcony, /scene-inspection-controls/);
+});
+
+test('Balcony makes its two primary jobs readable and clickable inside the 3D scene', () => {
+  assert.match(balcony, /PESQUISAR TÍTULOS/);
+  assert.match(balcony, /ALUGAR PACOTE/);
+  assert.match(balcony, /userData\.action = 'rent'/);
+  assert.match(balcony, /target\?\.userData\.action === 'rent'\) onRent\?\.\(\)/);
+  assert.match(balcony, /hoveredInteractive/);
 });
 
 test('VHS title viewing has an explicit close control', () => {
