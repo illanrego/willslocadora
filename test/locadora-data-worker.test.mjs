@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLocadoraDataWorker } from '../workers/locadora-data/src/index.mjs';
+import { createLocadoraDataWorker, databaseError } from '../workers/locadora-data/src/index.mjs';
 
 function jsonRequest(path, { method = 'GET', token = 'valid-token', body } = {}) {
   return new Request(`https://data.example${path}`, {
@@ -189,6 +189,13 @@ test('data Worker returns a member title and records the watched outcome', async
   assert.equal(response.status, 200);
   assert.deepEqual(calls, [{ userId: 'user_clerk_123', itemId, watchedStatus: 'watched' }]);
   assert.deepEqual(await response.json(), { rentalItem: { id: itemId, returnedAt: '2026-07-30T13:00:00Z', watchedStatus: 'watched' } });
+});
+
+test('database error mapping treats an inactive rental item as not found', () => {
+  assert.throws(
+    () => databaseError({ message: 'active_rental_item_not_found' }),
+    (error) => error.status === 404 && error.message === 'That active rental item was not found',
+  );
 });
 
 test('data Worker accepts only the three settled return outcomes', async () => {

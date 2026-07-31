@@ -18,8 +18,8 @@
         </a>
         <nav class="header-actions" aria-label="Store actions">
           <button class="mode-button" id="immersive-toggle" type="button" aria-pressed="false" data-i18n="immersiveMode">Modo imersivo</button>
-          <button class="counter-button" id="counter-open" type="button">
-            <span data-i18n="counter">Balcão</span> <span id="counter-count" aria-label="items at counter">0</span>
+          <button class="counter-button" id="counter-open" type="button" aria-controls="basket-dialog">
+            <span data-i18n="basket">Cesta</span> <span id="counter-count" aria-label="items in basket">0</span>
           </button>
           <button class="utility-button" id="watchlist-open" type="button">Minha lista</button>
           <button class="utility-button" id="account-open" type="button">Minha conta</button>
@@ -102,7 +102,7 @@
         </div>
         <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" hidden>← Previous stand</button>
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
-        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="balcony-dialog">Cesta <span id="immersive-basket-count">0</span></button>
+        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog">Cesta <span id="immersive-basket-count">0</span></button>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
             <div class="immersive-browse-controls">
@@ -123,6 +123,7 @@
             <nav class="immersive-menu-actions" aria-label="Immersive actions">
               <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="filters">Filtros</span></button>
               <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false"><span aria-hidden="true">⚙</span><span data-i18n="settings">Ajustes</span></button>
+              <button id="immersive-account-open" type="button"><span aria-hidden="true">▣</span><span>Minha conta</span></button>
               <span class="immersive-menu-divider" aria-hidden="true"></span>
               <button id="normal-mode-return" type="button" data-i18n="return">Voltar</button>
               <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Ocultar menu">Ocultar</button>
@@ -196,7 +197,10 @@
           <button id="balcony-return-shelf" type="button" data-i18n="returnShelf">Voltar à estante imersiva</button>
         </header>
         <div id="balcony-stage" class="balcony-stage"></div>
-        <button id="balcony-watchlist-open" class="balcony-watchlist-button" type="button">Minha lista</button>
+        <div class="balcony-member-actions">
+          <button id="balcony-watchlist-open" type="button">Minha lista</button>
+          <button id="balcony-account-open" type="button">Minha conta</button>
+        </div>
       </section>
     </main>
 
@@ -239,6 +243,7 @@
       <section class="account-rentals" aria-labelledby="account-active-heading">
         <h3 id="account-active-heading">Fitas alugadas</h3>
         <div id="account-active-rentals" class="counter-list"></div>
+        <button id="account-return-counter" class="account-action" type="button" hidden>Devolver no Balcão</button>
       </section>
       <details class="account-history">
         <summary>Histórico da Locadora</summary>
@@ -258,36 +263,55 @@
     <div id="watchlist-list" class="counter-list"></div>
   </dialog>
 
+  <dialog id="basket-dialog" class="panel-dialog basket-dialog">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow">ANTES DO BALCÃO</span><h2>Cesta</h2></div>
+      <button class="dialog-close" value="close" aria-label="Fechar cesta">×</button>
+    </form>
+    <p id="basket-status" class="panel-copy" role="status" aria-live="polite"></p>
+    <div id="basket-list" class="counter-list"></div>
+    <div class="basket-actions">
+      <form method="dialog"><button class="basket-secondary-action" value="browse">Continuar escolhendo</button></form>
+      <button id="take-basket-counter" class="balcony-rent-button" type="button">Levar ao Balcão</button>
+    </div>
+  </dialog>
+
   <dialog id="balcony-dialog" class="panel-dialog balcony-dialog">
     <form method="dialog" class="panel-header">
-      <div><span class="eyebrow" data-i18n="balcony">Balcão 3D</span><h2 data-i18n="counter">Balcão</h2></div>
+      <div><span id="balcony-context" class="eyebrow">BALCÃO</span><h2 data-i18n="counter">Balcão</h2></div>
       <button class="dialog-close" value="close" aria-label="Close balcony controls">×</button>
     </form>
-    <ol class="rental-flow" aria-label="Como alugar">
-      <li><span>1</span><strong>Escolha</strong><small>fitas nas estantes</small></li>
-      <li class="is-current"><span>2</span><strong>Decida no balcão</strong><small id="rental-capacity">0 de 3 fitas</small></li>
-      <li><span>3</span><strong>Alugue o pacote</strong><small>uma sacola só</small></li>
-    </ol>
-    <button id="counter-search" class="counter-search-button" type="button">Pesquisar títulos</button>
     <p id="balcony-panel-status" class="panel-copy" role="status" aria-live="polite"></p>
-    <div id="balcony-counter-list" class="counter-list"></div>
-    <button id="rent-counter" class="balcony-rent-button" type="button">Alugar pacote</button>
-    <section class="balcony-return-controls" aria-labelledby="balcony-return-heading">
+    <section id="balcony-rental-controls" aria-label="Aluguel no Balcão">
+      <ol class="rental-flow" aria-label="Como alugar">
+        <li><span>1</span><strong>Escolha</strong><small>fitas nas estantes</small></li>
+        <li class="is-current"><span>2</span><strong>Decida no balcão</strong><small id="rental-capacity">0 de 3 fitas</small></li>
+        <li><span>3</span><strong>Alugue o pacote</strong><small>uma sacola só</small></li>
+      </ol>
+      <div id="balcony-counter-list" class="counter-list"></div>
+      <button id="rent-counter" class="balcony-rent-button balcony-primary-action" type="button">Alugar pacote</button>
+      <button id="counter-search" class="counter-search-button" type="button">Pesquisar outra fita</button>
+    </section>
+    <section id="balcony-return-controls" class="balcony-return-controls" aria-labelledby="balcony-return-heading">
       <h3 id="balcony-return-heading" data-i18n="returns">Devoluções</h3>
       <div id="balcony-rented-list" class="counter-list"></div>
-      <button id="return-selected-rentals" class="balcony-rent-button" type="button" hidden>Devolver fitas selecionadas</button>
+      <button id="return-selected-rentals" class="balcony-rent-button balcony-primary-action" type="button" hidden>Devolver fitas selecionadas</button>
     </section>
     <button id="tip-jar" class="tip-jar-button" type="button" data-i18n="tipJar">Mantenha as luzes da Locadora acesas.</button>
   </dialog>
 
   <dialog id="rental-confirmation-dialog" class="panel-dialog rental-confirmation-dialog">
-    <form method="dialog" class="panel-header">
+    <header class="panel-header">
       <div><span class="eyebrow">SACOLA DA LOCADORA</span><h2>Pacote alugado</h2></div>
-      <button class="dialog-close" value="close" aria-label="Close rental confirmation">×</button>
-    </form>
+    </header>
+    <div class="rental-confirmation-bag" aria-hidden="true">
+      <span class="rental-confirmation-handle"></span>
+      <strong>WILL'S<br>LOCADORA</strong>
+      <span id="rental-confirmation-bag-count">0 FITAS</span>
+    </div>
     <p id="rental-confirmation-status" class="panel-copy" role="status" aria-live="polite"></p>
     <div id="rental-confirmation-list" class="counter-list"></div>
-    <form method="dialog"><button class="account-action" value="home">Voltar para a página inicial</button></form>
+    <form method="dialog"><button id="rental-confirmation-home" class="account-action" value="home">Voltar para a página inicial</button></form>
   </dialog>
 
   <dialog id="balcony-search-dialog" class="panel-dialog balcony-search-dialog">

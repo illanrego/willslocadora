@@ -7,7 +7,12 @@
 
 There is no `Separados` / Picks shelf.
 
-The Balcony has one pre-rental title collection: **Balcão**. A tape reaches Balcão when the visitor deliberately adds it from a VHS detail view. These are the titles currently being considered for the next rental.
+The pre-rental flow has two deliberately separate states:
+
+- **Cesta local:** up to three distinct titles chosen while browsing. It persists locally until a package is rented.
+- **Decisão no Balcão:** a temporary copy of the Cesta. Removing a tape here means “não levar hoje” and does not mutate the Cesta itself. Only this temporary subset is sent when the visitor confirms `Alugar pacote`.
+
+A tape reaches Cesta only when the visitor deliberately adds it from a VHS detail view. The normal and immersive Cesta buttons open the same review surface; `Levar ao Balcão` then opens the 2D desk or moves the immersive visitor into the 3D Balcão.
 
 ```text
 ESTANTE / BUSCA
@@ -37,8 +42,9 @@ HISTÓRICO + LISTA ATUALIZADOS
 Rules:
 
 - The basket never contains more than three distinct titles.
-- `Alugar pacote` sends all current basket titles in one authenticated request and creates one active rental.
-- The Balcão dialog is the decision point: the visitor can remove any basket title there before renting the remaining one-to-three tapes as a single package.
+- Shelf/search titles retain a canonical `tmdb:<id>` rental identity; an IMDb ID is carried separately for Stremio, IMDb, and Letterboxd handoffs.
+- `Alugar pacote` sends the current temporary Balcão subset in one authenticated request and creates one active rental.
+- Removing a tape at the Balcão does not delete it from the local Cesta; abandoning the desk and reopening Cesta restores the full browsing selection.
 - Authentication or initial profile setup does not discard the basket; after completion, the pending explicit rental confirmation resumes.
 - While a package is active, no second basket/package can be started.
 - There is no payment, due date, or playback guarantee in this ritual.
@@ -62,8 +68,8 @@ It should look like a real Brazilian video-store counter after dark: practical, 
 
 This is the primary interactive pile/crate on the counter. It contains every title the visitor is considering for the upcoming rental.
 
-- Add a title from its VHS detail via an explicit `Add to Balcão` action.
-- On the Balcony, each tape remains individually inspectable and removable.
+- Add a title from its VHS detail via an explicit `Botar na cesta` action, then use `Levar ao Balcão` to create the temporary counter decision.
+- On the Balcony, each tape remains individually inspectable; `Não levar` removes it only from the current counter decision.
 - The pile should feel physical: tapes can be stacked, slotted in a crate, or leaned against one another. Its height/density should visibly respond to the number of titles.
 - A compact visible count helps the visitor understand their selection without becoming a cart UI.
 - It is not a reservation, an inventory lock, a claim of playback, or a payment checkout.
@@ -74,12 +80,13 @@ A clear physical desk action—button, stamped receipt control, or counter bell�
 
 For the implemented flow:
 
-- `Alugar pacote` is a hanging, clickable plaque directly below the selected tapes and also the primary action in the native Balcão dialog.
+- In 3D, `REVISAR CESTA` is a hanging, clickable plaque below the selected tapes; it opens the native decision controls instead of renting immediately. `Alugar pacote` remains the single primary action inside those controls.
 - It sends all one-to-three titles together to the authenticated rental endpoint; the database creates one package atomically.
 - If identity/profile setup interrupts confirmation, the same basket remains and confirmation resumes after setup.
 - The bag occupies the **same exact counter position** previously used by the Balcão pile. It becomes the visible active-rental object: the counter has been cleared because the visitor is taking that rental home.
 - Use a slightly translucent white/cream plastic bag with the Locadora mark, handles, believable VHS silhouettes/spines, and the receipt peeking out. It should feel like a real video-store handoff, not a shopping-cart icon.
-- Selecting the bag opens the Balcão return controls. The visitor marks one or more tapes, chooses each watched state, and confirms the whole devolução with one button. Returning the last tape removes the bag and leaves the counter ready for a new Balcão pile.
+- Selecting the bag opens the Balcão return controls. The visitor marks one or more tapes, chooses each watched state, and confirms the whole devolução with one button. The current Worker API records one item per request; the client therefore records the batch defensively, removes successful items from retry state, reports partial failure, and always refreshes canonical member state. Returning the last tape removes the bag and leaves the counter ready for a new Cesta.
+- `Minha conta` is available in both immersive rooms. Starting a return from the immersive shelf first moves the visitor to the 3D Balcão; starting from normal mode opens the 2D desk.
 - The cap is three active titles in one package, enforced in the client, Worker request validation, and database function.
 - Do not show money/payment handling. The rental ritual is free and simulated.
 

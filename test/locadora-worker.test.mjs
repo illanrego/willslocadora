@@ -50,13 +50,14 @@ test('public worker normalizes title metadata without exposing its TMDB key', as
         return Response.json({ movie_results: [{ id: 603 }] });
       }
       assert.equal(url.pathname, '/3/movie/603');
-      assert.equal(url.searchParams.get('append_to_response'), 'credits,watch/providers,release_dates,images');
+      assert.equal(url.searchParams.get('append_to_response'), 'credits,watch/providers,release_dates,images,external_ids');
       return Response.json({
         title: 'The Matrix', overview: 'A choice.', release_date: '1999-03-31', poster_path: '/matrix.jpg', vote_average: 8.2, genres: [{ id: 28, name: 'Action' }],
         credits: { crew: [{ job: 'Director', name: 'Lana Wachowski' }, { job: 'Screenplay', name: 'Lilly Wachowski' }], cast: [{ name: 'Keanu Reeves' }] },
         'watch/providers': { results: { BR: { link: 'https://www.themoviedb.org/movie/603/watch?locale=BR', flatrate: [{ provider_name: 'Netflix', logo_path: '/netflix.png' }] } } },
         release_dates: { results: [{ iso_3166_1: 'BR', release_dates: [{ certification: '14' }] }] },
         images: { logos: [{ iso_639_1: 'pt', file_path: '/matrix-logo.png' }] },
+        external_ids: { imdb_id: 'tt0133093' },
       });
     },
   });
@@ -130,7 +131,8 @@ test('public worker uses TMDB Brazil flatrate discovery for provider-filtered sh
   const response = await worker.fetch(new Request('https://api.example/v1/shelf?year=2010&genre=Romance&type=series&providers=globoplay,prime-video'), env, context());
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.equal(body.titles[0].id, 'tt0000011');
+  assert.equal(body.titles[0].id, 'tmdb:11');
+  assert.equal(body.titles[0].imdbId, 'tt0000011');
   assert.equal(body.hasNextStand, false);
   assert.deepEqual(body.titles[0].genres, ['Romance']);
 

@@ -27,14 +27,59 @@ test('a rent confirmation interrupted by identity setup resumes the same basket'
 });
 
 test('signed-out rental state clears persisted and 3D Balcony surfaces', () => {
-  assert.match(app, /if \(signedOut\) \{\s*state\.rental = \{ rented: null, returned: \[\] \};\s*pendingRental = false;\s*saveCounter\(\);\s*renderBalconyPanel\(\);\s*refreshBalcony\(\);\s*\}/);
+  assert.match(app, /if \(signedOut\) \{\s*state\.rental = \{ rented: null, returned: \[\] \};\s*pendingRental = false;\s*balconySelection = null;\s*saveCounter\(\);\s*renderBalconyPanel\(\);\s*refreshBalcony\(\);\s*\}/);
 });
 
-test('returning rented tapes posts watched outcomes in one desk submission and refreshes canonical member state', () => {
+test('returning rented tapes posts watched outcomes through the shared return submitter', () => {
   assert.match(app, /async function returnSelectedRentals\(\)/);
-  assert.match(app, /for \(const \[itemId, entry\] of pendingReturns\)/);
-  assert.match(app, /\/v1\/rental-items\/\$\{itemId\}\/return[\s\S]*body: JSON\.stringify\(\{ watchedStatus: entry\.watchedStatus \}\)/);
-  assert.match(app, /pendingReturns\.clear\(\);[\s\S]*await refreshMemberData\(\);/);
+  assert.match(app, /submitRentalReturns\([\s\S]*window\.LocadoraAccount\.request\(`\/v1\/rental-items\/\$\{itemId\}\/return`/);
+  assert.match(app, /body: JSON\.stringify\(\{ watchedStatus \}\)/);
+});
+
+test('Minha conta offers one package-level return route and preserves canonical rental titles for inspection', () => {
+  assert.match(page, /id="account-return-counter"[^>]*>Devolver no Balcão<\/button>/);
+  assert.match(app, /\$\('#account-return-counter'\)\.hidden = !rental\?\.titles\.length/);
+  assert.doesNotMatch(app, /returns\.textContent = 'Devolver no Balcão'/);
+  assert.match(app, /function memberTitleForViewer\(title\)/);
+  assert.match(app, /openTitle\(memberTitleForViewer\(title\)\)/);
+});
+
+test('return tape selection enables and accessibly names its watched-state control', () => {
+  assert.match(app, /statusSelect\.setAttribute\('aria-label', `Estado de exibição de \$\{title\.name\}`\)/);
+  assert.match(app, /checkbox\.addEventListener\('change', \(\) => \{\s*statusSelect\.disabled = !checkbox\.checked;/);
+  assert.match(app, /watchedStatus: pendingReturns\.get\(itemId\)\?\.watchedStatus \|\| 'unknown'/);
+});
+
+test('Minha conta is reachable in immersive modes and routes returns through the 3D Balcony', () => {
+  assert.match(page, /id="immersive-account-open"/);
+  assert.match(page, /id="balcony-account-open"/);
+  assert.match(app, /\$\('#immersive-account-open'\)\.addEventListener\('click', \(\) => openAccount\(\)\)/);
+  assert.match(app, /\$\('#balcony-account-open'\)\.addEventListener\('click', \(\) => openAccount\(\)\)/);
+  assert.match(app, /function openReturnDesk\(\)[\s\S]*state\.mode === 'immersive'[\s\S]*setMode\('balcony'\)[\s\S]*openRentalDesk/);
+});
+
+test('returning rented tapes refreshes canonical state even when only part of the batch succeeds', () => {
+  assert.match(app, /await submitRentalReturns\(/);
+  assert.match(app, /for \(const itemId of result\.succeeded\) pendingReturns\.delete\(itemId\)/);
+  assert.match(app, /const succeeded = new Set\(result\.succeeded\);[\s\S]*rented\.titles = rented\.titles\.filter\(\(title\) => !succeeded\.has\(title\.rentalItemId\)\)/);
+  assert.match(app, /try \{ await refreshMemberData\(\); \}/);
+  assert.match(app, /result\.failed\.length/);
+});
+
+test('rental and grouped return mutations are bound to the initiating account session', () => {
+  const rent = app.slice(app.indexOf('async function rentCounter()'), app.indexOf('async function resumePendingRental()'));
+  assert.match(rent, /const sessionVersion = memberSessionVersion/);
+  assert.match(rent, /if \(!state\.member\.signedIn \|\| sessionVersion !== memberSessionVersion\) return/);
+  const returns = app.slice(app.indexOf('async function returnSelectedRentals()'), app.indexOf('function togglePendingReturn'));
+  assert.match(returns, /const sessionVersion = memberSessionVersion/);
+  assert.match(returns, /if \(!state\.member\.signedIn \|\| sessionVersion !== memberSessionVersion\) throw new Error\('rental_session_changed'\)/);
+  assert.match(returns, /if \(!state\.member\.signedIn \|\| sessionVersion !== memberSessionVersion\) return/);
+});
+
+test('stale member responses cannot restore a signed-out or switched account', () => {
+  assert.match(app, /let memberSessionVersion = 0/);
+  assert.match(app, /const sessionVersion = memberSessionVersion;[\s\S]*if \(!state\.member\.signedIn \|\| sessionVersion !== memberSessionVersion \|\| refreshVersion !== memberRefreshVersion\) return;/);
+  assert.match(app, /LocadoraAccount\.onChange\(async \(next\) => \{\s*memberSessionVersion \+= 1;/);
 });
 
 test('account errors and rental prompts survive the account rerender', () => {

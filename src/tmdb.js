@@ -147,10 +147,11 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
       ? TMDB_TV_GENRE_NAMES[genreId]
       : Object.keys(TMDB_MOVIE_GENRES).find((name) => TMDB_MOVIE_GENRES[name] === genreId);
     return discovered.flatMap((title, index) => {
-      const id = imdbIds[index];
-      if (!/^tt\d+$/.test(id)) return [];
+      const imdbId = imdbIds[index];
+      if (!/^tt\d+$/.test(imdbId)) return [];
       return [{
-        id,
+        id: `tmdb:${title.id}`,
+        imdbId,
         type,
         name: title.title || title.name || 'Untitled',
         year: yearFromDate(title.release_date || title.first_air_date),
@@ -185,17 +186,25 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     discoverProviderShelf,
     discoverYearHits,
     async enrich(title, locale = 'pt-BR') {
-      if (!apiKey || !/^tt\d+$/.test(title.id || '')) return title;
+      if (!apiKey) return title;
       const requestedLocale = normalizeLocale(locale);
       const type = title.type === 'series' ? 'tv' : 'movie';
-      const matches = await request(`/find/${encodeURIComponent(title.id)}?external_source=imdb_id`, requestedLocale);
-      const match = type === 'movie' ? matches.movie_results?.[0] : matches.tv_results?.[0];
-      if (!match?.id) return title;
+      const tmdbMatch = String(title.id || '').match(/^tmdb:(\d+)$/);
+      const imdbId = /^tt\d+$/.test(String(title.imdbId || ''))
+        ? String(title.imdbId)
+        : /^tt\d+$/.test(String(title.id || '')) ? String(title.id) : '';
+      let tmdbId = tmdbMatch?.[1] || '';
+      if (!tmdbId && imdbId) {
+        const matches = await request(`/find/${encodeURIComponent(imdbId)}?external_source=imdb_id`, requestedLocale);
+        const match = type === 'movie' ? matches.movie_results?.[0] : matches.tv_results?.[0];
+        tmdbId = match?.id ? String(match.id) : '';
+      }
+      if (!tmdbId) return title;
 
       const append = type === 'movie'
         ? 'credits,images,release_dates,watch/providers'
         : 'credits,images,content_ratings,watch/providers';
-      const details = await request(`/${type}/${match.id}?append_to_response=${append}`, requestedLocale);
+      const details = await request(`/${type}/${tmdbId}?append_to_response=${append}`, requestedLocale);
       const credits = details.credits || {};
       const directors = crewNames(credits.crew, ['Director']);
       const writers = crewNames(credits.crew, ['Writer', 'Screenplay', 'Story', 'Teleplay', 'Characters', 'Creator']);
@@ -207,6 +216,8 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
 
       return {
         ...title,
+        id: `tmdb:${tmdbId}`,
+        ...(imdbId ? { imdbId } : {}),
         displayTitle: details.title || details.name || title.name || '',
         displayDescription: details.overview || title.description || '',
         tagline: details.tagline || '',

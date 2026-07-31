@@ -131,6 +131,8 @@ test('TMDB enrichment adds Brazil availability, classification, images, and expa
 
   assert.match(requests[0], /api_key=test-key/);
   assert.match(requests[0], /language=pt-BR/);
+  assert.equal(result.id, 'tmdb:603');
+  assert.equal(result.imdbId, 'tt0133093');
   assert.equal(result.background, 'https://image.tmdb.org/t/p/w1280/matrix-backdrop.jpg');
   assert.equal(result.logo, 'https://image.tmdb.org/t/p/w500/matrix-logo.png');
   assert.equal(result.certificationBR, '14');
@@ -176,7 +178,7 @@ test('TMDB discovers Brazil subscription titles before resolving their IMDb IDs'
 
   const titles = await client.discoverProviderShelf({ year: 1999, genres: ['Horror'], type: 'movie', providerName: 'Netflix', page: 0 });
 
-  assert.deepEqual(titles.map((title) => title.id), ['tt0133093', 'tt0234215']);
+  assert.deepEqual(titles.map((title) => [title.id, title.imdbId]), [['tmdb:603', 'tt0133093'], ['tmdb:604', 'tt0234215']]);
   const firstDiscover = requests.find((url) => url.includes('/discover/movie') && url.includes('page=1'));
   assert.match(firstDiscover, /watch_region=BR/);
   assert.match(firstDiscover, /with_watch_monetization_types=flatrate/);
@@ -206,7 +208,7 @@ test('TMDB uses Prime Video’s Brazil-searchable provider record when provider 
 
   const titles = await client.discoverProviderShelf({ year: 1999, genres: ['Horror'], type: 'movie', providerName: 'Amazon Prime Video' });
 
-  assert.deepEqual(titles.map((title) => title.id), ['tt0133093']);
+  assert.deepEqual(titles.map((title) => [title.id, title.imdbId]), [['tmdb:603', 'tt0133093']]);
   assert.match(requests.find((url) => url.includes('/discover/movie')), /with_watch_providers=119/);
 });
 

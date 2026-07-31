@@ -31,6 +31,36 @@ test('worker searches the whole TMDB catalogue across movies and series', async 
   assert.ok(requests.every((url) => url.includes('query=matrix')));
 });
 
+test('shelf titles expose a rentable TMDB identity while retaining IMDb handoff identity', async () => {
+  const worker = createLocadoraWorker({
+    fetchImpl: async (url) => {
+      const value = String(url);
+      if (value.includes('/discover/movie')) return response({ results: [{ id: 603, title: 'The Matrix', release_date: '1999-03-30', genre_ids: [28], poster_path: '/matrix.jpg', backdrop_path: '/matrix-bg.jpg', overview: 'A hacker learns the truth.', vote_average: 8.7 }] });
+      if (value.includes('/movie/603/external_ids')) return response({ imdb_id: 'tt0133093' });
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  });
+
+  const result = await worker.fetch(new Request('https://api.example/v1/shelf?year=1999&genre=Action&type=movie&stand=0'), { TMDB_API_KEY: 'test' });
+  const payload = await result.json();
+
+  assert.equal(result.status, 200);
+  assert.equal(payload.titles[0].id, 'tmdb:603');
+  assert.equal(payload.titles[0].imdbId, 'tt0133093');
+});
+
+test('title metadata supplies the IMDb identity needed for Stremio handoff', async () => {
+  const worker = createLocadoraWorker({
+    fetchImpl: async (url) => {
+      if (String(url).includes('/movie/603?')) return response({ id: 603, title: 'The Matrix', release_date: '1999-03-30', credits: { crew: [], cast: [] }, external_ids: { imdb_id: 'tt0133093' } });
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  });
+
+  const result = await worker.fetch(new Request('https://api.example/v1/title?type=movie&id=tmdb:603&locale=pt-BR'), { TMDB_API_KEY: 'test' });
+  assert.equal((await result.json()).meta.imdbId, 'tt0133093');
+});
+
 test('worker rejects invalid catalogue search queries', async () => {
   const worker = createLocadoraWorker();
   const result = await worker.fetch(new Request('https://api.example/v1/search?q=x'), { TMDB_API_KEY: 'test' });

@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, normalizeRentalState, updateRentalBasket } = window.LocadoraCore;
+  const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, normalizeRentalState, prepareCounterSelection, removeCounterSelection, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse } = window.LocadoraCore;
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
@@ -59,8 +59,11 @@
   let usernameAvailabilityToken = 0;
   let pendingRental = false;
   let rentalRequestInFlight = false;
+  let balconySelection = null;
   let pendingReturns = new Map();
   let returnRequestInFlight = false;
+  let memberSessionVersion = 0;
+  let memberRefreshVersion = 0;
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
 
@@ -104,6 +107,25 @@
     return { counter: state.counter, rented: state.rental.rented, returned: state.rental.returned };
   }
 
+  function counterDecisionTitles() {
+    return balconySelection || state.counter;
+  }
+
+  function beginCounterDecision() {
+    balconySelection = prepareCounterSelection(state.counter);
+    return balconySelection;
+  }
+
+  function removeFromCounterDecision(title) {
+    balconySelection = removeCounterSelection(counterDecisionTitles(), title);
+    renderBalconyPanel();
+    refreshBalcony();
+  }
+
+  function balconyRentalState() {
+    return { ...rentalState(), counter: counterDecisionTitles() };
+  }
+
   function applyRental(next) {
     state.counter = next.counter;
     state.rental = { rented: next.rented, returned: next.returned };
@@ -116,17 +138,11 @@
     $('#immersive-basket-count').textContent = state.counter.length;
   }
 
-  function remoteTitle(title) {
-    const match = String(title?.id || '').match(/^tmdb:(\d+)$/);
-    if (!match) return null;
-    return { tmdbId: Number(match[1]), type: title.type, name: title.name, year: title.year || null };
-  }
-
   function localRentalTitle(item) {
     return {
-      id: `tmdb:${item.tmdbId}`, type: item.type, name: item.name, year: item.year,
-      rentalItemId: item.id, rentedAt: item.rentedAt, returnedAt: item.returnedAt,
-      watchedStatus: item.watchedStatus, poster: item.poster || '',
+      id: `tmdb:${item.tmdbId ?? item.tmdb_id}`, type: item.type || item.title_type, name: item.name || item.title_snapshot, year: item.year ?? item.release_year_snapshot,
+      rentalItemId: item.id, rentedAt: item.rentedAt || item.rented_at, returnedAt: item.returnedAt || item.returned_at,
+      watchedStatus: item.watchedStatus || item.watched_status, poster: item.poster || '',
     };
   }
 
@@ -134,14 +150,18 @@
     state.member = { ...state.member, profile: data.profile, watchlist: data.watchlist || [], history: data.history || [], historyHasMore: Boolean(data.historyHasMore) };
     state.rental.rented = data.activeRental ? { id: data.activeRental.id, titles: data.activeRental.items.map(localRentalTitle) } : null;
     state.rental.returned = (data.history || []).map(localRentalTitle);
-    if (data.activeRental) state.counter = [];
+    if (data.activeRental) balconySelection = null;
     saveCounter();
     renderAccount();
   }
 
   async function refreshMemberData() {
     if (!state.member.signedIn) return;
-    applyMemberData(await window.LocadoraAccount.request('/v1/state'));
+    const sessionVersion = memberSessionVersion;
+    const refreshVersion = ++memberRefreshVersion;
+    const data = await window.LocadoraAccount.request('/v1/state');
+    if (!state.member.signedIn || sessionVersion !== memberSessionVersion || refreshVersion !== memberRefreshVersion) return;
+    applyMemberData(data);
     renderWatchlist();
     renderBalconyPanel();
     refreshBalcony();
@@ -173,23 +193,17 @@
     return new Intl.DateTimeFormat(state.locale, { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value));
   }
 
+  function memberTitleForViewer(title) {
+    return String(title?.id || '').startsWith('tmdb:') ? title : localRentalTitle(title);
+  }
+
   function accountTitleItem(title, meta) {
     const item = document.createElement('article'); item.className = 'counter-item watchlist-item';
     const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name;
     const detail = document.createElement('span'); detail.textContent = `${title.year || '—'} · ${meta}`;
     text.append(name, detail);
-    const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitle(localRentalTitle(title)));
+    const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitle(memberTitleForViewer(title)));
     item.append(text, inspect);
-    return item;
-  }
-
-  function accountActiveRentalItem(title) {
-    const item = accountTitleItem(title, `alugada em ${accountDate(title.rentedAt)}`);
-    const returns = document.createElement('button');
-    returns.type = 'button';
-    returns.textContent = 'Devolver no Balcão';
-    returns.addEventListener('click', openReturnDesk);
-    item.append(returns);
     return item;
   }
 
@@ -206,7 +220,8 @@
     $('#account-watchlist-count').textContent = String(state.member.watchlist.length);
     const active = $('#account-active-rentals'); active.replaceChildren();
     if (!rental?.titles.length) active.textContent = 'Nenhuma fita alugada agora.';
-    else active.append(...rental.titles.map(accountActiveRentalItem));
+    else active.append(...rental.titles.map((title) => accountTitleItem(title, `alugada em ${accountDate(title.rentedAt)}`)));
+    $('#account-return-counter').hidden = !rental?.titles.length;
     const historyList = $('#account-history'); historyList.replaceChildren();
     if (!history.length) historyList.textContent = 'Ainda não há devoluções no seu histórico.';
     else historyList.append(...history.map((title) => accountTitleItem(title, `${title.watchedStatus === 'watched' ? 'assistida' : title.watchedStatus === 'not_watched' ? 'não assistida' : 'sem confirmação'} · devolvida em ${accountDate(title.returnedAt)}`)));
@@ -272,7 +287,7 @@
   async function saveWatchlist(title) {
     try {
       requireMember();
-      const remote = remoteTitle(title);
+      const remote = serializeRentalTitle(title);
       if (!remote) throw new Error('This title does not have a canonical TMDB record yet');
       await window.LocadoraAccount.request('/v1/watchlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: remote, source: 'locadora' }) });
       await refreshMemberData();
@@ -290,11 +305,13 @@
         await resumePendingRental();
       }
       window.LocadoraAccount.onChange(async (next) => {
+        memberSessionVersion += 1;
         const signedOut = state.member.signedIn && !next.signedIn;
         state.member = { ...state.member, ...next, ...(signedOut ? { profile: null, watchlist: [], history: [], historyHasMore: false } : {}) };
         if (signedOut) {
           state.rental = { rented: null, returned: [] };
           pendingRental = false;
+          balconySelection = null;
           saveCounter();
           renderBalconyPanel();
           refreshBalcony();
@@ -697,6 +714,7 @@
     state.mode = ['immersive', 'balcony'].includes(mode) ? mode : 'normal';
     const immersive = state.mode === 'immersive';
     const isBalcony = state.mode === 'balcony';
+    if (isBalcony && !state.rental.rented && balconySelection === null) beginCounterDecision();
     $('#normal-mode').hidden = immersive || isBalcony;
     $('#immersive-room').hidden = !immersive;
     $('#balcony-room').hidden = !isBalcony;
@@ -833,10 +851,18 @@
   function toggleCounter(title) {
     const result = updateRentalBasket(state.counter, title, state.rental.rented);
     state.counter = result.titles;
+    if (balconySelection && result.changed) {
+      balconySelection = result.reason === 'added'
+        ? prepareCounterSelection([...balconySelection, title])
+        : removeCounterSelection(balconySelection, title);
+    }
     saveCounter();
     syncTitleBasketAction();
     const status = $('#balcony-panel-status');
     if (status) status.textContent = basketMessage(result.reason);
+    const basketStatus = $('#basket-status');
+    if (basketStatus) basketStatus.textContent = basketMessage(result.reason);
+    if ($('#basket-dialog').open) renderBasket();
     if ($('#balcony-dialog').open) renderBalconyPanel();
     if (state.mode === 'balcony') refreshBalcony();
     return result;
@@ -854,22 +880,32 @@
   }
 
   async function rentCounter() {
-    if (rentalRequestInFlight || !state.counter.length || state.rental.rented) { openRentalDesk(); return; }
+    const decision = counterDecisionTitles();
+    if (rentalRequestInFlight || !decision.length || state.rental.rented) { openRentalDesk(); return; }
     if (!state.member.configured || !state.member.signedIn || !state.member.profile) { requestRentalIdentity(); return; }
+    const sessionVersion = memberSessionVersion;
     const button = $('#rent-counter');
     rentalRequestInFlight = true;
     button.disabled = true;
     button.textContent = 'Registrando pacote…';
     try {
-      const titles = state.counter.map(remoteTitle);
-      if (titles.length !== state.counter.length) throw new Error('Todas as fitas precisam de um registro válido do catálogo.');
-      const rental = await window.LocadoraAccount.request('/v1/rentals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ titles }) });
+      const titles = counterDecisionTitles().map(serializeRentalTitle);
+      if (titles.some((title) => !title)) throw new Error('Todas as fitas precisam de um registro válido do catálogo. Tire e adicione novamente qualquer fita antiga.');
+      const response = await window.LocadoraAccount.request('/v1/rentals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ titles }) });
+      if (!state.member.signedIn || sessionVersion !== memberSessionVersion) return;
+      const rental = validateRentalResponse(response, titles);
       pendingRental = false;
       state.counter = [];
+      balconySelection = null;
+      state.rental.rented = rental?.rental ? { id: rental.rental.id, titles: (rental.rental.items || []).map(localRentalTitle) } : state.rental.rented;
       saveCounter();
-      await refreshMemberData();
+      renderBalconyPanel();
+      refreshBalcony();
       showRentalConfirmation(rental);
-      if ($('#balcony-dialog').open) renderBalconyPanel();
+      try { await refreshMemberData(); }
+      catch {
+        $('#rental-confirmation-status').textContent += ' O pacote foi registrado; Minha conta será sincronizada quando a conexão voltar.';
+      }
     } catch (error) {
       pendingRental = false;
       $('#balcony-panel-status').textContent = error.message;
@@ -881,7 +917,7 @@
   }
 
   async function resumePendingRental() {
-    if (!pendingRental || !state.member.signedIn || !state.counter.length || state.rental.rented || rentalRequestInFlight) return;
+    if (!pendingRental || !state.member.signedIn || !counterDecisionTitles().length || state.rental.rented || rentalRequestInFlight) return;
     if (!state.member.profile) {
       openAccount('Falta só escolher seu nome público para confirmar este pacote.');
       return;
@@ -898,12 +934,34 @@
     button.textContent = 'Devolvendo pacote…';
     try {
       requireMember();
-      for (const [itemId, entry] of pendingReturns) {
-        await window.LocadoraAccount.request(`/v1/rental-items/${itemId}/return`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watchedStatus: entry.watchedStatus }) });
+      const sessionVersion = memberSessionVersion;
+      const entries = [...pendingReturns.entries()].map(([itemId, entry]) => ({ itemId, watchedStatus: entry.watchedStatus }));
+      const result = await submitRentalReturns(entries, (itemId, watchedStatus) => {
+        if (!state.member.signedIn || sessionVersion !== memberSessionVersion) throw new Error('rental_session_changed');
+        return window.LocadoraAccount.request(`/v1/rental-items/${itemId}/return`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ watchedStatus }),
+        });
+      });
+      if (!state.member.signedIn || sessionVersion !== memberSessionVersion) return;
+      for (const itemId of result.succeeded) pendingReturns.delete(itemId);
+      const succeeded = new Set(result.succeeded);
+      const rented = state.rental.rented;
+      if (rented && succeeded.size) {
+        rented.titles = rented.titles.filter((title) => !succeeded.has(title.rentalItemId));
+        if (!rented.titles.length) state.rental.rented = null;
+        saveCounter();
+        renderBalconyPanel();
+        refreshBalcony();
       }
-      pendingReturns.clear();
-      await refreshMemberData();
-      $('#balcony-panel-status').textContent = 'Devolução registrada. As fitas voltaram para o acervo.';
+      let syncFailed = false;
+      try { await refreshMemberData(); }
+      catch { syncFailed = true; }
+      $('#balcony-panel-status').textContent = (result.failed.length
+        ? `${result.succeeded.length} fitas devolvidas; ${result.failed.length} não puderam ser devolvidas. As pendentes continuam marcadas para tentar de novo.`
+        : 'Devolução registrada. As fitas voltaram para o acervo.')
+        + (syncFailed ? ' Minha conta será sincronizada quando a conexão voltar.' : '');
     } catch (error) {
       $('#balcony-panel-status').textContent = error.message;
     } finally {
@@ -916,7 +974,7 @@
   function togglePendingReturn(title, checked) {
     if (!title.rentalItemId) return;
     const itemId = title.rentalItemId;
-    if (checked) pendingReturns.set(itemId, { title, watchedStatus: pendingReturns.get(itemId)?.watchedStatus || 'watched' });
+    if (checked) pendingReturns.set(itemId, { title, watchedStatus: pendingReturns.get(itemId)?.watchedStatus || 'unknown' });
     else pendingReturns.delete(itemId);
     renderReturnButton();
   }
@@ -936,6 +994,11 @@
 
   function openReturnDesk() {
     if ($('#account-dialog').open) $('#account-dialog').close();
+    if (state.mode === 'immersive') {
+      setMode('balcony');
+      window.requestAnimationFrame(openRentalDesk);
+      return;
+    }
     openRentalDesk();
   }
 
@@ -944,6 +1007,7 @@
     const list = $('#rental-confirmation-list');
     const titles = state.rental.rented?.titles || (rental?.rental?.items || []).map(localRentalTitle);
     $('#rental-confirmation-status').textContent = `${titles.length} ${titles.length === 1 ? 'fita saiu' : 'fitas saíram'} na sacola. Boa sessão — você pode devolver tudo no Balcão depois.`;
+    $('#rental-confirmation-bag-count').textContent = `${titles.length} ${titles.length === 1 ? 'FITA' : 'FITAS'}`;
     list.replaceChildren(...titles.map((title) => accountTitleItem(title, 'na sacola')));
     if ($('#balcony-dialog').open) $('#balcony-dialog').close();
     if (!dialog.open) dialog.showModal();
@@ -951,7 +1015,7 @@
 
   async function mountBalconyFallback(stage) {
     const { createTapeFallback } = await import('./tape-fallback.mjs');
-    const rental = rentalState();
+    const rental = balconyRentalState();
     balcony = createTapeFallback({
       container: stage,
       titles: rental.rented?.titles || rental.counter,
@@ -972,16 +1036,15 @@
       if (state.mode !== 'balcony') return;
       balcony = createBalcony({
         container: stage,
-        rental: rentalState(),
+        rental: balconyRentalState(),
         year: state.year,
         copy: { collectiveAwards: t('collectiveAwards'), collectiveAwardLines: [t('collectiveAwardOne'), t('collectiveAwardTwo'), t('collectiveAwardThree')] },
         onCounterSelect: openRentalDesk,
-        onRent: rentCounter,
         onSearch: openBalconySearch,
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
         onBagSelect: openRentalDesk,
-        onTip: () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; $('#balcony-dialog').showModal(); },
-        onCollectiveAwards: () => { $('#balcony-panel-status').textContent = t('collectiveAwardsNotice'); $('#balcony-dialog').showModal(); },
+        onTip: () => { openRentalDesk(); $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; },
+        onCollectiveAwards: () => { openRentalDesk(); $('#balcony-panel-status').textContent = t('collectiveAwardsNotice'); },
       });
     } catch (error) {
       try { await mountBalconyFallback(stage); }
@@ -992,8 +1055,9 @@
   function refreshBalcony() { if (state.mode === 'balcony') mountBalcony(); }
 
   function openRentalDesk() {
+    if (!state.rental.rented && balconySelection === null) beginCounterDecision();
     renderBalconyPanel();
-    $('#balcony-dialog').showModal();
+    if (!$('#balcony-dialog').open) $('#balcony-dialog').showModal();
   }
 
   function renderBalconyPanel() {
@@ -1001,12 +1065,17 @@
     const rentedList = $('#balcony-rented-list');
     counterList.replaceChildren(); rentedList.replaceChildren();
     const rented = state.rental.rented;
+    $('#balcony-context').textContent = state.mode === 'balcony' ? 'BALCÃO · SALA 3D' : 'BALCÃO · ATENDIMENTO 2D';
+    $('#tip-jar').hidden = state.mode !== 'balcony';
+    $('#balcony-rental-controls').hidden = Boolean(rented);
+    $('#balcony-return-controls').hidden = !rented;
     if (!rented) pendingReturns.clear();
     else {
       const activeIds = new Set(rented.titles.map((title) => title.rentalItemId).filter(Boolean));
       for (const itemId of pendingReturns.keys()) if (!activeIds.has(itemId)) pendingReturns.delete(itemId);
     }
-    const capacity = state.counter.length;
+    const decisionTitles = counterDecisionTitles();
+    const capacity = decisionTitles.length;
     const rentButton = $('#rent-counter');
     rentButton.disabled = !capacity || Boolean(rented) || rentalRequestInFlight;
     rentButton.textContent = rentalRequestInFlight ? 'Registrando pacote…' : `Alugar pacote · ${capacity} ${capacity === 1 ? 'fita' : 'fitas'}`;
@@ -1018,14 +1087,14 @@
       : capacity
         ? `${capacity} de 3 fitas chegaram ao balcão. Tire as que não vai levar hoje; o botão abaixo aluga as restantes em uma sacola.`
         : 'Escolha fitas nas estantes ou pesquise no terminal. Depois traga a cesta ao Balcão para decidir o pacote.';
-    if (!capacity) counterList.textContent = 'Sua cesta está vazia.';
-    state.counter.forEach((title) => {
+    if (!capacity) counterList.textContent = 'Nenhuma fita ficou no pacote. Volte à Cesta para começar de novo.';
+    decisionTitles.forEach((title) => {
       const item = document.createElement('article'); item.className = 'counter-item basket-item';
       const image = document.createElement('img'); image.alt = ''; image.src = posterTextureUrl(title.poster || posterFallback(title));
       const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · ${title.type === 'series' ? 'Série' : 'Filme'}`; text.append(name, meta);
       const actions = document.createElement('div'); actions.className = 'return-choices';
       const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Ver fita'; inspect.addEventListener('click', () => openTitle(title));
-      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remover'; remove.addEventListener('click', () => toggleCounter(title));
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Não levar'; remove.addEventListener('click', () => removeFromCounterDecision(title));
       actions.append(inspect, remove); item.append(image, text, actions); counterList.append(item);
     });
     if (!rented) { rentedList.textContent = 'Nenhum pacote alugado agora.'; renderReturnButton(); return; }
@@ -1041,9 +1110,13 @@
       label.append(checkbox, name); text.append(label, meta);
       const choices = document.createElement('div'); choices.className = 'return-choices';
       const statusSelect = document.createElement('select'); statusSelect.disabled = !selected || returnRequestInFlight;
+      statusSelect.setAttribute('aria-label', `Estado de exibição de ${title.name}`);
       [['watched', 'Assistida'], ['not_watched', 'Não assistida'], ['unknown', 'Não sei']].forEach(([value, labelText]) => { const option = document.createElement('option'); option.value = value; option.textContent = labelText; statusSelect.append(option); });
-      statusSelect.value = pendingReturns.get(title.rentalItemId)?.watchedStatus || 'watched';
-      checkbox.addEventListener('change', (event) => { togglePendingReturn(title, event.currentTarget.checked); });
+      statusSelect.value = pendingReturns.get(title.rentalItemId)?.watchedStatus || 'unknown';
+      checkbox.addEventListener('change', () => {
+        statusSelect.disabled = !checkbox.checked;
+        togglePendingReturn(title, checkbox.checked);
+      });
       statusSelect.addEventListener('change', (event) => updatePendingReturnStatus(title, event.currentTarget.value));
       choices.append(statusSelect);
       item.append(text, choices); rentedList.append(item);
@@ -1136,16 +1209,16 @@
     }
   }
 
-  function renderCounter() {
-    const list = $('#counter-list');
+  function renderBasket() {
+    const list = $('#basket-list');
     list.replaceChildren();
-    if (!state.counter.length) {
-      const empty = document.createElement('p');
-      empty.className = 'panel-copy';
-      empty.textContent = 'The counter is empty. Pick a tape from any aisle.';
-      list.append(empty);
-      return;
-    }
+    $('#basket-status').textContent = state.rental.rented
+      ? 'Você já tem uma sacola alugada. Devolva as fitas antes de montar outra cesta.'
+      : state.counter.length
+        ? `${state.counter.length} de 3 fitas escolhidas. Revise a cesta antes de levá-la ao Balcão.`
+        : 'Sua cesta está vazia. Escolha até 3 fitas nas estantes.';
+    $('#take-basket-counter').disabled = !state.counter.length || Boolean(state.rental.rented);
+    if (!state.counter.length) return;
     state.counter.forEach((title) => {
       const item = document.createElement('article');
       item.className = 'counter-item';
@@ -1156,17 +1229,38 @@
       const name = document.createElement('strong');
       name.textContent = title.name;
       const meta = document.createElement('span');
-      meta.textContent = `${title.year || 'Year unknown'} · ${title.type}`;
+      meta.textContent = `${title.year || 'Ano desconhecido'} · ${title.type === 'series' ? 'série' : 'filme'}`;
       text.append(name, meta);
+      const actions = document.createElement('div');
+      actions.className = 'counter-item-actions';
+      const inspect = document.createElement('button');
+      inspect.type = 'button';
+      inspect.textContent = 'Ver fita';
+      inspect.addEventListener('click', () => openTitle(title));
       const remove = document.createElement('button');
       remove.type = 'button';
-      remove.textContent = 'Return';
-      remove.setAttribute('aria-label', `Return ${title.name} to shelf`);
+      remove.textContent = 'Tirar';
+      remove.setAttribute('aria-label', `Tirar ${title.name} da cesta`);
       remove.addEventListener('click', () => toggleCounter(title));
-      item.append(image, text, remove);
-      item.addEventListener('dblclick', () => openTitle(title));
+      actions.append(inspect, remove);
+      item.append(image, text, actions);
       list.append(item);
     });
+  }
+
+  function openBasket() {
+    if (!state.rental.rented) balconySelection = null;
+    renderBasket();
+    if (!$('#basket-dialog').open) $('#basket-dialog').showModal();
+  }
+
+  function takeBasketToCounter() {
+    if (!state.counter.length || state.rental.rented) return;
+    beginCounterDecision();
+    const fromImmersive = state.mode === 'immersive';
+    $('#basket-dialog').close();
+    if (fromImmersive) setMode('balcony');
+    else openRentalDesk();
   }
 
   async function renderSources() {
@@ -1232,13 +1326,14 @@
     $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
     $('#balcony-toggle').addEventListener('click', () => setMode('balcony'));
     $('#balcony-return-shelf').addEventListener('click', () => setMode('immersive'));
-    $('#balcony-panel-open').addEventListener('click', () => { renderBalconyPanel(); $('#balcony-dialog').showModal(); });
+    $('#balcony-panel-open').addEventListener('click', openRentalDesk);
     $('#balcony-search-form').addEventListener('submit', (event) => { event.preventDefault(); searchBalconyCatalogue(); });
     $('#balcony-zoom-in').addEventListener('click', () => balcony?.zoomIn());
     $('#balcony-zoom-out').addEventListener('click', () => balcony?.zoomOut());
     $('#rent-counter').addEventListener('click', rentCounter);
     $('#return-selected-rentals').addEventListener('click', returnSelectedRentals);
     $('#rental-confirmation-dialog').addEventListener('close', () => setMode('normal'));
+    $('#rental-confirmation-dialog').addEventListener('cancel', (event) => event.preventDefault());
     $('#tip-jar').addEventListener('click', () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; });
     $('#immersive-hud-toggle').addEventListener('click', () => setImmersiveHudCollapsed(!$('#immersive-hud').classList.contains('is-collapsed')));
     $('#immersive-filters-toggle').addEventListener('click', () => {
@@ -1270,11 +1365,15 @@
       returnToBalconySearch = false;
       window.requestAnimationFrame(() => openBalconySearch(true));
     });
-    $('#counter-open').addEventListener('click', openRentalDesk);
+    $('#counter-open').addEventListener('click', openBasket);
     $('#counter-search').addEventListener('click', openBalconySearch);
-    $('#immersive-basket-open').addEventListener('click', openRentalDesk);
+    $('#immersive-basket-open').addEventListener('click', openBasket);
+    $('#take-basket-counter').addEventListener('click', takeBasketToCounter);
+    $('#account-return-counter').addEventListener('click', openReturnDesk);
     $('#watchlist-open').addEventListener('click', openWatchlist);
     $('#balcony-watchlist-open').addEventListener('click', openWatchlist);
+    $('#immersive-account-open').addEventListener('click', () => openAccount());
+    $('#balcony-account-open').addEventListener('click', () => openAccount());
     $('#account-open').addEventListener('click', () => openAccount());
     $('#account-sign-in').addEventListener('click', async () => {
       $('#account-dialog').close();
@@ -1328,7 +1427,7 @@
     $('#load-more-shelf').addEventListener('click', goToNextStand);
     for (const dialog of document.querySelectorAll('dialog')) {
       dialog.addEventListener('click', (event) => {
-        if (event.target === dialog) dialog.close();
+        if (event.target === dialog && dialog.id !== 'rental-confirmation-dialog') dialog.close();
       });
     }
   }

@@ -45,24 +45,55 @@ test('collapsed immersive HUD keeps its nested restore button visible', () => {
   assert.match(css, /\.immersive-hud\.is-collapsed \.immersive-hud-strip > :not\(\.immersive-menu-actions\), \.immersive-hud\.is-collapsed \.immersive-menu-actions > :not\(#immersive-hud-toggle\)/);
 });
 
-test('the normal counter opens the same rental desk, including catalogue search and returns', () => {
+test('the rental desk keeps catalogue search and returns behind the Cesta-to-Balcão transition', () => {
   assert.match(page, /id="counter-search"[^>]*>/);
   assert.match(page, /id="rent-counter"/);
   assert.match(page, /id="balcony-rented-list"/);
-  assert.match(app, /function openRentalDesk\(\) \{\s*renderBalconyPanel\(\);\s*\$\('#balcony-dialog'\)\.showModal\(\);\s*\}/);
-  assert.match(app, /\$\('#counter-open'\)\.addEventListener\('click', openRentalDesk\)/);
+  assert.match(app, /function openRentalDesk\(\) \{[\s\S]*renderBalconyPanel\(\);\s*if \(!\$\('#balcony-dialog'\)\.open\) \$\('#balcony-dialog'\)\.showModal\(\);\s*\}/);
+  assert.match(app, /\$\('#counter-open'\)\.addEventListener\('click', openBasket\)/);
   assert.match(app, /\$\('#counter-search'\)\.addEventListener\('click', openBalconySearch\)/);
 });
 
-test('immersive mode opens a legible browse console and exposes the basket independently', () => {
+test('immersive mode exposes a basket independently from the Balcony', () => {
   assert.match(page, /class="immersive-picker immersive-genre-picker"/);
-  assert.match(page, /id="immersive-basket-open"[^>]*aria-controls="balcony-dialog"/);
-  assert.match(app, /setImmersiveHudCollapsed\(false\)/);
-  assert.match(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openRentalDesk\)/);
+  assert.match(page, /id="immersive-basket-open"[^>]*aria-controls="basket-dialog"/);
+  assert.match(page, /id="basket-dialog"/);
+  assert.match(page, /id="take-basket-counter"[^>]*>Levar ao Balcão<\/button>/);
+  assert.match(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openBasket\)/);
+  assert.match(app, /function takeBasketToCounter\(\)[\s\S]*state\.mode === 'immersive'[\s\S]*setMode\('balcony'\)/);
+  assert.doesNotMatch(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openRentalDesk\)/);
   assert.match(css, /\.immersive-genre-picker/);
   assert.match(css, /\.immersive-genre-picker select/);
   assert.match(css, /\.immersive-hud \{[^}]*position: absolute;/);
   assert.match(css, /\.immersive-basket-button/);
+});
+
+test('the normal header opens Cesta first and reaches the 2D Balcony through its CTA', () => {
+  assert.match(page, /id="counter-open"[^>]*>[\s\S]*data-i18n="basket"[\s\S]*id="counter-count"/);
+  assert.match(app, /\$\('#counter-open'\)\.addEventListener\('click', openBasket\)/);
+  assert.match(app, /function takeBasketToCounter\(\)[\s\S]*openRentalDesk\(\)/);
+});
+
+test('Balcão decisions use a temporary subset instead of deleting titles from Cesta', () => {
+  assert.match(app, /let balconySelection = null/);
+  assert.match(app, /function beginCounterDecision\(\)[\s\S]*prepareCounterSelection\(state\.counter\)/);
+  assert.match(app, /function removeFromCounterDecision\(title\)[\s\S]*removeCounterSelection\(balconySelection, title\)/);
+  assert.match(app, /const titles = counterDecisionTitles\(\)\.map\(serializeRentalTitle\)/);
+  assert.match(app, /if \(titles\.some\(\(title\) => !title\)\) throw new Error/);
+  assert.match(app, /const rental = validateRentalResponse\(response, titles\)/);
+});
+
+test('a successful rental confirmation does not depend on a follow-up state refresh', () => {
+  const rentStart = app.indexOf('async function rentCounter()');
+  const rentEnd = app.indexOf('async function resumePendingRental()', rentStart);
+  const rent = app.slice(rentStart, rentEnd);
+  assert.ok(rent.indexOf('showRentalConfirmation(rental)') < rent.indexOf('await refreshMemberData()'));
+  assert.match(rent, /try \{ await refreshMemberData\(\); \}/);
+});
+
+test('rental confirmation has one deliberate conclusion and cannot be dismissed accidentally', () => {
+  assert.match(app, /rental-confirmation-dialog'\)\.addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\)/);
+  assert.match(app, /event\.target === dialog && dialog\.id !== 'rental-confirmation-dialog'/);
 });
 
 test('the rental desk explains the rental-store flow: choose basket, decide at counter, rent one pack', () => {
@@ -77,12 +108,24 @@ test('the rental desk explains the rental-store flow: choose basket, decide at c
   assert.match(app, /setMode\('normal'\)/);
 });
 
+test('the rental confirmation visibly contains the Locadora bag and one home action', () => {
+  assert.match(page, /class="rental-confirmation-bag"/);
+  assert.match(page, /id="rental-confirmation-bag-count"/);
+  assert.match(page, /id="rental-confirmation-home"[^>]*>Voltar para a página inicial<\/button>/);
+  assert.doesNotMatch(page, /Close rental confirmation/);
+});
+
 test('the return desk batches selected rented tapes with watched-state choices', () => {
   assert.match(page, /id="return-selected-rentals"[^>]*>Devolver fitas selecionadas<\/button>/);
   assert.match(app, /pendingReturns = new Map\(\)/);
   assert.match(app, /function togglePendingReturn\(title, checked\)/);
   assert.match(app, /async function returnSelectedRentals\(\)/);
-  assert.match(app, /for \(const \[itemId, entry\] of pendingReturns\)/);
+  assert.match(app, /submitRentalReturns\(entries/);
+});
+
+test('the optional tip jar only appears in the 3D Balcony context', () => {
+  assert.match(page, /id="tip-jar"/);
+  assert.match(app, /\$\('#tip-jar'\)\.hidden = state\.mode !== 'balcony'/);
 });
 
 test('the member destination is a detailed Member Section rather than a generic account panel', () => {

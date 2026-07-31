@@ -47,13 +47,13 @@ class ApiError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
-function databaseError(error) {
+export function databaseError(error) {
   if (!error) return;
   if (error.code === '23505') throw new ApiError(409, 'That public username is already taken');
   if (error.message === 'active_title_limit') throw new ApiError(409, 'You can have up to three active titles');
   if (error.message === 'title_already_rented') throw new ApiError(409, 'That title is already active at your counter');
   if (error.message === 'profile_required') throw new ApiError(409, 'Choose a public username first');
-  if (error.message === 'rental_item_not_found') throw new ApiError(404, 'That active rental item was not found');
+  if (['rental_item_not_found', 'active_rental_item_not_found'].includes(error.message)) throw new ApiError(404, 'That active rental item was not found');
   throw new Error('The Locadora archive is unavailable');
 }
 

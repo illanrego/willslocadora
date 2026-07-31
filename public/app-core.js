@@ -22,8 +22,10 @@
   }
 
   function normalizeTitle(meta, source) {
+    const imdbId = /^tt\d+$/.test(String(meta.imdbId || '')) ? String(meta.imdbId) : '';
     return {
       id: String(meta.id || ''),
+      ...(imdbId ? { imdbId } : {}),
       type: meta.type === 'series' ? 'series' : 'movie',
       name: String(meta.name || 'Untitled'),
       year: parseReleaseYear(meta.releaseInfo || meta.released || meta.year),
@@ -66,12 +68,14 @@
   }
 
   function createImdbUrl(title) {
-    const id = String(title?.id || '');
+    const id = String(title?.imdbId || title?.id || '');
     if (/^tt\d+$/.test(id)) return `https://www.imdb.com/title/${id}/`;
     return `https://www.imdb.com/find/?q=${encodeURIComponent(String(title?.name || ''))}`;
   }
 
   function createLetterboxdUrl(title) {
+    const imdbId = String(title?.imdbId || '');
+    if (/^tt\d+$/.test(imdbId)) return `https://letterboxd.com/imdb/${imdbId}/`;
     const id = String(title?.id || '');
     if (/^tt\d+$/.test(id)) return `https://letterboxd.com/imdb/${id}/`;
     const tmdbMatch = id.match(/^tmdb:(\d+)$/);
@@ -81,9 +85,9 @@
 
   function createStremioUri(title) {
     const validType = title && (title.type === 'movie' || title.type === 'series');
-    const validId = title && /^[a-zA-Z0-9:_-]+$/.test(String(title.id || ''));
-    if (!validType || !validId) throw new Error('Invalid title for Stremio handoff');
-    return `stremio:///detail/${title.type}/${title.id}`;
+    const id = String(title?.imdbId || title?.id || '');
+    if (!validType || !/^tt\d+$/.test(id)) throw new Error('Invalid title for Stremio handoff');
+    return `stremio:///detail/${title.type}/${id}`;
   }
 
   function rentalTitleKey(title) {
@@ -93,8 +97,10 @@
 
   function normalizeRentalTitle(value) {
     if (!value || typeof value !== 'object' || !rentalTitleKey(value)) return null;
+    const imdbId = /^tt\d+$/.test(String(value.imdbId || '')) ? String(value.imdbId) : '';
     return {
       id: String(value.id),
+      ...(imdbId ? { imdbId } : {}),
       type: value.type,
       name: String(value.name || 'Untitled'),
       year: parseReleaseYear(value.year) || null,
@@ -134,17 +140,51 @@
     source = source && typeof source === 'object' ? source : {};
     const counter = normalizeRentalTitles(source.counter).slice(0, 3);
     const rentedTitles = normalizeRentalTitles(source.rented && source.rented.titles).slice(0, 3);
-    const rentedKeys = new Set(rentedTitles.map(rentalTitleKey));
     const returned = (Array.isArray(source.returned) ? source.returned : []).map((entry) => {
       const title = normalizeRentalTitle(entry && entry.title);
       const watchedStatus = ['watched', 'not_watched', 'unknown'].includes(entry && entry.watchedStatus) ? entry.watchedStatus : 'unknown';
       return title ? { title, watchedStatus } : null;
     }).filter(Boolean);
     return {
-      counter: rentedTitles.length ? [] : counter.filter((title) => !rentedKeys.has(rentalTitleKey(title))),
+      counter,
       rented: rentedTitles.length ? { titles: rentedTitles } : null,
       returned,
     };
+  }
+
+  function serializeRentalTitle(title) {
+    const match = String(title?.id || '').match(/^tmdb:(\d+)$/);
+    if (!match || !['movie', 'series'].includes(title?.type)) return null;
+    return { tmdbId: Number(match[1]), type: title.type, name: String(title.name || 'Untitled'), year: parseReleaseYear(title.year) || null };
+  }
+
+  function validateRentalResponse(value, requestedTitles) {
+    const requested = Array.isArray(requestedTitles) ? requestedTitles : [];
+    const rental = value?.rental;
+    const items = rental?.items;
+    const itemKey = (title) => `${title?.type || title?.title_type || title?.media_type}:${title?.tmdbId ?? title?.tmdb_id}`;
+    const requestedKeys = new Set(requested.map(itemKey));
+    const itemKeys = Array.isArray(items) ? items.map(itemKey) : [];
+    const valid = String(rental?.id || '').length > 0
+      && requested.length >= 1 && requested.length <= 3
+      && Array.isArray(items) && items.length === requested.length
+      && items.every((title) => {
+        const tmdbId = Number(title?.tmdbId ?? title?.tmdb_id);
+        return String(title?.id || '').length > 0 && Number.isInteger(tmdbId) && tmdbId > 0 && ['movie', 'series'].includes(title?.type || title?.title_type || title?.media_type);
+      })
+      && itemKeys.length === new Set(itemKeys).size
+      && itemKeys.every((key) => requestedKeys.has(key));
+    if (!valid) throw new Error('Invalid rental response from the member service');
+    return value;
+  }
+
+  function prepareCounterSelection(value) {
+    return normalizeRentalTitles(value).slice();
+  }
+
+  function removeCounterSelection(value, title) {
+    const key = rentalTitleKey(title);
+    return prepareCounterSelection(value).filter((item) => rentalTitleKey(item) !== key);
   }
 
   function rentCounterTitles(value) {
@@ -166,5 +206,20 @@
     };
   }
 
-  return { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, rentCounterTitles, returnRentedTitle, updateRentalBasket };
+  async function submitRentalReturns(value, request) {
+    const validStatuses = new Set(['watched', 'not_watched', 'unknown']);
+    const entries = (Array.isArray(value) ? value : []).filter((entry) => String(entry?.itemId || '').trim() && validStatuses.has(entry?.watchedStatus));
+    const result = { succeeded: [], failed: [] };
+    for (const entry of entries) {
+      try {
+        await request(String(entry.itemId), entry.watchedStatus);
+        result.succeeded.push(String(entry.itemId));
+      } catch (error) {
+        result.failed.push({ itemId: String(entry.itemId), error });
+      }
+    }
+    return result;
+  }
+
+  return { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, prepareCounterSelection, removeCounterSelection, rentCounterTitles, returnRentedTitle, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse };
 }));

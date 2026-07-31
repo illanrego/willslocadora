@@ -11,9 +11,14 @@ const {
   normalizeTitle,
   parseReleaseYear,
   normalizeRentalState,
+  prepareCounterSelection,
+  removeCounterSelection,
   rentCounterTitles,
+  serializeRentalTitle,
   returnRentedTitle,
+  submitRentalReturns,
   updateRentalBasket,
+  validateRentalResponse,
 } = require('../public/app-core.js');
 
 test('clampStoreYear supports the full catalogue era through 2026', () => {
@@ -45,6 +50,12 @@ test('normalizeTitle creates the stable browser model', () => {
     writer: ['Lilly Wachowski', 'Lana Wachowski'],
     cast: ['Keanu Reeves', 'Laurence Fishburne', 'Carrie-Anne Moss'], source: 'cinemeta',
   });
+});
+
+test('normalizeTitle preserves canonical TMDB and IMDb handoff identities', () => {
+  const title = normalizeTitle({ id: 'tmdb:603', imdbId: 'tt0133093', type: 'movie', name: 'The Matrix', year: 1999 });
+  assert.equal(title.id, 'tmdb:603');
+  assert.equal(title.imdbId, 'tt0133093');
 });
 
 test('filterByStore enforces selected year and aisle genre', () => {
@@ -87,6 +98,7 @@ test('deduplicateTitles keeps the richer copy of a stable title', () => {
 
 test('createStremioUri builds native detail routes without stream data', () => {
   assert.equal(createStremioUri({ type: 'movie', id: 'tt0133093' }), 'stremio:///detail/movie/tt0133093');
+  assert.equal(createStremioUri({ type: 'movie', id: 'tmdb:603', imdbId: 'tt0133093' }), 'stremio:///detail/movie/tt0133093');
   assert.equal(createStremioUri({ type: 'series', id: 'tt0903747' }), 'stremio:///detail/series/tt0903747');
   assert.throws(() => createStremioUri({ type: 'movie', id: 'bad/id' }), /Invalid title/);
 });
@@ -125,6 +137,37 @@ test('rental basket refuses new selections while a pack is active', () => {
   assert.deepEqual(result, { titles: [], changed: false, reason: 'active_rental' });
 });
 
+test('a canonical shelf title survives Cesta normalization and serializes for rental', () => {
+  const shelfTitle = { id: 'tmdb:603', imdbId: 'tt0133093', type: 'movie', name: 'The Matrix', year: 1999 };
+  const [selected] = prepareCounterSelection([shelfTitle]);
+  assert.equal(selected.imdbId, 'tt0133093');
+  assert.deepEqual(serializeRentalTitle(selected), { tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 });
+});
+
+test('validateRentalResponse accepts only a matching one-to-three-tape Worker package', () => {
+  const requested = [serializeRentalTitle({ id: 'tmdb:603', type: 'movie', name: 'The Matrix', year: 1999 })];
+  const response = { rental: { id: 'rental-1', items: [{ id: 'item-1', ...requested[0] }] } };
+  assert.deepEqual(validateRentalResponse(response, requested), response);
+  const snakeCaseResponse = { rental: { id: 'rental-2', items: [{ id: 'item-2', tmdb_id: 603, media_type: 'movie', name: 'The Matrix' }] } };
+  assert.deepEqual(validateRentalResponse(snakeCaseResponse, requested), snakeCaseResponse);
+  assert.throws(() => validateRentalResponse({}, requested), /invalid rental response/i);
+  assert.throws(() => validateRentalResponse({ rental: { id: 'rental-1', items: [] } }, requested), /invalid rental response/i);
+  assert.throws(() => validateRentalResponse({ rental: { id: 'rental-1', items: [{ id: 'item-1', tmdbId: 550, type: 'movie', name: 'Wrong tape' }] } }, requested), /invalid rental response/i);
+});
+
+test('the counter decision is a separate subset and does not mutate the basket', () => {
+  const basket = [
+    { id: 'tmdb:1', type: 'movie', name: 'One' },
+    { id: 'tmdb:2', type: 'movie', name: 'Two' },
+    { id: 'tmdb:3', type: 'movie', name: 'Three' },
+  ];
+  const selection = prepareCounterSelection(basket);
+  const reduced = removeCounterSelection(selection, basket[1]);
+  assert.deepEqual(reduced.map((title) => title.name), ['One', 'Three']);
+  assert.deepEqual(basket.map((title) => title.name), ['One', 'Two', 'Three']);
+  assert.notEqual(selection, basket);
+});
+
 test('rentCounterTitles moves the complete counter into one rented bag', () => {
   const rental = rentCounterTitles({ counter: balconyTitles, rented: null, returned: [] });
   assert.deepEqual(rental.counter, []);
@@ -156,6 +199,36 @@ test('returnRentedTitle removes the bag after the last return', () => {
   assert.equal(returned.returned.length, 1);
 });
 
+test('submitRentalReturns reports partial success without retrying completed tapes', async () => {
+  const calls = [];
+  const result = await submitRentalReturns([
+    { itemId: 'tape-1', watchedStatus: 'watched' },
+    { itemId: 'tape-2', watchedStatus: 'not_watched' },
+    { itemId: 'tape-3', watchedStatus: 'unknown' },
+  ], async (itemId, watchedStatus) => {
+    calls.push([itemId, watchedStatus]);
+    if (itemId === 'tape-2') throw new Error('archive unavailable');
+  });
+
+  assert.deepEqual(calls, [
+    ['tape-1', 'watched'],
+    ['tape-2', 'not_watched'],
+    ['tape-3', 'unknown'],
+  ]);
+  assert.deepEqual(result.succeeded, ['tape-1', 'tape-3']);
+  assert.deepEqual(result.failed.map((entry) => entry.itemId), ['tape-2']);
+});
+
+test('submitRentalReturns rejects malformed return selections before making requests', async () => {
+  let calls = 0;
+  const result = await submitRentalReturns([
+    { itemId: '', watchedStatus: 'watched' },
+    { itemId: 'tape-2', watchedStatus: 'invalid' },
+  ], async () => { calls += 1; });
+  assert.equal(calls, 0);
+  assert.deepEqual(result, { succeeded: [], failed: [] });
+});
+
 test('normalizeRentalState safely recovers from malformed persisted rental data', () => {
   assert.deepEqual(normalizeRentalState('{not json'), { counter: [], rented: null, returned: [] });
   const recovered = normalizeRentalState({
@@ -163,17 +236,17 @@ test('normalizeRentalState safely recovers from malformed persisted rental data'
     rented: { titles: [{ id: 'rented', type: 'series', name: 'Rented' }, null] },
     returned: [{ title: { id: 'returned', type: 'movie', name: 'Returned' }, watchedStatus: 'watched' }, { title: null }],
   });
-  assert.deepEqual(recovered.counter, []);
+  assert.deepEqual(recovered.counter.map((title) => title.id), ['good']);
   assert.deepEqual(recovered.rented.titles.map((title) => title.id), ['rented']);
   assert.deepEqual(recovered.returned.map((entry) => [entry.title.id, entry.watchedStatus]), [['returned', 'watched']]);
 });
 
-test('normalizeRentalState keeps the counter empty while a Locadora bag is rented', () => {
+test('normalizeRentalState preserves a pending Cesta while another account package is active', () => {
   const rental = normalizeRentalState({
     counter: [balconyTitles[0]],
     rented: { titles: [balconyTitles[1]] },
   });
 
-  assert.deepEqual(rental.counter, []);
+  assert.deepEqual(rental.counter.map((title) => title.id), ['tt0133093']);
   assert.deepEqual(rental.rented.titles.map((title) => title.id), ['tt0114369']);
 });
