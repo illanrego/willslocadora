@@ -65,13 +65,24 @@ test('immersive mode opens a legible browse console and exposes the basket indep
   assert.match(css, /\.immersive-basket-button/);
 });
 
-test('the rental desk explains the three-step one-pack flow and enforces a three-tape capacity', () => {
+test('the rental desk explains the rental-store flow: choose basket, decide at counter, rent one pack', () => {
   assert.match(page, /class="rental-flow"/);
+  assert.match(page, /<strong>Escolha<\/strong>/);
+  assert.match(page, /<strong>Decida no balcão<\/strong>/);
+  assert.match(page, /<strong>Alugue o pacote<\/strong>/);
   assert.match(page, /id="rental-capacity"/);
   assert.match(page, /id="rent-counter"[^>]*>Alugar pacote<\/button>/);
-  assert.match(app, /updateRentalBasket/);
-  assert.match(app, /pendingRental/);
-  assert.match(app, /resumePendingRental/);
+  assert.match(page, /id="rental-confirmation-dialog"/);
+  assert.match(app, /showRentalConfirmation\(rental\)/);
+  assert.match(app, /setMode\('normal'\)/);
+});
+
+test('the return desk batches selected rented tapes with watched-state choices', () => {
+  assert.match(page, /id="return-selected-rentals"[^>]*>Devolver fitas selecionadas<\/button>/);
+  assert.match(app, /pendingReturns = new Map\(\)/);
+  assert.match(app, /function togglePendingReturn\(title, checked\)/);
+  assert.match(app, /async function returnSelectedRentals\(\)/);
+  assert.match(app, /for \(const \[itemId, entry\] of pendingReturns\)/);
 });
 
 test('the member destination is a detailed Member Section rather than a generic account panel', () => {

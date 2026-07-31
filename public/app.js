@@ -59,6 +59,8 @@
   let usernameAvailabilityToken = 0;
   let pendingRental = false;
   let rentalRequestInFlight = false;
+  let pendingReturns = new Map();
+  let returnRequestInFlight = false;
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
 
@@ -153,7 +155,7 @@
 
   function renderAccount() {
     const { configured, signedIn, profile } = state.member;
-    $('#account-open').textContent = profile?.username || (signedIn ? 'Conta' : 'Entrar');
+    $('#account-open').textContent = profile?.username || 'Minha conta';
     $('#account-sign-in').hidden = !configured || signedIn;
     $('#account-sign-out').hidden = !signedIn;
     $('#username-form').hidden = !signedIn;
@@ -181,6 +183,16 @@
     return item;
   }
 
+  function accountActiveRentalItem(title) {
+    const item = accountTitleItem(title, `alugada em ${accountDate(title.rentedAt)}`);
+    const returns = document.createElement('button');
+    returns.type = 'button';
+    returns.textContent = 'Devolver no Balcão';
+    returns.addEventListener('click', openReturnDesk);
+    item.append(returns);
+    return item;
+  }
+
   function renderAccountOverview() {
     const overview = $('#account-overview');
     const { profile, history = [], historyHasMore, signedIn } = state.member;
@@ -194,7 +206,7 @@
     $('#account-watchlist-count').textContent = String(state.member.watchlist.length);
     const active = $('#account-active-rentals'); active.replaceChildren();
     if (!rental?.titles.length) active.textContent = 'Nenhuma fita alugada agora.';
-    else active.append(...rental.titles.map((title) => accountTitleItem(title, `alugada em ${accountDate(title.rentedAt)}`)));
+    else active.append(...rental.titles.map(accountActiveRentalItem));
     const historyList = $('#account-history'); historyList.replaceChildren();
     if (!history.length) historyList.textContent = 'Ainda não há devoluções no seu histórico.';
     else historyList.append(...history.map((title) => accountTitleItem(title, `${title.watchedStatus === 'watched' ? 'assistida' : title.watchedStatus === 'not_watched' ? 'não assistida' : 'sem confirmação'} · devolvida em ${accountDate(title.returnedAt)}`)));
@@ -851,11 +863,12 @@
     try {
       const titles = state.counter.map(remoteTitle);
       if (titles.length !== state.counter.length) throw new Error('Todas as fitas precisam de um registro válido do catálogo.');
-      await window.LocadoraAccount.request('/v1/rentals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ titles }) });
+      const rental = await window.LocadoraAccount.request('/v1/rentals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ titles }) });
       pendingRental = false;
       state.counter = [];
       saveCounter();
       await refreshMemberData();
+      showRentalConfirmation(rental);
       if ($('#balcony-dialog').open) renderBalconyPanel();
     } catch (error) {
       pendingRental = false;
@@ -877,13 +890,63 @@
     await rentCounter();
   }
 
-  async function returnRental(title, watchedStatus) {
+  async function returnSelectedRentals() {
+    if (!pendingReturns.size || returnRequestInFlight) return;
+    const button = $('#return-selected-rentals');
+    returnRequestInFlight = true;
+    button.disabled = true;
+    button.textContent = 'Devolvendo pacote…';
     try {
       requireMember();
-      if (!title.rentalItemId) throw new Error('This rental needs to be refreshed');
-      await window.LocadoraAccount.request(`/v1/rental-items/${title.rentalItemId}/return`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watchedStatus }) });
+      for (const [itemId, entry] of pendingReturns) {
+        await window.LocadoraAccount.request(`/v1/rental-items/${itemId}/return`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ watchedStatus: entry.watchedStatus }) });
+      }
+      pendingReturns.clear();
       await refreshMemberData();
-    } catch (error) { openAccount(error.message); }
+      $('#balcony-panel-status').textContent = 'Devolução registrada. As fitas voltaram para o acervo.';
+    } catch (error) {
+      $('#balcony-panel-status').textContent = error.message;
+    } finally {
+      returnRequestInFlight = false;
+      button.disabled = false;
+      renderReturnButton();
+    }
+  }
+
+  function togglePendingReturn(title, checked) {
+    if (!title.rentalItemId) return;
+    const itemId = title.rentalItemId;
+    if (checked) pendingReturns.set(itemId, { title, watchedStatus: pendingReturns.get(itemId)?.watchedStatus || 'watched' });
+    else pendingReturns.delete(itemId);
+    renderReturnButton();
+  }
+
+  function updatePendingReturnStatus(title, watchedStatus) {
+    if (!title.rentalItemId || !pendingReturns.has(title.rentalItemId)) return;
+    pendingReturns.set(title.rentalItemId, { title, watchedStatus });
+  }
+
+  function renderReturnButton() {
+    const button = $('#return-selected-rentals');
+    if (!button) return;
+    button.hidden = !state.rental.rented?.titles.length;
+    button.disabled = !pendingReturns.size || returnRequestInFlight;
+    button.textContent = returnRequestInFlight ? 'Devolvendo pacote…' : pendingReturns.size ? `Devolver ${pendingReturns.size} ${pendingReturns.size === 1 ? 'fita selecionada' : 'fitas selecionadas'}` : 'Devolver fitas selecionadas';
+  }
+
+  function openReturnDesk() {
+    if ($('#account-dialog').open) $('#account-dialog').close();
+    openRentalDesk();
+  }
+
+  function showRentalConfirmation(rental) {
+    const dialog = $('#rental-confirmation-dialog');
+    const list = $('#rental-confirmation-list');
+    const titles = state.rental.rented?.titles || (rental?.rental?.items || []).map(localRentalTitle);
+    $('#rental-confirmation-status').textContent = `${titles.length} ${titles.length === 1 ? 'fita saiu' : 'fitas saíram'} na sacola. Boa sessão — você pode devolver tudo no Balcão depois.`;
+    list.replaceChildren(...titles.map((title) => accountTitleItem(title, 'na sacola')));
+    if ($('#balcony-dialog').open) $('#balcony-dialog').close();
+    if (!dialog.open) dialog.showModal();
   }
 
   async function mountBalconyFallback(stage) {
@@ -938,6 +1001,11 @@
     const rentedList = $('#balcony-rented-list');
     counterList.replaceChildren(); rentedList.replaceChildren();
     const rented = state.rental.rented;
+    if (!rented) pendingReturns.clear();
+    else {
+      const activeIds = new Set(rented.titles.map((title) => title.rentalItemId).filter(Boolean));
+      for (const itemId of pendingReturns.keys()) if (!activeIds.has(itemId)) pendingReturns.delete(itemId);
+    }
     const capacity = state.counter.length;
     const rentButton = $('#rent-counter');
     rentButton.disabled = !capacity || Boolean(rented) || rentalRequestInFlight;
@@ -946,10 +1014,10 @@
     const flowSteps = [...document.querySelectorAll('.rental-flow li')];
     flowSteps.forEach((step, index) => step.classList.toggle('is-current', rented ? index === 2 : index === (capacity ? 1 : 0)));
     $('#balcony-panel-status').textContent = rented
-      ? `${rented.titles.length} de 3 fitas no pacote ativo. Devolva cada fita quando terminar.`
+      ? `${rented.titles.length} de 3 fitas na sacola ativa. Marque as fitas que quer devolver, escolha o estado e confirme tudo em uma devolução.`
       : capacity
-        ? `${capacity} de 3 fitas prontas. O botão abaixo aluga todas juntas em um único pacote.`
-        : 'Escolha fitas nas estantes ou pesquise no terminal. Sua cesta comporta até 3.';
+        ? `${capacity} de 3 fitas chegaram ao balcão. Tire as que não vai levar hoje; o botão abaixo aluga as restantes em uma sacola.`
+        : 'Escolha fitas nas estantes ou pesquise no terminal. Depois traga a cesta ao Balcão para decidir o pacote.';
     if (!capacity) counterList.textContent = 'Sua cesta está vazia.';
     state.counter.forEach((title) => {
       const item = document.createElement('article'); item.className = 'counter-item basket-item';
@@ -960,14 +1028,27 @@
       const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remover'; remove.addEventListener('click', () => toggleCounter(title));
       actions.append(inspect, remove); item.append(image, text, actions); counterList.append(item);
     });
-    if (!rented) { rentedList.textContent = 'Nenhum pacote alugado agora.'; return; }
+    if (!rented) { rentedList.textContent = 'Nenhum pacote alugado agora.'; renderReturnButton(); return; }
     rented.titles.forEach((title) => {
       const item = document.createElement('article'); item.className = 'counter-item balcony-return-item';
-      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · escolha como devolver`; text.append(name, meta);
+      const selected = Boolean(title.rentalItemId && pendingReturns.has(title.rentalItemId));
+      const checkId = `return-${title.rentalItemId || title.id}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+      const text = document.createElement('div');
+      const label = document.createElement('label'); label.setAttribute('for', checkId);
+      const checkbox = document.createElement('input'); checkbox.id = checkId; checkbox.type = 'checkbox'; checkbox.checked = selected; checkbox.disabled = !title.rentalItemId || returnRequestInFlight;
+      const name = document.createElement('strong'); name.textContent = title.name;
+      const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · na sacola`;
+      label.append(checkbox, name); text.append(label, meta);
       const choices = document.createElement('div'); choices.className = 'return-choices';
-      ['watched', 'not_watched', 'unknown'].forEach((status) => { const button = document.createElement('button'); button.type = 'button'; button.textContent = status === 'watched' ? 'Assistida' : status === 'not_watched' ? 'Não assistida' : 'Não sei'; button.addEventListener('click', () => returnRental(title, status)); choices.append(button); });
+      const statusSelect = document.createElement('select'); statusSelect.disabled = !selected || returnRequestInFlight;
+      [['watched', 'Assistida'], ['not_watched', 'Não assistida'], ['unknown', 'Não sei']].forEach(([value, labelText]) => { const option = document.createElement('option'); option.value = value; option.textContent = labelText; statusSelect.append(option); });
+      statusSelect.value = pendingReturns.get(title.rentalItemId)?.watchedStatus || 'watched';
+      checkbox.addEventListener('change', (event) => { togglePendingReturn(title, event.currentTarget.checked); });
+      statusSelect.addEventListener('change', (event) => updatePendingReturnStatus(title, event.currentTarget.value));
+      choices.append(statusSelect);
       item.append(text, choices); rentedList.append(item);
     });
+    renderReturnButton();
   }
 
   async function openTitle(title, hydrate = true, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
@@ -1156,6 +1237,8 @@
     $('#balcony-zoom-in').addEventListener('click', () => balcony?.zoomIn());
     $('#balcony-zoom-out').addEventListener('click', () => balcony?.zoomOut());
     $('#rent-counter').addEventListener('click', rentCounter);
+    $('#return-selected-rentals').addEventListener('click', returnSelectedRentals);
+    $('#rental-confirmation-dialog').addEventListener('close', () => setMode('normal'));
     $('#tip-jar').addEventListener('click', () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; });
     $('#immersive-hud-toggle').addEventListener('click', () => setImmersiveHudCollapsed(!$('#immersive-hud').classList.contains('is-collapsed')));
     $('#immersive-filters-toggle').addEventListener('click', () => {

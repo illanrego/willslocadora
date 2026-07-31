@@ -14,9 +14,9 @@ ESTANTE / BUSCA
   │  inspecionar uma fita ou usar "Botar na cesta"
   ▼
 CESTA LOCAL (0–3 títulos distintos)
-  │  revisar, remover ou continuar pesquisando
+  │  levar ao Balcão para decidir o pacote final
   ▼
-BALCÃO — "Alugar pacote"
+BALCÃO — revisar, remover fitas que não vão sair hoje, então "Alugar pacote"
   │
   ├─ sem sessão ─► Seção do membro ─► Clerk ─┐
   ├─ sem perfil ─► escolher nome público ────┤
@@ -24,7 +24,12 @@ BALCÃO — "Alugar pacote"
                                               │ retoma a confirmação já iniciada
                                               ▼
 PACOTE ATIVO (1 locação, todas as fitas juntas)
-  │  devolver cada fita como assistida / não assistida / não informar
+  │  mostra sacola + confirmação; ao fechar, volta à página inicial
+  ▼
+MINHA CONTA mostra as fitas alugadas
+  │  "Devolver no Balcão" abre o Balcão 2D ou o Balcão 3D atual
+  ▼
+DEVOLUÇÃO — marcar fitas, escolher assistida / não assistida / não sei, confirmar tudo em um botão
   ▼
 HISTÓRICO + LISTA ATUALIZADOS
 ```
@@ -33,6 +38,7 @@ Rules:
 
 - The basket never contains more than three distinct titles.
 - `Alugar pacote` sends all current basket titles in one authenticated request and creates one active rental.
+- The Balcão dialog is the decision point: the visitor can remove any basket title there before renting the remaining one-to-three tapes as a single package.
 - Authentication or initial profile setup does not discard the basket; after completion, the pending explicit rental confirmation resumes.
 - While a package is active, no second basket/package can be started.
 - There is no payment, due date, or playback guarantee in this ritual.
@@ -73,7 +79,7 @@ For the implemented flow:
 - If identity/profile setup interrupts confirmation, the same basket remains and confirmation resumes after setup.
 - The bag occupies the **same exact counter position** previously used by the Balcão pile. It becomes the visible active-rental object: the counter has been cleared because the visitor is taking that rental home.
 - Use a slightly translucent white/cream plastic bag with the Locadora mark, handles, believable VHS silhouettes/spines, and the receipt peeking out. It should feel like a real video-store handoff, not a shopping-cart icon.
-- Selecting the bag starts the return flow for its tapes. Returning the last tape removes the bag and leaves the counter ready for a new Balcão pile.
+- Selecting the bag opens the Balcão return controls. The visitor marks one or more tapes, chooses each watched state, and confirms the whole devolução with one button. Returning the last tape removes the bag and leaves the counter ready for a new Balcão pile.
 - The cap is three active titles in one package, enforced in the client, Worker request validation, and database function.
 - Do not show money/payment handling. The rental ritual is free and simulated.
 

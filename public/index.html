@@ -22,7 +22,7 @@
             <span data-i18n="counter">Balcão</span> <span id="counter-count" aria-label="items at counter">0</span>
           </button>
           <button class="utility-button" id="watchlist-open" type="button">Minha lista</button>
-          <button class="utility-button" id="account-open" type="button">Entrar</button>
+          <button class="utility-button" id="account-open" type="button">Minha conta</button>
           <button class="utility-button" id="sources-open" type="button" data-i18n="sources">Fontes</button>
           <label class="locale-picker" for="locale-select">
             <span data-i18n="language">Idioma</span>
@@ -264,9 +264,9 @@
       <button class="dialog-close" value="close" aria-label="Close balcony controls">×</button>
     </form>
     <ol class="rental-flow" aria-label="Como alugar">
-      <li><span>1</span><strong>Escolha</strong><small>na estante ou busca</small></li>
-      <li class="is-current"><span>2</span><strong>Monte a cesta</strong><small id="rental-capacity">0 de 3 fitas</small></li>
-      <li><span>3</span><strong>Alugue</strong><small>um único pacote</small></li>
+      <li><span>1</span><strong>Escolha</strong><small>fitas nas estantes</small></li>
+      <li class="is-current"><span>2</span><strong>Decida no balcão</strong><small id="rental-capacity">0 de 3 fitas</small></li>
+      <li><span>3</span><strong>Alugue o pacote</strong><small>uma sacola só</small></li>
     </ol>
     <button id="counter-search" class="counter-search-button" type="button">Pesquisar títulos</button>
     <p id="balcony-panel-status" class="panel-copy" role="status" aria-live="polite"></p>
@@ -275,8 +275,19 @@
     <section class="balcony-return-controls" aria-labelledby="balcony-return-heading">
       <h3 id="balcony-return-heading" data-i18n="returns">Devoluções</h3>
       <div id="balcony-rented-list" class="counter-list"></div>
+      <button id="return-selected-rentals" class="balcony-rent-button" type="button" hidden>Devolver fitas selecionadas</button>
     </section>
     <button id="tip-jar" class="tip-jar-button" type="button" data-i18n="tipJar">Mantenha as luzes da Locadora acesas.</button>
+  </dialog>
+
+  <dialog id="rental-confirmation-dialog" class="panel-dialog rental-confirmation-dialog">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow">SACOLA DA LOCADORA</span><h2>Pacote alugado</h2></div>
+      <button class="dialog-close" value="close" aria-label="Close rental confirmation">×</button>
+    </form>
+    <p id="rental-confirmation-status" class="panel-copy" role="status" aria-live="polite"></p>
+    <div id="rental-confirmation-list" class="counter-list"></div>
+    <form method="dialog"><button class="account-action" value="home">Voltar para a página inicial</button></form>
   </dialog>
 
   <dialog id="balcony-search-dialog" class="panel-dialog balcony-search-dialog">

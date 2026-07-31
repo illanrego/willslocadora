@@ -30,8 +30,11 @@ test('signed-out rental state clears persisted and 3D Balcony surfaces', () => {
   assert.match(app, /if \(signedOut\) \{\s*state\.rental = \{ rented: null, returned: \[\] \};\s*pendingRental = false;\s*saveCounter\(\);\s*renderBalconyPanel\(\);\s*refreshBalcony\(\);\s*\}/);
 });
 
-test('returning a rented tape posts the watched outcome and refreshes canonical member state', () => {
-  assert.match(app, /async function returnRental\(title, watchedStatus\) \{[\s\S]*\/v1\/rental-items\/\$\{title\.rentalItemId\}\/return[\s\S]*body: JSON\.stringify\(\{ watchedStatus \}\)[\s\S]*await refreshMemberData\(\);/);
+test('returning rented tapes posts watched outcomes in one desk submission and refreshes canonical member state', () => {
+  assert.match(app, /async function returnSelectedRentals\(\)/);
+  assert.match(app, /for \(const \[itemId, entry\] of pendingReturns\)/);
+  assert.match(app, /\/v1\/rental-items\/\$\{itemId\}\/return[\s\S]*body: JSON\.stringify\(\{ watchedStatus: entry\.watchedStatus \}\)/);
+  assert.match(app, /pendingReturns\.clear\(\);[\s\S]*await refreshMemberData\(\);/);
 });
 
 test('account errors and rental prompts survive the account rerender', () => {
