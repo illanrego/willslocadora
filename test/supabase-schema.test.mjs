@@ -16,6 +16,14 @@ test('Supabase schema restricts active rental mutations to a transaction that lo
   assert.match(migration, /jsonb_array_length\(p_titles\) > 3/i);
 });
 
+test('Supabase repair migration qualifies return columns that collide with output variables', () => {
+  const repair = readFileSync(new URL('../supabase/migrations/20260801_fix_return_rental_item.sql', import.meta.url), 'utf8');
+  assert.match(repair, /update public\.rental_items as target/i);
+  assert.match(repair, /where target\.id = p_rental_item_id[\s\S]*target\.returned_at is null/i);
+  assert.match(repair, /update public\.rentals as rental/i);
+  assert.match(repair, /where rental\.id = item\.rental_id/i);
+});
+
 test('Supabase return routine completes the watchlist only for watched titles', () => {
   assert.match(migration, /create function public\.return_rental_item/i);
   assert.match(migration, /if p_watched_status = 'watched' then/i);

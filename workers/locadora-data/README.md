@@ -16,7 +16,7 @@ All routes require a valid Clerk bearer token and an allowed `Origin`.
 
 ## One-time setup
 
-1. Create the Locadora Supabase project. Apply `../../supabase/migrations/20260730_locadora_core.sql` with the Supabase SQL editor or the Supabase CLI.
+1. Create the Locadora Supabase project. Apply `../../supabase/migrations/20260730_locadora_core.sql`, followed by every later migration in filename order (including `20260801_fix_return_rental_item.sql`), with the Supabase SQL editor or Supabase CLI.
 2. Create a Clerk application configured for email + password. Configure the exact production and local origins as permitted origins/redirect URLs. Do not enable Locadora-managed verification or recovery email flows for this MVP.
 3. From this directory, authenticate the intended Cloudflare account, then set secrets interactively — never put values in files or source control:
 

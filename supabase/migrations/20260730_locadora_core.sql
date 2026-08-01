@@ -204,24 +204,27 @@ begin
     raise exception 'invalid_return_outcome' using errcode = 'P0001';
   end if;
 
-  update public.rental_items
+  update public.rental_items as target
   set returned_at = now(), watched_status = p_watched_status
-  where id = p_rental_item_id and user_id = p_user_id and returned_at is null
-  returning * into item;
+  where target.id = p_rental_item_id and target.user_id = p_user_id and target.returned_at is null
+  returning target.* into item;
   if not found then
     raise exception 'active_rental_item_not_found' using errcode = 'P0001';
   end if;
 
   if p_watched_status = 'watched' then
-    update public.watchlist_items
+    update public.watchlist_items as watchlist
     set completed_at = now()
-    where user_id = p_user_id and canonical_key = item.canonical_key and completed_at is null;
+    where watchlist.user_id = p_user_id and watchlist.canonical_key = item.canonical_key and watchlist.completed_at is null;
   end if;
 
-  update public.rentals
+  update public.rentals as rental
   set returned_at = now()
-  where id = item.rental_id
-    and not exists (select 1 from public.rental_items where rental_id = item.rental_id and returned_at is null);
+  where rental.id = item.rental_id
+    and not exists (
+      select 1 from public.rental_items as remaining
+      where remaining.rental_id = item.rental_id and remaining.returned_at is null
+    );
 
   return query select item.id, item.returned_at, item.watched_status;
 end;
