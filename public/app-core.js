@@ -155,6 +155,17 @@
     };
   }
 
+  function hydrateTitleMetadata(cache, key, title, fetchMetadata) {
+    if (!cache.has(key)) {
+      const request = Promise.resolve().then(fetchMetadata).catch((error) => {
+        if (cache.get(key) === request) cache.delete(key);
+        throw error;
+      });
+      cache.set(key, request);
+    }
+    return cache.get(key).then((metadata) => Object.assign(title, metadata));
+  }
+
   function serializeRentalTitle(title) {
     const match = String(title?.id || '').match(/^tmdb:(\d+)$/);
     if (!match || !['movie', 'series'].includes(title?.type)) return null;
@@ -224,5 +235,5 @@
     return result;
   }
 
-  return { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, prepareCounterSelection, removeCounterSelection, rentCounterTitles, returnRentedTitle, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse };
+  return { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, hydrateTitleMetadata, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, prepareCounterSelection, removeCounterSelection, rentCounterTitles, returnRentedTitle, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse };
 }));

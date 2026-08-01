@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLocadoraDataWorker, databaseError } from '../workers/locadora-data/src/index.mjs';
+import { createLocadoraDataWorker, databaseError, mapActiveRentalRow } from '../workers/locadora-data/src/index.mjs';
 
 function jsonRequest(path, { method = 'GET', token = 'valid-token', body } = {}) {
   return new Request(`https://data.example${path}`, {
@@ -27,6 +27,19 @@ function createRepository() {
     },
   };
 }
+
+test('active rental state excludes tapes that have already been returned', () => {
+  const active = mapActiveRentalRow({
+    id: 'rental-1',
+    opened_at: '2026-08-01T10:00:00Z',
+    rental_items: [
+      { id: 'item-active', tmdb_id: 603, title_type: 'movie', title_snapshot: 'The Matrix', release_year_snapshot: 1999, rented_at: '2026-08-01T10:00:00Z', returned_at: null },
+      { id: 'item-returned', tmdb_id: 680, title_type: 'movie', title_snapshot: 'Pulp Fiction', release_year_snapshot: 1994, rented_at: '2026-08-01T10:00:00Z', returned_at: '2026-08-01T12:00:00Z' },
+    ],
+  });
+
+  assert.deepEqual(active.items.map((item) => item.id), ['item-active']);
+});
 
 test('data Worker returns only the authenticated member state', async () => {
   const worker = createLocadoraDataWorker({

@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, normalizeRentalState, prepareCounterSelection, removeCounterSelection, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse } = window.LocadoraCore;
+  const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, hydrateTitleMetadata, normalizeRentalState, prepareCounterSelection, removeCounterSelection, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse } = window.LocadoraCore;
   const MAX_CESTA_TITLES = 15;
   const MAX_RENTAL_TITLES = 3;
   const COVER_PLACEHOLDER_URL = '/images/wills-locadora-cover-placeholder.svg';
@@ -151,9 +151,10 @@
 
   function applyMemberData(data) {
     state.member = { ...state.member, profile: data.profile, watchlist: data.watchlist || [], history: data.history || [], historyHasMore: Boolean(data.historyHasMore) };
-    state.rental.rented = data.activeRental ? { id: data.activeRental.id, titles: data.activeRental.items.map(localRentalTitle) } : null;
+    const activeTitles = (data.activeRental?.items || []).map(localRentalTitle);
+    state.rental.rented = data.activeRental && activeTitles.length ? { id: data.activeRental.id, titles: activeTitles } : null;
     state.rental.returned = (data.history || []).map(localRentalTitle);
-    if (data.activeRental) balconySelection = null;
+    if (state.rental.rented) balconySelection = null;
     saveCounter();
     renderAccount();
   }
@@ -200,14 +201,29 @@
     return String(title?.id || '').startsWith('tmdb:') ? title : localRentalTitle(title);
   }
 
+  function refreshAccountTitleCard(title, meta, { image, name, detail }) {
+    name.textContent = title.name;
+    detail.textContent = `${title.year || '—'} · ${meta}`;
+    image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL;
+  }
+
   function accountTitleItem(title, meta) {
-    const item = document.createElement('article'); item.className = 'counter-item watchlist-item';
-    const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name;
-    const detail = document.createElement('span'); detail.textContent = `${title.year || '—'} · ${meta}`;
+    const item = document.createElement('article'); item.className = 'counter-item account-title-item';
+    const text = document.createElement('div');
+    const name = document.createElement('strong');
+    const detail = document.createElement('span');
     text.append(name, detail);
-    const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
-    const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitle(memberTitleForViewer(title)));
+    const image = document.createElement('img'); image.alt = '';
+    image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
+    refreshAccountTitleCard(title, meta, { image, name, detail });
+    const inspect = document.createElement('button'); inspect.className = 'account-title-inspect'; inspect.type = 'button'; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitle(memberTitleForViewer(title), true));
     item.append(image, text, inspect);
+    const cardLocale = state.locale;
+    const cardSessionVersion = memberSessionVersion;
+    loadTitleMetadata(title).then(() => {
+      if (!item.isConnected || cardLocale !== state.locale || cardSessionVersion !== memberSessionVersion) return;
+      refreshAccountTitleCard(title, meta, { image, name, detail });
+    }).catch(() => {});
     return item;
   }
 
@@ -310,6 +326,7 @@
       }
       window.LocadoraAccount.onChange(async (next) => {
         memberSessionVersion += 1;
+        pendingReturns.clear();
         const signedOut = state.member.signedIn && !next.signedIn;
         state.member = { ...state.member, ...next, ...(signedOut ? { profile: null, watchlist: [], history: [], historyHasMore: false } : {}) };
         if (signedOut) {
@@ -505,14 +522,11 @@
     shelf.replaceChildren(grid);
   }
 
-  async function loadTitleMetadata(title) {
+  function loadTitleMetadata(title) {
     const key = `${state.locale}:${title.type}:${title.id}`;
-    if (!state.metadata.has(key)) {
-      state.metadata.set(key, api(`/api/meta?${new URLSearchParams({ type: title.type, id: title.id, locale: state.locale })}`)
-        .then(({ meta }) => Object.assign(title, meta))
-        .catch((error) => { state.metadata.delete(key); throw error; }));
-    }
-    return state.metadata.get(key);
+    return hydrateTitleMetadata(state.metadata, key, title, () => (
+      api(`/api/meta?${new URLSearchParams({ type: title.type, id: title.id, locale: state.locale })}`).then(({ meta }) => meta)
+    ));
   }
 
   function renderShelf(titles, stand, append) {
@@ -964,6 +978,7 @@
         rented.titles = rented.titles.filter((title) => !succeeded.has(title.rentalItemId));
         if (!rented.titles.length) state.rental.rented = null;
         saveCounter();
+        renderAccountOverview();
         renderBalconyPanel();
         refreshBalcony();
       }

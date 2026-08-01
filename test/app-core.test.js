@@ -8,6 +8,7 @@ const {
   createStremioUri,
   deduplicateTitles,
   filterByStore,
+  hydrateTitleMetadata,
   normalizeTitle,
   parseReleaseYear,
   normalizeRentalState,
@@ -31,6 +32,26 @@ test('parseReleaseYear extracts the first four digit year', () => {
   assert.equal(parseReleaseYear('1997–1999'), 1997);
   assert.equal(parseReleaseYear('Released 1987'), 1987);
   assert.equal(parseReleaseYear(null), null);
+});
+
+test('metadata hydration applies one cached response to every matching title object', async () => {
+  const cache = new Map();
+  const first = { id: 'tmdb:603', type: 'movie', name: 'Snapshot' };
+  const second = { id: 'tmdb:603', type: 'movie', name: 'Snapshot' };
+  let requests = 0;
+  const fetchMetadata = async () => {
+    requests += 1;
+    return { name: 'The Matrix', year: 1999, poster: '/matrix.jpg' };
+  };
+
+  await Promise.all([
+    hydrateTitleMetadata(cache, 'pt-BR:movie:tmdb:603', first, fetchMetadata),
+    hydrateTitleMetadata(cache, 'pt-BR:movie:tmdb:603', second, fetchMetadata),
+  ]);
+
+  assert.equal(requests, 1);
+  assert.deepEqual(first, second);
+  assert.equal(second.poster, '/matrix.jpg');
 });
 
 test('normalizeTitle creates the stable browser model', () => {

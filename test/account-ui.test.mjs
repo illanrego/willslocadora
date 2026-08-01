@@ -33,6 +33,23 @@ test('yellow actions use dark text and return submission retains a selected subs
   assert.match(app, /const entries = \[\.\.\.pendingReturns\.entries\(\)\]/);
 });
 
+test('member and rented-package cards hydrate TMDB covers and metadata before inspection', () => {
+  assert.match(app, /item\.className = 'counter-item account-title-item'/);
+  assert.match(app, /function refreshAccountTitleCard\(title, meta, \{ image, name, detail \}\)/);
+  assert.match(app, /const cardLocale = state\.locale;\s*const cardSessionVersion = memberSessionVersion;/);
+  assert.match(app, /if \(!item\.isConnected \|\| cardLocale !== state\.locale \|\| cardSessionVersion !== memberSessionVersion\) return/);
+  assert.match(app, /loadTitleMetadata\(title\)\.then/);
+  assert.match(app, /openTitle\(memberTitleForViewer\(title\), true\)/);
+  assert.match(app, /data\.activeRental && activeTitles\.length/);
+});
+
+test('member rental cards keep covers, details, and Inspect action in separate columns', () => {
+  const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(styles, /\.account-title-item\s*\{[^}]*grid-template-columns:\s*54px minmax\(0, 1fr\) auto/);
+  assert.match(styles, /\.account-title-inspect\s*\{[^}]*justify-self:\s*end/);
+  assert.doesNotMatch(styles, /\.watchlist-item\s*\{\s*grid-template-columns:\s*1fr auto/);
+});
+
 test('account dialog has a member overview with active rentals and expandable history', () => {
   assert.match(page, /id="account-overview"/);
   assert.match(page, /id="account-active-rentals"/);
@@ -68,7 +85,7 @@ test('Minha conta offers one package-level return route and preserves canonical 
   assert.match(app, /\$\('#account-return-counter'\)\.hidden = !rental\?\.titles\.length/);
   assert.doesNotMatch(app, /returns\.textContent = 'Devolver no Balcão'/);
   assert.match(app, /function memberTitleForViewer\(title\)/);
-  assert.match(app, /openTitle\(memberTitleForViewer\(title\)\)/);
+  assert.match(app, /openTitle\(memberTitleForViewer\(title\), true\)/);
 });
 
 test('return tape selection enables and accessibly names its watched-state control', () => {
@@ -89,6 +106,7 @@ test('returning rented tapes refreshes canonical state even when only part of th
   assert.match(app, /await submitRentalReturns\(/);
   assert.match(app, /for \(const itemId of result\.succeeded\) pendingReturns\.delete\(itemId\)/);
   assert.match(app, /const succeeded = new Set\(result\.succeeded\);[\s\S]*rented\.titles = rented\.titles\.filter\(\(title\) => !succeeded\.has\(title\.rentalItemId\)\)/);
+  assert.match(app, /rented\.titles = rented\.titles\.filter[\s\S]*renderAccountOverview\(\);/);
   assert.match(app, /try \{ await refreshMemberData\(\); \}/);
   assert.match(app, /result\.failed\.length/);
 });
@@ -106,7 +124,7 @@ test('rental and grouped return mutations are bound to the initiating account se
 test('stale member responses cannot restore a signed-out or switched account', () => {
   assert.match(app, /let memberSessionVersion = 0/);
   assert.match(app, /const sessionVersion = memberSessionVersion;[\s\S]*if \(!state\.member\.signedIn \|\| sessionVersion !== memberSessionVersion \|\| refreshVersion !== memberRefreshVersion\) return;/);
-  assert.match(app, /LocadoraAccount\.onChange\(async \(next\) => \{\s*memberSessionVersion \+= 1;/);
+  assert.match(app, /LocadoraAccount\.onChange\(async \(next\) => \{\s*memberSessionVersion \+= 1;\s*pendingReturns\.clear\(\);/);
 });
 
 test('account errors and rental prompts survive the account rerender', () => {

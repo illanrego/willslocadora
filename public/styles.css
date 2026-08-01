@@ -413,7 +413,10 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .title-member-actions button { min-height: 34px; padding: .4rem .55rem; border: 1px solid rgba(231,216,177,.55); color: var(--cream); background: rgba(16,24,39,.88); font: 900 .58rem/1 "Courier New", monospace; text-transform: uppercase; cursor: pointer; }
 .title-member-actions button:hover, .title-member-actions button:focus-visible { color: var(--ink); background: var(--yellow); outline: 0; }
 .title-member-actions .title-basket-action { color: var(--ink); background: var(--yellow); }
-.watchlist-item { grid-template-columns: 1fr auto; }
+.account-title-item { grid-template-columns: 54px minmax(0, 1fr) auto; }
+.account-title-item > div { min-width: 0; }
+.account-title-item strong { overflow-wrap: anywhere; }
+.account-title-inspect { align-self: center; justify-self: end; min-width: 96px; }
 .watchlist-item time { color: var(--muted); font-size: .7rem; }
 @media (max-width: 560px) { .balcony-member-actions { right: .75rem; bottom: .75rem; } }
 
@@ -573,6 +576,7 @@ dialog.panel-dialog {
   .member-stats, .rental-flow { grid-template-columns: 1fr; }
   .rental-flow li { grid-template-columns: 34px 1fr; }
   .panel-dialog .counter-item { grid-template-columns: 46px 1fr; }
+  .panel-dialog .account-title-item .account-title-inspect { grid-column: 2; justify-self: start; min-width: 0; }
   .panel-dialog .counter-item .return-choices { grid-column: 1 / -1; justify-content: stretch; }
   .panel-dialog .counter-item .return-choices button { flex: 1; }
   .panel-dialog .counter-item .counter-item-actions { grid-column: 1 / -1; }

@@ -80,6 +80,15 @@ function mapRentalItemRow(row) {
   return { ...mapTitleRow(row), rentedAt: row.rented_at, returnedAt: row.returned_at, watchedStatus: row.watched_status };
 }
 
+export function mapActiveRentalRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    openedAt: row.opened_at,
+    items: (row.rental_items || []).filter((item) => !item.returned_at).map(mapRentalItemRow),
+  };
+}
+
 function normalizeUsername(value) {
   const username = String(value || '').trim().toLowerCase();
   return /^[a-z0-9_-]{3,24}$/.test(username) ? username : '';
@@ -183,14 +192,14 @@ export function createSupabaseRepository(env) {
       const [profileResult, watchlistResult, rentalResult, history] = await Promise.all([
         database.from('profiles').select('user_id, username, created_at').eq('user_id', userId).maybeSingle(),
         database.from('watchlist_items').select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, source, source_note, added_at').eq('user_id', userId).is('completed_at', null).order('added_at', { ascending: false }),
-        database.from('rentals').select('id, opened_at, rental_items(id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at)').eq('user_id', userId).is('returned_at', null).maybeSingle(),
+        database.from('rentals').select('id, opened_at, rental_items(id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at, returned_at, watched_status)').eq('user_id', userId).is('returned_at', null).maybeSingle(),
         this.listHistory(userId, 0),
       ]);
       [profileResult, watchlistResult, rentalResult].forEach(({ error }) => databaseError(error));
       return {
         profile: profileResult.data ? { userId: profileResult.data.user_id, username: profileResult.data.username, createdAt: profileResult.data.created_at } : null,
         watchlist: (watchlistResult.data || []).map(mapWatchlistRow),
-        activeRental: rentalResult.data ? { id: rentalResult.data.id, openedAt: rentalResult.data.opened_at, items: (rentalResult.data.rental_items || []).map(mapRentalItemRow) } : null,
+        activeRental: mapActiveRentalRow(rentalResult.data),
         history: history.history,
         historyHasMore: history.hasMore,
       };
