@@ -1,6 +1,6 @@
 /* Deployment-time public configuration. Leave blank to keep anonymous browsing enabled. */
 window.LocadoraAuthConfig = Object.freeze({
-  clerkPublishableKey: 'pk_test_c3dlZXBpbmctbmV3dC0zOS5jbGVyay5hY2NvdW50cy5kZXYk',
-  clerkFrontendApi: 'https://sweeping-newt-39.clerk.accounts.dev',
+  clerkPublishableKey: 'pk_live_Y2xlcmsud2lsbHNsb2NhZG9yYS5zaXRlZG9pbGxhbi5jb20uYnIk',
+  clerkFrontendApi: 'https://clerk.willslocadora.sitedoillan.com.br',
   dataApiBase: 'https://locadora-data.willstartpage.workers.dev',
 });
