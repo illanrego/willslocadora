@@ -596,7 +596,11 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       title = nextTitle;
       resetToFront();
       currentAtCounter = nextAtCounter;
+      posterImage = null;
+      backdropImage = null;
       logoImage = null;
+      providerImages.length = 0;
+      Object.keys(assetUrls).forEach((key) => { delete assetUrls[key]; });
       redraw();
       loadAsset('poster', assets.posterUrl);
       loadAsset('backdrop', assets.backdropUrl);

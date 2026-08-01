@@ -2,6 +2,9 @@
   'use strict';
 
   const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, normalizeRentalState, prepareCounterSelection, removeCounterSelection, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse } = window.LocadoraCore;
+  const MAX_CESTA_TITLES = 15;
+  const MAX_RENTAL_TITLES = 3;
+  const COVER_PLACEHOLDER_URL = '/images/wills-locadora-cover-placeholder.svg';
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
@@ -202,8 +205,9 @@
     const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name;
     const detail = document.createElement('span'); detail.textContent = `${title.year || '—'} · ${meta}`;
     text.append(name, detail);
+    const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
     const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitle(memberTitleForViewer(title)));
-    item.append(text, inspect);
+    item.append(image, text, inspect);
     return item;
   }
 
@@ -390,7 +394,7 @@
       status.textContent = titles.length ? (state.locale === 'pt-BR' ? `${titles.length} fita(s) encontrada(s).` : `${titles.length} tape(s) found.`) : (state.locale === 'pt-BR' ? 'Nenhuma fita encontrada.' : 'No tapes found.');
       titles.forEach((title) => {
         const item = document.createElement('article'); item.className = 'counter-item';
-        const image = document.createElement('img'); image.alt = ''; image.src = posterTextureUrl(title.poster || posterFallback(title));
+        const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
         const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.type === 'series' ? t('series') : t('movies')} · ${title.year || '—'}`; text.append(name, meta);
         const actions = document.createElement('div'); actions.className = 'return-choices';
         const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToBalconySearch = true; balconySearchDialog.close(); openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); });
@@ -836,15 +840,15 @@
     const basket = $('#title-detail .title-basket-action');
     if (!basket) return;
     const locked = Boolean(state.rental.rented);
-    basket.disabled = locked || (!isAtCounter(activeViewerTitle) && state.counter.length >= 3);
-    basket.textContent = locked ? 'Pacote ativo' : isAtCounter(activeViewerTitle) ? 'Tirar da cesta' : state.counter.length >= 3 ? 'Cesta cheia · 3/3' : 'Botar na cesta';
+    basket.disabled = locked || (!isAtCounter(activeViewerTitle) && state.counter.length >= MAX_CESTA_TITLES);
+    basket.textContent = locked ? 'Pacote ativo' : isAtCounter(activeViewerTitle) ? 'Tirar da cesta' : state.counter.length >= MAX_CESTA_TITLES ? `Cesta cheia · ${MAX_CESTA_TITLES}/${MAX_CESTA_TITLES}` : 'Botar na cesta';
   }
 
   function basketMessage(reason) {
-    if (reason === 'full') return 'A cesta comporta no máximo 3 fitas. Remova uma para escolher outra.';
+    if (reason === 'full') return `A cesta comporta no máximo ${MAX_CESTA_TITLES} fitas. Remova uma para escolher outra.`;
     if (reason === 'active_rental') return 'Você já tem um pacote ativo. Devolva as fitas antes de montar outro.';
-    if (reason === 'added') return `${state.counter.length} de 3 fitas na cesta.`;
-    if (reason === 'removed') return `${state.counter.length} de 3 fitas na cesta.`;
+    if (reason === 'added') return `Fita adicionada à cesta · ${state.counter.length} de ${MAX_CESTA_TITLES}.`;
+    if (reason === 'removed') return `Fita retirada da cesta · ${state.counter.length} de ${MAX_CESTA_TITLES}.`;
     return 'Essa fita não pode ser adicionada agora.';
   }
 
@@ -862,6 +866,8 @@
     if (status) status.textContent = basketMessage(result.reason);
     const basketStatus = $('#basket-status');
     if (basketStatus) basketStatus.textContent = basketMessage(result.reason);
+    const confirmation = $('#basket-confirmation');
+    if (confirmation) confirmation.textContent = ['added', 'removed'].includes(result.reason) ? basketMessage(result.reason) : '';
     if ($('#basket-dialog').open) renderBasket();
     if ($('#balcony-dialog').open) renderBalconyPanel();
     if (state.mode === 'balcony') refreshBalcony();
@@ -882,6 +888,11 @@
   async function rentCounter() {
     const decision = counterDecisionTitles();
     if (rentalRequestInFlight || !decision.length || state.rental.rented) { openRentalDesk(); return; }
+    if (decision.length > MAX_RENTAL_TITLES) {
+      $('#balcony-panel-status').textContent = 'Escolha de 1 a 3 fitas para alugar agora. Sua decisão no Balcão continua salva.';
+      openRentalDesk();
+      return;
+    }
     if (!state.member.configured || !state.member.signedIn || !state.member.profile) { requestRentalIdentity(); return; }
     const sessionVersion = memberSessionVersion;
     const button = $('#rent-counter');
@@ -895,7 +906,8 @@
       if (!state.member.signedIn || sessionVersion !== memberSessionVersion) return;
       const rental = validateRentalResponse(response, titles);
       pendingRental = false;
-      state.counter = [];
+      const rentedKeys = new Set(decision.map((title) => `${title.type}:${title.id}`));
+      state.counter = state.counter.filter((title) => !rentedKeys.has(`${title.type}:${title.id}`));
       balconySelection = null;
       state.rental.rented = rental?.rental ? { id: rental.rental.id, titles: (rental.rental.items || []).map(localRentalTitle) } : state.rental.rented;
       saveCounter();
@@ -1078,19 +1090,21 @@
     const capacity = decisionTitles.length;
     const rentButton = $('#rent-counter');
     rentButton.disabled = !capacity || Boolean(rented) || rentalRequestInFlight;
-    rentButton.textContent = rentalRequestInFlight ? 'Registrando pacote…' : `Alugar pacote · ${capacity} ${capacity === 1 ? 'fita' : 'fitas'}`;
-    $('#rental-capacity').textContent = `${capacity} de 3 fitas`;
+    rentButton.textContent = rentalRequestInFlight ? 'Registrando pacote…' : capacity > MAX_RENTAL_TITLES ? `Definir 1–3 fitas para alugar · ${capacity} na decisão` : `Alugar pacote · ${capacity} ${capacity === 1 ? 'fita' : 'fitas'}`;
+    $('#rental-capacity').textContent = `${capacity} de ${MAX_CESTA_TITLES} fitas na decisão`;
     const flowSteps = [...document.querySelectorAll('.rental-flow li')];
     flowSteps.forEach((step, index) => step.classList.toggle('is-current', rented ? index === 2 : index === (capacity ? 1 : 0)));
     $('#balcony-panel-status').textContent = rented
       ? `${rented.titles.length} de 3 fitas na sacola ativa. Marque as fitas que quer devolver, escolha o estado e confirme tudo em uma devolução.`
       : capacity
-        ? `${capacity} de 3 fitas chegaram ao balcão. Tire as que não vai levar hoje; o botão abaixo aluga as restantes em uma sacola.`
-        : 'Escolha fitas nas estantes ou pesquise no terminal. Depois traga a cesta ao Balcão para decidir o pacote.';
-    if (!capacity) counterList.textContent = 'Nenhuma fita ficou no pacote. Volte à Cesta para começar de novo.';
+        ? capacity > MAX_RENTAL_TITLES
+          ? `${capacity} fitas continuam na sua decisão. Para registrar o aluguel de agora, deixe de 1 a 3 no Balcão.`
+          : `${capacity} fitas chegaram ao balcão. O botão abaixo registra esse aluguel.`
+        : 'Pesquise um título no Balcão ou escolha fitas nas estantes. Depois use a Cesta para decidir o que levar.';
+    if (!capacity) counterList.textContent = 'Nenhuma fita nesta decisão. Pesquisar título no Balcão.';
     decisionTitles.forEach((title) => {
       const item = document.createElement('article'); item.className = 'counter-item basket-item';
-      const image = document.createElement('img'); image.alt = ''; image.src = posterTextureUrl(title.poster || posterFallback(title));
+      const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
       const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · ${title.type === 'series' ? 'Série' : 'Filme'}`; text.append(name, meta);
       const actions = document.createElement('div'); actions.className = 'return-choices';
       const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Ver fita'; inspect.addEventListener('click', () => openTitle(title));
@@ -1215,15 +1229,16 @@
     $('#basket-status').textContent = state.rental.rented
       ? 'Você já tem uma sacola alugada. Devolva as fitas antes de montar outra cesta.'
       : state.counter.length
-        ? `${state.counter.length} de 3 fitas escolhidas. Revise a cesta antes de levá-la ao Balcão.`
-        : 'Sua cesta está vazia. Escolha até 3 fitas nas estantes.';
+        ? `${state.counter.length} de ${MAX_CESTA_TITLES} fitas escolhidas. Revise a cesta antes de levá-la ao Balcão.`
+        : `Sua cesta está vazia. Escolha até ${MAX_CESTA_TITLES} fitas nas estantes.`;
     $('#take-basket-counter').disabled = !state.counter.length || Boolean(state.rental.rented);
     if (!state.counter.length) return;
     state.counter.forEach((title) => {
       const item = document.createElement('article');
       item.className = 'counter-item';
       const image = document.createElement('img');
-      image.src = title.poster || posterFallback(title);
+      image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL;
+      image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
       image.alt = '';
       const text = document.createElement('div');
       const name = document.createElement('strong');

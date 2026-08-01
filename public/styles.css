@@ -546,6 +546,10 @@ dialog.panel-dialog {
 .rental-confirmation-bag strong { font: 900 2.1rem/.88 Impact, Arial Narrow, sans-serif; letter-spacing: .04em; }
 .rental-confirmation-bag > span:last-child { color: #513b2d; font: 900 .65rem/1 "Courier New", monospace; }
 
+.basket-confirmation { position: fixed; z-index: 20; right: 1rem; bottom: 1rem; max-width: min(28rem, calc(100vw - 2rem)); padding: .75rem 1rem; border: 2px solid #ffe178; border-radius: 4px; color: var(--black); background: var(--yellow); box-shadow: 5px 6px 0 rgba(0,0,0,.45); font: 900 .72rem/1.35 "Courier New", monospace; text-transform: uppercase; pointer-events: none; }
+.basket-confirmation:empty { display: none; }
+.yellow-action { color: var(--black); background: var(--yellow); }
+
 @media (max-width: 760px) {
   .immersive-hud { width: calc(100% - .75rem); }
   .immersive-browse-controls { grid-template-columns: minmax(220px, 1fr) 96px 124px 50px; }

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-label="Will's Locadora">
+  <rect width="600" height="900" fill="#17120f"/>
+  <rect x="30" y="30" width="540" height="840" rx="20" fill="#24364d" stroke="#f0c954" stroke-width="12"/>
+  <path d="M75 145h450M75 755h450" stroke="#f0c954" stroke-width="8"/>
+  <text x="300" y="390" text-anchor="middle" fill="#f0c954" font-family="Impact, sans-serif" font-size="72">WILL'S</text>
+  <text x="300" y="470" text-anchor="middle" fill="#f6ead0" font-family="Impact, sans-serif" font-size="52">LOCADORA</text>
+  <text x="300" y="530" text-anchor="middle" fill="#f0c954" font-family="monospace" font-size="22">PREPARANDO A FITA</text>
+</svg>

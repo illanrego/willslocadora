@@ -17,6 +17,22 @@ test('username validation remains valid in modern HTML pattern mode and debounce
   assert.doesNotMatch(app, /setTimeout\([^\n]*event\.currentTarget/);
 });
 
+test('Cesta and Balcão keep review choices separate from the final three-rental request', () => {
+  assert.match(page, /id="basket-confirmation"[^>]*role="status"/);
+  assert.match(app, /const MAX_CESTA_TITLES = 15/);
+  assert.match(app, /Escolha de 1 a 3 fitas para alugar agora/);
+  assert.match(app, /Pesquisar título no Balcão/);
+  assert.match(app, /\$\{state\.counter\.length\} de \$\{MAX_CESTA_TITLES\} fitas escolhidas/);
+  assert.match(app, /Escolha até \$\{MAX_CESTA_TITLES\} fitas nas estantes/);
+  assert.match(app, /image\.src = title\.poster \? posterTextureUrl\(title\.poster\) : COVER_PLACEHOLDER_URL;[\s\S]*image\.addEventListener\('error', \(\) => \{ image\.src = COVER_PLACEHOLDER_URL; \}/);
+});
+
+test('yellow actions use dark text and return submission retains a selected subset', () => {
+  const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(styles, /\.yellow-action[\s\S]*color: var\(--black\)/);
+  assert.match(app, /const entries = \[\.\.\.pendingReturns\.entries\(\)\]/);
+});
+
 test('account dialog has a member overview with active rentals and expandable history', () => {
   assert.match(page, /id="account-overview"/);
   assert.match(page, /id="account-active-rentals"/);

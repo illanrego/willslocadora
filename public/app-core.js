@@ -120,15 +120,18 @@
     });
   }
 
+  const MAX_CESTA_TITLES = 15;
+  const MAX_RENTAL_TITLES = 3;
+
   function updateRentalBasket(value, title, activeRental = null) {
-    const titles = normalizeRentalTitles(value).slice(0, 3);
+    const titles = normalizeRentalTitles(value).slice(0, MAX_CESTA_TITLES);
     if (activeRental?.titles?.length) return { titles, changed: false, reason: 'active_rental' };
     const normalized = normalizeRentalTitle(title);
     const key = rentalTitleKey(normalized);
     if (!key) return { titles, changed: false, reason: 'invalid_title' };
     const existing = titles.findIndex((item) => rentalTitleKey(item) === key);
     if (existing >= 0) return { titles: titles.filter((_, index) => index !== existing), changed: true, reason: 'removed' };
-    if (titles.length >= 3) return { titles, changed: false, reason: 'full' };
+    if (titles.length >= MAX_CESTA_TITLES) return { titles, changed: false, reason: 'full' };
     return { titles: [...titles, normalized], changed: true, reason: 'added' };
   }
 
@@ -138,8 +141,8 @@
       try { source = JSON.parse(value); } catch { source = {}; }
     }
     source = source && typeof source === 'object' ? source : {};
-    const counter = normalizeRentalTitles(source.counter).slice(0, 3);
-    const rentedTitles = normalizeRentalTitles(source.rented && source.rented.titles).slice(0, 3);
+    const counter = normalizeRentalTitles(source.counter).slice(0, MAX_CESTA_TITLES);
+    const rentedTitles = normalizeRentalTitles(source.rented && source.rented.titles).slice(0, MAX_RENTAL_TITLES);
     const returned = (Array.isArray(source.returned) ? source.returned : []).map((entry) => {
       const title = normalizeRentalTitle(entry && entry.title);
       const watchedStatus = ['watched', 'not_watched', 'unknown'].includes(entry && entry.watchedStatus) ? entry.watchedStatus : 'unknown';
@@ -189,7 +192,7 @@
 
   function rentCounterTitles(value) {
     const state = normalizeRentalState(value);
-    if (!state.counter.length || state.rented) return state;
+    if (!state.counter.length || state.counter.length > MAX_RENTAL_TITLES || state.rented) return state;
     return { ...state, counter: [], rented: { titles: state.counter } };
   }
 
