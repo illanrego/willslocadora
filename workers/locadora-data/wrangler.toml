@@ -4,4 +4,4 @@ compatibility_date = "2026-07-30"
 
 # Exact browser origins permitted to send Clerk bearer tokens to this Worker.
 [vars]
-ALLOWED_ORIGINS = "https://illanrego.github.io,https://sitedoillan.com.br,https://www.sitedoillan.com.br,http://127.0.0.1:4173"
+ALLOWED_ORIGINS = "https://illanrego.github.io,https://sitedoillan.com.br,https://www.sitedoillan.com.br,https://willslocadora.sitedoillan.com.br,http://127.0.0.1:4173"
