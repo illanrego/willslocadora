@@ -1386,7 +1386,8 @@
     });
     $('#username-input').addEventListener('input', (event) => {
       window.clearTimeout(usernameAvailabilityTimer);
-      usernameAvailabilityTimer = window.setTimeout(() => checkUsernameAvailability(event.currentTarget.value), 250);
+      const username = event.currentTarget.value;
+      usernameAvailabilityTimer = window.setTimeout(() => checkUsernameAvailability(username), 250);
     });
     $('#username-form').addEventListener('submit', async (event) => {
       event.preventDefault();

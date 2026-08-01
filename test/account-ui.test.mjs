@@ -6,6 +6,12 @@ const page = readFileSync(new URL('../public/index.html', import.meta.url), 'utf
 const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../workers/locadora-data/src/index.mjs', import.meta.url), 'utf8');
 
+test('username validation remains valid in modern HTML pattern mode and debounce captures the value synchronously', () => {
+  assert.ok(page.includes('pattern="[A-Za-z0-9_\\-]+"'));
+  assert.match(app, /const username = event\.currentTarget\.value;\s*usernameAvailabilityTimer = window\.setTimeout\(\(\) => checkUsernameAvailability\(username\), 250\)/);
+  assert.doesNotMatch(app, /setTimeout\([^\n]*event\.currentTarget/);
+});
+
 test('account dialog has a member overview with active rentals and expandable history', () => {
   assert.match(page, /id="account-overview"/);
   assert.match(page, /id="account-active-rentals"/);
