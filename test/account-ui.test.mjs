@@ -6,6 +6,11 @@ const page = readFileSync(new URL('../public/index.html', import.meta.url), 'utf
 const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../workers/locadora-data/src/index.mjs', import.meta.url), 'utf8');
 
+test('account setup calls the handle a username rather than a public name', () => {
+  assert.match(page, /<label for="username-input">Nome de usuário<\/label>/);
+  assert.doesNotMatch(page, /Nome público/);
+});
+
 test('username validation remains valid in modern HTML pattern mode and debounce captures the value synchronously', () => {
   assert.ok(page.includes('pattern="[A-Za-z0-9_\\-]+"'));
   assert.match(app, /const username = event\.currentTarget\.value;\s*usernameAvailabilityTimer = window\.setTimeout\(\(\) => checkUsernameAvailability\(username\), 250\)/);
