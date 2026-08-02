@@ -151,9 +151,12 @@ test('Cesta toggles distinct titles through fifteen and refuses only a sixteenth
   assert.equal(updateRentalBasket(full.titles, titles[0]).titles.length, 14);
 });
 
-test('rental basket refuses new selections while a pack is active', () => {
+test('rental basket stays available while titles are actively rented', () => {
   const result = updateRentalBasket([], balconyTitles[0], { titles: [balconyTitles[1]] });
-  assert.deepEqual(result, { titles: [], changed: false, reason: 'active_rental' });
+  assert.equal(result.changed, true);
+  assert.equal(result.reason, 'added');
+  assert.equal(result.titles.length, 1);
+  assert.equal(result.titles[0].id, balconyTitles[0].id);
 });
 
 test('a canonical shelf title survives Cesta normalization and serializes for rental', () => {
@@ -166,9 +169,10 @@ test('a canonical shelf title survives Cesta normalization and serializes for re
 test('validateRentalResponse accepts only a matching one-to-three-tape Worker package', () => {
   const requested = [serializeRentalTitle({ id: 'tmdb:603', type: 'movie', name: 'The Matrix', year: 1999 })];
   const response = { rental: { id: 'rental-1', items: [{ id: 'item-1', ...requested[0] }] } };
-  assert.deepEqual(validateRentalResponse(response, requested), response);
-  const snakeCaseResponse = { rental: { id: 'rental-2', items: [{ id: 'item-2', tmdb_id: 603, media_type: 'movie', name: 'The Matrix' }] } };
-  assert.deepEqual(validateRentalResponse(snakeCaseResponse, requested), snakeCaseResponse);
+  const existing = { id: 'item-existing', tmdbId: 550, type: 'movie', name: 'Fight Club' };
+  const expandedResponse = { rental: { id: 'rental-1', items: [existing, { id: 'item-1', ...requested[0] }] } };
+  assert.deepEqual(validateRentalResponse(expandedResponse, requested), expandedResponse);
+  assert.throws(() => validateRentalResponse({ rental: { id: 'rental-1', items: [existing, { id: 'item-1', ...requested[0] }, { id: 'item-3', tmdbId: 680, type: 'movie', name: 'Pulp Fiction' }, { id: 'item-4', tmdbId: 13, type: 'movie', name: 'Forrest Gump' }] } }, requested), /invalid rental response/i);
   assert.throws(() => validateRentalResponse({}, requested), /invalid rental response/i);
   assert.throws(() => validateRentalResponse({ rental: { id: 'rental-1', items: [] } }, requested), /invalid rental response/i);
   assert.throws(() => validateRentalResponse({ rental: { id: 'rental-1', items: [{ id: 'item-1', tmdbId: 550, type: 'movie', name: 'Wrong tape' }] } }, requested), /invalid rental response/i);

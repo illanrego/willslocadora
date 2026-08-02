@@ -123,9 +123,8 @@
   const MAX_CESTA_TITLES = 15;
   const MAX_RENTAL_TITLES = 3;
 
-  function updateRentalBasket(value, title, activeRental = null) {
+  function updateRentalBasket(value, title) {
     const titles = normalizeRentalTitles(value).slice(0, MAX_CESTA_TITLES);
-    if (activeRental?.titles?.length) return { titles, changed: false, reason: 'active_rental' };
     const normalized = normalizeRentalTitle(title);
     const key = rentalTitleKey(normalized);
     if (!key) return { titles, changed: false, reason: 'invalid_title' };
@@ -180,14 +179,14 @@
     const requestedKeys = new Set(requested.map(itemKey));
     const itemKeys = Array.isArray(items) ? items.map(itemKey) : [];
     const valid = String(rental?.id || '').length > 0
-      && requested.length >= 1 && requested.length <= 3
-      && Array.isArray(items) && items.length === requested.length
+      && requested.length >= 1 && requested.length <= MAX_RENTAL_TITLES
+      && Array.isArray(items) && items.length >= requested.length && items.length <= MAX_RENTAL_TITLES
       && items.every((title) => {
         const tmdbId = Number(title?.tmdbId ?? title?.tmdb_id);
         return String(title?.id || '').length > 0 && Number.isInteger(tmdbId) && tmdbId > 0 && ['movie', 'series'].includes(title?.type || title?.title_type || title?.media_type);
       })
       && itemKeys.length === new Set(itemKeys).size
-      && itemKeys.every((key) => requestedKeys.has(key));
+      && [...requestedKeys].every((key) => itemKeys.includes(key));
     if (!valid) throw new Error('Invalid rental response from the member service');
     return value;
   }

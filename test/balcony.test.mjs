@@ -16,9 +16,10 @@ test('Balcony wall keeps collective history but removes the temporary owner bann
   assert.match(balcony, /scene-inspection-controls/);
 });
 
-test('Balcony makes search and package review readable and clickable inside the 3D scene', () => {
+test('Balcony makes search and current-rental-decision review readable and clickable inside the 3D scene', () => {
   assert.match(balcony, /PESQUISAR TÍTULOS/);
-  assert.match(balcony, /REVISAR CESTA/);
+  assert.match(balcony, /REVISAR DECISÃO/);
+  assert.doesNotMatch(balcony, /rental\.rented/);
   assert.match(balcony, /userData\.action = 'counter'/);
   assert.doesNotMatch(balcony, /userData\.action = 'rent'/);
   assert.match(balcony, /target\?\.userData\.action === 'counter'\) onCounterSelect\?\.\(\)/);

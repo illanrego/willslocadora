@@ -114,25 +114,18 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   const donationPlaque = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .3), new THREE.MeshBasicMaterial({ map: labelTexture('DOAÇÕES', { width: 380, height: 90, background: '#31636b' }) })); donationPlaque.position.set(1.28, COUNTER_TOP + .42, .42); room.add(donationPlaque);
   const counterObject = new THREE.Group(); counterObject.position.copy(COUNTER_POSITION); room.add(counterObject);
   const interactive = [crt, keyboard, jar, awardsFrame]; const clickableCues = [crt, keyboard, jar]; const tapeRecords = [];
-  if (rental.rented) {
-    const bag = new THREE.Mesh(new THREE.BoxGeometry(3.1, 1.9, 1.08), new THREE.MeshPhysicalMaterial({ color: 0xf2e8cf, transparent: true, opacity: .76, roughness: .38 })); bag.position.y = .95; bag.castShadow = true; counterObject.add(bag);
-    for (const x of [-.75, .75]) { const handle = new THREE.Mesh(new THREE.TorusGeometry(.45, .07, 8, 18, Math.PI), paper); handle.position.set(x, 1.91, .05); handle.rotation.z = Math.PI; counterObject.add(handle); }
-    rental.rented.titles.slice(0, 4).forEach((_, index) => box(.48, 1.05, .18, dark, -1 + index * .63, .8, .63, counterObject));
-    const receipt = box(.64, 1.42, .03, paper, .95, 1.8, .58, counterObject); receipt.rotation.z = -.16; const mark = new THREE.Mesh(new THREE.PlaneGeometry(2.25, .62), new THREE.MeshBasicMaterial({ map: labelTexture('LOCADORA', { width: 500, height: 140, background: '#a7352d' }) })); mark.position.set(0, 1.03, .56); counterObject.add(mark); counterObject.userData.action = 'bag'; interactive.push(counterObject);
-  } else {
-    if (rental.counter.length) {
-      const cordMaterial = new THREE.MeshStandardMaterial({ color: 0x2b170d, roughness: .9 });
-      box(.035, .7, .035, cordMaterial, -.95, -.45, 1.32, counterObject);
-      box(.035, .7, .035, cordMaterial, .95, -.45, 1.32, counterObject);
-      const reviewSign = new THREE.Mesh(new THREE.PlaneGeometry(3.35, .78), new THREE.MeshBasicMaterial({ map: labelTexture(`REVISAR CESTA · ${rental.counter.length}/3`, { width: 900, height: 210, background: '#a9342c', color: '#fff0bf' }) }));
-      reviewSign.position.set(0, -.82, 1.34); reviewSign.userData.action = 'counter'; reviewSign.userData.cueScale = 1; counterObject.add(reviewSign); interactive.push(reviewSign); clickableCues.push(reviewSign);
-    }
-    rental.counter.forEach((title, index) => {
-      const vhs = createVhsCase(title, { width: .55, height: 1.1, depth: .25 }); const column = index % TAPE_COLUMNS; const row = Math.floor(index / TAPE_COLUMNS);
-      vhs.group.position.set(-1.15 + column * .63 + (row % 2) * .12, .125, -.6 + row * 1.15); vhs.group.userData.baseZ = vhs.group.position.z; vhs.group.rotation.set(-Math.PI / 2, (index % 3 - 1) * .12, 0); vhs.group.userData.action = 'title'; vhs.group.userData.index = index; vhs.caseMesh.userData.index = index; vhs.front.userData.index = index; counterObject.add(vhs.group); tapeRecords.push({ title, vhs }); interactive.push(vhs.caseMesh, vhs.front);
-    });
-    counterObject.userData.action = 'counter'; interactive.push(counterObject);
+  if (rental.counter.length) {
+    const cordMaterial = new THREE.MeshStandardMaterial({ color: 0x2b170d, roughness: .9 });
+    box(.035, .7, .035, cordMaterial, -.95, -.45, 1.32, counterObject);
+    box(.035, .7, .035, cordMaterial, .95, -.45, 1.32, counterObject);
+    const reviewSign = new THREE.Mesh(new THREE.PlaneGeometry(3.35, .78), new THREE.MeshBasicMaterial({ map: labelTexture(`REVISAR DECISÃO · ${rental.counter.length}`, { width: 900, height: 210, background: '#a9342c', color: '#fff0bf' }) }));
+    reviewSign.position.set(0, -.82, 1.34); reviewSign.userData.action = 'counter'; reviewSign.userData.cueScale = 1; counterObject.add(reviewSign); interactive.push(reviewSign); clickableCues.push(reviewSign);
   }
+  rental.counter.forEach((title, index) => {
+    const vhs = createVhsCase(title, { width: .55, height: 1.1, depth: .25 }); const column = index % TAPE_COLUMNS; const row = Math.floor(index / TAPE_COLUMNS);
+    vhs.group.position.set(-1.15 + column * .63 + (row % 2) * .12, .125, -.6 + row * 1.15); vhs.group.userData.baseZ = vhs.group.position.z; vhs.group.rotation.set(-Math.PI / 2, (index % 3 - 1) * .12, 0); vhs.group.userData.action = 'title'; vhs.group.userData.index = index; vhs.caseMesh.userData.index = index; vhs.front.userData.index = index; counterObject.add(vhs.group); tapeRecords.push({ title, vhs }); interactive.push(vhs.caseMesh, vhs.front);
+  });
+  counterObject.userData.action = 'counter'; interactive.push(counterObject);
   const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let selected = 0; let hovered = -1; let hoveredInteractive = null; let disposed = false; let frame = 0; let zoom = 1; let baseDistance = 17; let pointerX = 0; let pointerY = 0; let focusedFrame = null;
   const focusPosition = new THREE.Vector3(0, 2.65, 5.2);

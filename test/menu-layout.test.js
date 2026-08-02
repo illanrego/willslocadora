@@ -5,6 +5,7 @@ const { readFileSync } = require('node:fs');
 const page = readFileSync(require.resolve('../public/index.html'), 'utf8');
 const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
 const css = readFileSync(require.resolve('../public/styles.css'), 'utf8');
+const balcony = readFileSync(require.resolve('../public/balcony.mjs'), 'utf8');
 
 test('normal browsing keeps compact select controls in the header and streaming filters behind a reveal', () => {
   const header = page.match(/<header id="store-header"[\s\S]*?<\/header>/)?.[0] || '';
@@ -83,10 +84,12 @@ test('Balcão decisions use a temporary subset instead of deleting titles from C
   assert.match(app, /const rental = validateRentalResponse\(response, titles\)/);
 });
 
-test('a successful rental confirmation does not depend on a follow-up state refresh', () => {
+test('a successful rental clears the complete Cesta while retaining the server-confirmed active package', () => {
   const rentStart = app.indexOf('async function rentCounter()');
   const rentEnd = app.indexOf('async function resumePendingRental()', rentStart);
   const rent = app.slice(rentStart, rentEnd);
+  assert.match(rent, /state\.counter = \[\];/);
+  assert.doesNotMatch(rent, /rentedKeys/);
   assert.ok(rent.indexOf('showRentalConfirmation(rental)') < rent.indexOf('await refreshMemberData()'));
   assert.match(rent, /try \{ await refreshMemberData\(\); \}/);
 });
@@ -100,7 +103,7 @@ test('the rental desk explains the rental-store flow: choose basket, decide at c
   assert.match(page, /class="rental-flow"/);
   assert.match(page, /<strong>Escolha<\/strong>/);
   assert.match(page, /<strong>Decida no balcão<\/strong>/);
-  assert.match(page, /<strong>Alugue o pacote<\/strong>/);
+  assert.match(page, /<strong>Alugue<\/strong>/);
   assert.match(page, /id="rental-capacity"/);
   assert.match(page, /id="rent-counter"[^>]*>Alugar pacote<\/button>/);
   assert.match(page, /id="rental-confirmation-dialog"/);
@@ -108,9 +111,10 @@ test('the rental desk explains the rental-store flow: choose basket, decide at c
   assert.match(app, /setMode\('normal'\)/);
 });
 
-test('the rental confirmation visibly contains the Locadora bag and one home action', () => {
-  assert.match(page, /class="rental-confirmation-bag"/);
-  assert.match(page, /id="rental-confirmation-bag-count"/);
+test('rental confirmation uses the same 2D tape cards as the counter rather than a decorative 3D bag', () => {
+  assert.doesNotMatch(page, /rental-confirmation-bag/);
+  assert.doesNotMatch(page, /rental-confirmation-bag-count/);
+  assert.match(app, /list\.replaceChildren\(\.\.\.titles\.map\(\(title\) => accountTitleItem\(title, 'na sacola'\)\)\)/);
   assert.match(page, /id="rental-confirmation-home"[^>]*>Voltar para a página inicial<\/button>/);
   assert.doesNotMatch(page, /Close rental confirmation/);
 });
@@ -121,6 +125,17 @@ test('the return desk batches selected rented tapes with watched-state choices',
   assert.match(app, /function togglePendingReturn\(title, checked\)/);
   assert.match(app, /async function returnSelectedRentals\(\)/);
   assert.match(app, /submitRentalReturns\(entries/);
+});
+
+
+test('repeat rentals remain available through the shared three-active-tape cap and the Balcony renders the current decision', () => {
+  assert.match(app, /function availableRentalSlots\(\)/);
+  assert.match(app, /if \(rentalRequestInFlight \|\| !decision\.length\) \{ openRentalDesk\(\); return; \}/);
+  assert.match(app, /const titles = rental\.counter;/);
+  assert.doesNotMatch(app, /rental\.counter\.length \? rental\.counter : rental\.rented\?\.titles/);
+  assert.match(balcony, /if \(rental\.counter\.length\) \{/);
+  assert.match(balcony, /rental\.counter\.forEach/);
+  assert.doesNotMatch(balcony, /rental\.rented/);
 });
 
 test('the optional tip jar only appears in the 3D Balcony context', () => {

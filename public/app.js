@@ -114,6 +114,14 @@
     return balconySelection || state.counter;
   }
 
+  function activeRentalCount() {
+    return state.rental.rented?.titles.length || 0;
+  }
+
+  function availableRentalSlots() {
+    return Math.max(0, MAX_RENTAL_TITLES - activeRentalCount());
+  }
+
   function beginCounterDecision() {
     balconySelection = prepareCounterSelection(state.counter);
     return balconySelection;
@@ -154,7 +162,6 @@
     const activeTitles = (data.activeRental?.items || []).map(localRentalTitle);
     state.rental.rented = data.activeRental && activeTitles.length ? { id: data.activeRental.id, titles: activeTitles } : null;
     state.rental.returned = (data.history || []).map(localRentalTitle);
-    if (state.rental.rented) balconySelection = null;
     saveCounter();
     renderAccount();
   }
@@ -198,7 +205,8 @@
   }
 
   function memberTitleForViewer(title) {
-    return String(title?.id || '').startsWith('tmdb:') ? title : localRentalTitle(title);
+    const rentalTitle = String(title?.id || '').startsWith('tmdb:') ? title : localRentalTitle(title);
+    return { ...rentalTitle };
   }
 
   function refreshAccountTitleCard(title, meta, { image, name, detail }) {
@@ -208,6 +216,7 @@
   }
 
   function accountTitleItem(title, meta) {
+    const memberTitle = memberTitleForViewer(title);
     const item = document.createElement('article'); item.className = 'counter-item account-title-item';
     const text = document.createElement('div');
     const name = document.createElement('strong');
@@ -215,14 +224,24 @@
     text.append(name, detail);
     const image = document.createElement('img'); image.alt = '';
     image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
-    refreshAccountTitleCard(title, meta, { image, name, detail });
-    const inspect = document.createElement('button'); inspect.className = 'account-title-inspect'; inspect.type = 'button'; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitle(memberTitleForViewer(title), true));
+    refreshAccountTitleCard(memberTitle, meta, { image, name, detail });
+    const inspect = document.createElement('button');
+    inspect.className = 'account-title-inspect'; inspect.type = 'button'; inspect.textContent = 'Inspecionar';
+    inspect.addEventListener('click', async () => {
+      inspect.disabled = true;
+      try { await loadTitleMetadata(memberTitle); }
+      catch { /* The branded fallback remains usable when metadata is unavailable. */ }
+      finally {
+        inspect.disabled = false;
+        openTitle(memberTitle, false);
+      }
+    });
     item.append(image, text, inspect);
     const cardLocale = state.locale;
     const cardSessionVersion = memberSessionVersion;
-    loadTitleMetadata(title).then(() => {
+    loadTitleMetadata(memberTitle).then(() => {
       if (!item.isConnected || cardLocale !== state.locale || cardSessionVersion !== memberSessionVersion) return;
-      refreshAccountTitleCard(title, meta, { image, name, detail });
+      refreshAccountTitleCard(memberTitle, meta, { image, name, detail });
     }).catch(() => {});
     return item;
   }
@@ -415,13 +434,13 @@
         const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.type === 'series' ? t('series') : t('movies')} · ${title.year || '—'}`; text.append(name, meta);
         const actions = document.createElement('div'); actions.className = 'return-choices';
         const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToBalconySearch = true; balconySearchDialog.close(); openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); });
-        const add = document.createElement('button'); add.type = 'button'; add.className = 'primary-inline-action'; add.dataset.titleKey = `${title.type}:${title.id}`; add.textContent = isAtCounter(title) ? 'Tirar da cesta' : 'Botar na cesta'; add.disabled = Boolean(state.rental.rented) || (!isAtCounter(title) && state.counter.length >= 3); add.addEventListener('click', () => {
+        const add = document.createElement('button'); add.type = 'button'; add.className = 'primary-inline-action'; add.dataset.titleKey = `${title.type}:${title.id}`; add.textContent = isAtCounter(title) ? 'Tirar da cesta' : 'Botar na cesta'; add.disabled = !isAtCounter(title) && state.counter.length >= MAX_CESTA_TITLES; add.addEventListener('click', () => {
           const result = toggleCounter(title);
           const selectedKeys = new Set(state.counter.map((item) => `${item.type}:${item.id}`));
           results.querySelectorAll('.primary-inline-action').forEach((button) => {
             const selected = selectedKeys.has(button.dataset.titleKey);
             button.textContent = selected ? 'Tirar da cesta' : 'Botar na cesta';
-            button.disabled = Boolean(state.rental.rented) || (!selected && state.counter.length >= 3);
+            button.disabled = !selected && state.counter.length >= MAX_CESTA_TITLES;
           });
           status.textContent = basketMessage(result.reason);
         });
@@ -732,7 +751,7 @@
     state.mode = ['immersive', 'balcony'].includes(mode) ? mode : 'normal';
     const immersive = state.mode === 'immersive';
     const isBalcony = state.mode === 'balcony';
-    if (isBalcony && !state.rental.rented && balconySelection === null) beginCounterDecision();
+    if (isBalcony && balconySelection === null) beginCounterDecision();
     $('#normal-mode').hidden = immersive || isBalcony;
     $('#immersive-room').hidden = !immersive;
     $('#balcony-room').hidden = !isBalcony;
@@ -853,9 +872,8 @@
   function syncTitleBasketAction() {
     const basket = $('#title-detail .title-basket-action');
     if (!basket) return;
-    const locked = Boolean(state.rental.rented);
-    basket.disabled = locked || (!isAtCounter(activeViewerTitle) && state.counter.length >= MAX_CESTA_TITLES);
-    basket.textContent = locked ? 'Pacote ativo' : isAtCounter(activeViewerTitle) ? 'Tirar da cesta' : state.counter.length >= MAX_CESTA_TITLES ? `Cesta cheia · ${MAX_CESTA_TITLES}/${MAX_CESTA_TITLES}` : 'Botar na cesta';
+    basket.disabled = !isAtCounter(activeViewerTitle) && state.counter.length >= MAX_CESTA_TITLES;
+    basket.textContent = isAtCounter(activeViewerTitle) ? 'Tirar da cesta' : state.counter.length >= MAX_CESTA_TITLES ? `Cesta cheia · ${MAX_CESTA_TITLES}/${MAX_CESTA_TITLES}` : 'Botar na cesta';
   }
 
   function basketMessage(reason) {
@@ -901,9 +919,12 @@
 
   async function rentCounter() {
     const decision = counterDecisionTitles();
-    if (rentalRequestInFlight || !decision.length || state.rental.rented) { openRentalDesk(); return; }
-    if (decision.length > MAX_RENTAL_TITLES) {
-      $('#balcony-panel-status').textContent = 'Escolha de 1 a 3 fitas para alugar agora. Sua decisão no Balcão continua salva.';
+    if (rentalRequestInFlight || !decision.length) { openRentalDesk(); return; }
+    const available = availableRentalSlots();
+    if (decision.length > available) {
+      $('#balcony-panel-status').textContent = available
+        ? `Você ainda pode alugar ${available} ${available === 1 ? 'fita' : 'fitas'}. Tire as outras da decisão antes de confirmar.`
+        : 'Você já está com 3 fitas alugadas. Devolva uma fita antes de alugar outra.';
       openRentalDesk();
       return;
     }
@@ -920,8 +941,7 @@
       if (!state.member.signedIn || sessionVersion !== memberSessionVersion) return;
       const rental = validateRentalResponse(response, titles);
       pendingRental = false;
-      const rentedKeys = new Set(decision.map((title) => `${title.type}:${title.id}`));
-      state.counter = state.counter.filter((title) => !rentedKeys.has(`${title.type}:${title.id}`));
+      state.counter = [];
       balconySelection = null;
       state.rental.rented = rental?.rental ? { id: rental.rental.id, titles: (rental.rental.items || []).map(localRentalTitle) } : state.rental.rented;
       saveCounter();
@@ -943,7 +963,7 @@
   }
 
   async function resumePendingRental() {
-    if (!pendingRental || !state.member.signedIn || !counterDecisionTitles().length || state.rental.rented || rentalRequestInFlight) return;
+    if (!pendingRental || !state.member.signedIn || !counterDecisionTitles().length || rentalRequestInFlight) return;
     if (!state.member.profile) {
       openAccount('Falta só escolher seu nome público para confirmar este pacote.');
       return;
@@ -1033,8 +1053,7 @@
     const dialog = $('#rental-confirmation-dialog');
     const list = $('#rental-confirmation-list');
     const titles = state.rental.rented?.titles || (rental?.rental?.items || []).map(localRentalTitle);
-    $('#rental-confirmation-status').textContent = `${titles.length} ${titles.length === 1 ? 'fita saiu' : 'fitas saíram'} na sacola. Boa sessão — você pode devolver tudo no Balcão depois.`;
-    $('#rental-confirmation-bag-count').textContent = `${titles.length} ${titles.length === 1 ? 'FITA' : 'FITAS'}`;
+    $('#rental-confirmation-status').textContent = `${titles.length} ${titles.length === 1 ? 'fita está' : 'fitas estão'} no seu pacote ativo. Boa sessão — você pode devolver tudo no Balcão depois.`;
     list.replaceChildren(...titles.map((title) => accountTitleItem(title, 'na sacola')));
     if ($('#balcony-dialog').open) $('#balcony-dialog').close();
     if (!dialog.open) dialog.showModal();
@@ -1043,9 +1062,10 @@
   async function mountBalconyFallback(stage) {
     const { createTapeFallback } = await import('./tape-fallback.mjs');
     const rental = balconyRentalState();
+    const titles = rental.counter;
     balcony = createTapeFallback({
       container: stage,
-      titles: rental.rented?.titles || rental.counter,
+      titles,
       heading: 'Balcão · tape fronts',
       onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
       onAction: openRentalDesk,
@@ -1082,7 +1102,7 @@
   function refreshBalcony() { if (state.mode === 'balcony') mountBalcony(); }
 
   function openRentalDesk() {
-    if (!state.rental.rented && balconySelection === null) beginCounterDecision();
+    if (balconySelection === null) beginCounterDecision();
     renderBalconyPanel();
     if (!$('#balcony-dialog').open) $('#balcony-dialog').showModal();
   }
@@ -1094,7 +1114,7 @@
     const rented = state.rental.rented;
     $('#balcony-context').textContent = state.mode === 'balcony' ? 'BALCÃO · SALA 3D' : 'BALCÃO · ATENDIMENTO 2D';
     $('#tip-jar').hidden = state.mode !== 'balcony';
-    $('#balcony-rental-controls').hidden = Boolean(rented);
+    $('#balcony-rental-controls').hidden = false;
     $('#balcony-return-controls').hidden = !rented;
     if (!rented) pendingReturns.clear();
     else {
@@ -1103,18 +1123,21 @@
     }
     const decisionTitles = counterDecisionTitles();
     const capacity = decisionTitles.length;
+    const available = availableRentalSlots();
     const rentButton = $('#rent-counter');
-    rentButton.disabled = !capacity || Boolean(rented) || rentalRequestInFlight;
-    rentButton.textContent = rentalRequestInFlight ? 'Registrando pacote…' : capacity > MAX_RENTAL_TITLES ? `Definir 1–3 fitas para alugar · ${capacity} na decisão` : `Alugar pacote · ${capacity} ${capacity === 1 ? 'fita' : 'fitas'}`;
-    $('#rental-capacity').textContent = `${capacity} de ${MAX_CESTA_TITLES} fitas na decisão`;
+    rentButton.disabled = !capacity || capacity > available || rentalRequestInFlight;
+    rentButton.textContent = rentalRequestInFlight ? 'Registrando pacote…' : !available ? 'Devolva uma fita para alugar outra' : capacity > available ? `Escolha até ${available} ${available === 1 ? 'fita' : 'fitas'} agora` : `Alugar pacote · ${capacity} ${capacity === 1 ? 'fita' : 'fitas'}`;
+    $('#rental-capacity').textContent = `${capacity} na decisão · ${available} ${available === 1 ? 'vaga' : 'vagas'} de aluguel`;
     const flowSteps = [...document.querySelectorAll('.rental-flow li')];
-    flowSteps.forEach((step, index) => step.classList.toggle('is-current', rented ? index === 2 : index === (capacity ? 1 : 0)));
-    $('#balcony-panel-status').textContent = rented
-      ? `${rented.titles.length} de 3 fitas na sacola ativa. Marque as fitas que quer devolver, escolha o estado e confirme tudo em uma devolução.`
-      : capacity
-        ? capacity > MAX_RENTAL_TITLES
-          ? `${capacity} fitas continuam na sua decisão. Para registrar o aluguel de agora, deixe de 1 a 3 no Balcão.`
-          : `${capacity} fitas chegaram ao balcão. O botão abaixo registra esse aluguel.`
+    flowSteps.forEach((step, index) => step.classList.toggle('is-current', capacity ? index === 1 : rented ? index === 2 : index === 0));
+    $('#balcony-panel-status').textContent = capacity
+      ? !available
+        ? 'Você já está com 3 fitas alugadas. Devolva uma fita antes de registrar outra.'
+        : capacity > available
+          ? `${capacity} fitas continuam na sua decisão. Para alugar agora, deixe no máximo ${available}.`
+          : `${capacity} ${capacity === 1 ? 'fita chegou' : 'fitas chegaram'} ao balcão. Você ainda ficará com no máximo 3 fitas ativas.`
+      : rented
+        ? `${rented.titles.length} de 3 fitas estão no seu pacote ativo. Você pode montar outra decisão enquanto houver vagas.`
         : 'Pesquise um título no Balcão ou escolha fitas nas estantes. Depois use a Cesta para decidir o que levar.';
     if (!capacity) counterList.textContent = 'Nenhuma fita nesta decisão. Pesquisar título no Balcão.';
     decisionTitles.forEach((title) => {
@@ -1241,12 +1264,13 @@
   function renderBasket() {
     const list = $('#basket-list');
     list.replaceChildren();
-    $('#basket-status').textContent = state.rental.rented
-      ? 'Você já tem uma sacola alugada. Devolva as fitas antes de montar outra cesta.'
+    const available = availableRentalSlots();
+    $('#basket-status').textContent = !available
+      ? 'Você já está com 3 fitas alugadas. Devolva uma fita antes de levar outra ao Balcão.'
       : state.counter.length
-        ? `${state.counter.length} de ${MAX_CESTA_TITLES} fitas escolhidas. Revise a cesta antes de levá-la ao Balcão.`
+        ? `${state.counter.length} de ${MAX_CESTA_TITLES} fitas escolhidas. Você ainda pode alugar ${available} ${available === 1 ? 'fita' : 'fitas'} agora.`
         : `Sua cesta está vazia. Escolha até ${MAX_CESTA_TITLES} fitas nas estantes.`;
-    $('#take-basket-counter').disabled = !state.counter.length || Boolean(state.rental.rented);
+    $('#take-basket-counter').disabled = !state.counter.length || !available;
     if (!state.counter.length) return;
     state.counter.forEach((title) => {
       const item = document.createElement('article');
@@ -1279,13 +1303,13 @@
   }
 
   function openBasket() {
-    if (!state.rental.rented) balconySelection = null;
+    balconySelection = null;
     renderBasket();
     if (!$('#basket-dialog').open) $('#basket-dialog').showModal();
   }
 
   function takeBasketToCounter() {
-    if (!state.counter.length || state.rental.rented) return;
+    if (!state.counter.length || !availableRentalSlots()) return;
     beginCounterDecision();
     const fromImmersive = state.mode === 'immersive';
     $('#basket-dialog').close();

@@ -20,11 +20,21 @@ test('username validation remains valid in modern HTML pattern mode and debounce
 test('Cesta and Balcão keep review choices separate from the final three-rental request', () => {
   assert.match(page, /id="basket-confirmation"[^>]*role="status"/);
   assert.match(app, /const MAX_CESTA_TITLES = 15/);
-  assert.match(app, /Escolha de 1 a 3 fitas para alugar agora/);
+  assert.match(app, /function availableRentalSlots\(\)/);
+  assert.match(app, /Você ainda pode alugar/);
   assert.match(app, /Pesquisar título no Balcão/);
   assert.match(app, /\$\{state\.counter\.length\} de \$\{MAX_CESTA_TITLES\} fitas escolhidas/);
   assert.match(app, /Escolha até \$\{MAX_CESTA_TITLES\} fitas nas estantes/);
   assert.match(app, /image\.src = title\.poster \? posterTextureUrl\(title\.poster\) : COVER_PLACEHOLDER_URL;[\s\S]*image\.addEventListener\('error', \(\) => \{ image\.src = COVER_PLACEHOLDER_URL; \}/);
+});
+
+
+test('Balcony catalogue search keeps its Cesta action available with active rentals until fifteen titles', () => {
+  const searchStart = app.indexOf('async function searchBalconyCatalogue()');
+  const searchEnd = app.indexOf('function setYear', searchStart);
+  const search = app.slice(searchStart, searchEnd);
+  assert.match(search, /state\.counter\.length >= MAX_CESTA_TITLES/);
+  assert.doesNotMatch(search, /state\.rental\.rented/);
 });
 
 test('yellow actions use dark text and return submission retains a selected subset', () => {
@@ -38,8 +48,11 @@ test('member and rented-package cards hydrate TMDB covers and metadata before in
   assert.match(app, /function refreshAccountTitleCard\(title, meta, \{ image, name, detail \}\)/);
   assert.match(app, /const cardLocale = state\.locale;\s*const cardSessionVersion = memberSessionVersion;/);
   assert.match(app, /if \(!item\.isConnected \|\| cardLocale !== state\.locale \|\| cardSessionVersion !== memberSessionVersion\) return/);
-  assert.match(app, /loadTitleMetadata\(title\)\.then/);
-  assert.match(app, /openTitle\(memberTitleForViewer\(title\), true\)/);
+  assert.match(app, /loadTitleMetadata\(memberTitle\)\.then/);
+  assert.match(app, /const memberTitle = memberTitleForViewer\(title\);/);
+  assert.match(app, /loadTitleMetadata\(memberTitle\)\.then/);
+  assert.match(app, /await loadTitleMetadata\(memberTitle\)/);
+  assert.match(app, /openTitle\(memberTitle, false\)/);
   assert.match(app, /data\.activeRental && activeTitles\.length/);
 });
 
@@ -85,7 +98,7 @@ test('Minha conta offers one package-level return route and preserves canonical 
   assert.match(app, /\$\('#account-return-counter'\)\.hidden = !rental\?\.titles\.length/);
   assert.doesNotMatch(app, /returns\.textContent = 'Devolver no Balcão'/);
   assert.match(app, /function memberTitleForViewer\(title\)/);
-  assert.match(app, /openTitle\(memberTitleForViewer\(title\), true\)/);
+  assert.match(app, /openTitle\(memberTitle, false\)/);
 });
 
 test('return tape selection enables and accessibly names its watched-state control', () => {

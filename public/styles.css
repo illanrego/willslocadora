@@ -544,10 +544,6 @@ dialog.panel-dialog {
 #account-return-counter { width: 100%; }
 .rental-confirmation-dialog { width: min(620px, calc(100% - 1rem)) !important; text-align: center; }
 .rental-confirmation-dialog .panel-header { justify-content: center; }
-.rental-confirmation-bag { position: relative; display: grid; place-items: center; width: min(270px, 74vw); min-height: 180px; margin: 3.4rem auto 1rem; padding: 2rem 1rem 1rem; border: 3px solid #c7b58b; color: #a7352d; background: linear-gradient(100deg, #efe2c3, #d8c69e); box-shadow: 8px 10px 0 #100b09; transform: rotate(-1deg); }
-.rental-confirmation-handle { position: absolute; bottom: calc(100% - 3px); left: 50%; width: 120px; height: 58px; border: 12px solid #d8c69e; border-bottom: 0; border-radius: 70px 70px 0 0; transform: translateX(-50%); }
-.rental-confirmation-bag strong { font: 900 2.1rem/.88 Impact, Arial Narrow, sans-serif; letter-spacing: .04em; }
-.rental-confirmation-bag > span:last-child { color: #513b2d; font: 900 .65rem/1 "Courier New", monospace; }
 
 .basket-confirmation { position: fixed; z-index: 20; right: 1rem; bottom: 1rem; max-width: min(28rem, calc(100vw - 2rem)); padding: .75rem 1rem; border: 2px solid #ffe178; border-radius: 4px; color: var(--black); background: var(--yellow); box-shadow: 5px 6px 0 rgba(0,0,0,.45); font: 900 .72rem/1.35 "Courier New", monospace; text-transform: uppercase; pointer-events: none; }
 .basket-confirmation:empty { display: none; }
