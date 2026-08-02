@@ -22,8 +22,12 @@
             <span data-i18n="basket">Cesta</span> <span id="counter-count" aria-label="items in basket">0</span>
           </button>
           <button class="utility-button" id="balcony-search-open" type="button" aria-controls="balcony-search-dialog">Pesquisar no Balcão</button>
-          <button class="utility-button" id="watchlist-open" type="button">Minha lista</button>
-          <button class="utility-button" id="account-open" type="button">Minha conta</button>
+          <button id="watchlist-open" class="utility-button header-icon-button" type="button" aria-label="Minha lista" title="Minha lista">
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+          </button>
+          <button id="account-open" class="utility-button header-icon-button" type="button" aria-label="Minha conta" title="Minha conta">
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="3.25"/><path d="M5 21c.7-4.1 3-6.15 7-6.15S18.3 16.9 19 21"/></svg>
+          </button>
           <button class="utility-button" id="sources-open" type="button" data-i18n="sources">Fontes</button>
           <label class="locale-picker" for="locale-select">
             <span data-i18n="language">Idioma</span>

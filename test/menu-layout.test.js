@@ -19,6 +19,24 @@ test('normal browsing keeps compact select controls in the header and streaming 
   assert.doesNotMatch(page, /<aside class="aisle-directory"/);
 });
 
+
+test('watchlist and account use accessible icon buttons that remain visible on phones', () => {
+  assert.match(page, /id="watchlist-open"[^>]*class="utility-button header-icon-button"[^>]*aria-label="Minha lista"[\s\S]*?<svg aria-hidden="true"/);
+  assert.match(page, /id="account-open"[^>]*class="utility-button header-icon-button"[^>]*aria-label="Minha conta"[\s\S]*?<svg aria-hidden="true"/);
+  assert.match(css, /\.header-actions \.header-icon-button \{ display: inline-grid;/);
+  assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*\.header-actions \.header-icon-button \{ display: inline-grid;/);
+});
+
+test('dialog and member cards use the uniform raised Locadora frame instead of accent-edge stripes', () => {
+  const cardFrameStart = css.indexOf('.panel-dialog .counter-item, .panel-dialog .source-item {');
+  const cardFrameEnd = css.indexOf('.panel-dialog button:not(:disabled)', cardFrameStart);
+  const cardFrame = css.slice(cardFrameStart, cardFrameEnd);
+  assert.match(cardFrame, /border: 2px solid #715842;/);
+  assert.match(cardFrame, /box-shadow: inset 0 1px 0 rgba\(255,255,255,.06\), 0 4px 0 rgba\(0,0,0,.28\);/);
+  assert.doesNotMatch(cardFrame, /border-left:/);
+  assert.match(css, /\.member-stats div \{[^}]*border: 2px solid #765640;[^}]*box-shadow: inset 0 1px 0 rgba\(255,255,255,.06\), 0 4px 0 rgba\(0,0,0,.3\);/);
+});
+
 test('balcony search terminal is an accessible native dialog', () => {
   assert.match(page, /<dialog id="balcony-search-dialog" class="panel-dialog balcony-search-dialog">/);
   assert.match(page, /<form id="balcony-search-form"[^>]*>/);

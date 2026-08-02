@@ -44,6 +44,9 @@ button:focus-visible, input:focus-visible, .vhs-case:focus-visible { outline: 3p
 #year-go { min-height: 30px; border: 1px solid #ffe178; color: var(--black); background: var(--yellow); cursor: pointer; font-size: .72rem; font-weight: 900; text-transform: uppercase; }
 .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; padding: .5rem 1rem; }
 .header-actions button { min-height: 36px; padding: .4rem .7rem; border: 1px solid #59473b; background: transparent; cursor: pointer; text-transform: uppercase; letter-spacing: .08em; font-size: .68rem; }
+.header-actions .header-icon-button { display: inline-grid; width: 38px; min-width: 38px; min-height: 38px; padding: 0; place-items: center; border: 2px solid #b78636; border-radius: 3px; color: var(--cream); background: linear-gradient(#283a50, #111a29); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 3px 3px 0 rgba(0,0,0,.36); }
+.header-actions .header-icon-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: square; stroke-linejoin: miter; }
+.header-actions .header-icon-button:hover, .header-actions .header-icon-button:focus-visible { color: var(--ink); background: var(--yellow); outline: 0; transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 3px 4px 0 rgba(0,0,0,.42); }
 .locale-picker { display: grid; gap: .2rem; color: var(--cream); font: 900 .56rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; }
 .locale-picker select { min-height: 30px; padding: .2rem .35rem; border: 1px solid #59473b; color: var(--cream); background: var(--blue-deep); font: 900 .66rem/1 "Courier New", monospace; text-transform: uppercase; }
 .counter-button { background: var(--yellow) !important; border-color: #ffe178 !important; color: var(--black) !important; font-weight: 900 !important; transform: rotate(1deg); box-shadow: 3px 3px 0 #7d5e00; }
@@ -444,11 +447,10 @@ dialog.panel-dialog {
 .panel-dialog .counter-item, .panel-dialog .source-item {
   min-height: 66px;
   padding: .7rem;
-  border: 1px solid #715842;
-  border-left: 5px solid #b78636;
+  border: 2px solid #715842;
   border-radius: 4px;
   background: linear-gradient(100deg, rgba(255,255,255,.055), rgba(255,255,255,.015));
-  box-shadow: 0 4px 0 rgba(0,0,0,.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 4px 0 rgba(0,0,0,.28);
 }
 .panel-dialog button:not(:disabled) { transition: transform .14s ease, box-shadow .14s ease, filter .14s ease, background-color .14s ease; }
 .panel-dialog button:not(:disabled):hover, .panel-dialog button:not(:disabled):focus-visible { transform: translateY(-2px); filter: brightness(1.12); }
@@ -513,7 +515,7 @@ dialog.panel-dialog {
 .member-card span, .member-stats span { display: block; font: 800 .6rem/1.25 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; }
 .member-card strong { display: block; margin-top: .25rem; font: 900 1rem/1.2 "Courier New", monospace; overflow-wrap: anywhere; }
 .member-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .55rem; margin: 1.2rem 0; }
-.member-stats div { padding: .8rem; border: 1px solid #765640; border-bottom: 4px solid var(--red); background: #152238; box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+.member-stats div { padding: .8rem; border: 2px solid #765640; border-radius: 3px; background: #152238; box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 4px 0 rgba(0,0,0,.3); }
 .member-stats strong { display: block; margin-bottom: .3rem; color: var(--yellow); font: 900 1.45rem/1 Impact, sans-serif; }
 .member-stats span { color: #c7b99d; }
 .account-rentals { padding: 1rem; border: 1px solid #624b3b; border-radius: 5px; background: rgba(0,0,0,.16); }
@@ -556,6 +558,7 @@ dialog.panel-dialog {
   .immersive-destination-copy { display: grid; }
 }
 @media (max-width: 560px) {
+  .header-actions .header-icon-button { display: inline-grid; }
   dialog.panel-dialog { width: calc(100% - .5rem); }
   .immersive-hud { top: .25rem; width: calc(100% - .5rem); }
   .immersive-browse-controls { grid-template-columns: minmax(0, 1fr) 86px; }
