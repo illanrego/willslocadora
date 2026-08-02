@@ -547,8 +547,17 @@ dialog.panel-dialog {
 .rental-confirmation-dialog { width: min(620px, calc(100% - 1rem)) !important; text-align: center; }
 .rental-confirmation-dialog .panel-header { justify-content: center; }
 
-.basket-confirmation { position: fixed; z-index: 20; right: 1rem; bottom: 1rem; max-width: min(28rem, calc(100vw - 2rem)); padding: .75rem 1rem; border: 2px solid #ffe178; border-radius: 4px; color: var(--black); background: var(--yellow); box-shadow: 5px 6px 0 rgba(0,0,0,.45); font: 900 .72rem/1.35 "Courier New", monospace; text-transform: uppercase; pointer-events: none; }
-.basket-confirmation:empty { display: none; }
+@keyframes basket-added {
+  0%, 100% { transform: rotate(1deg) translateY(0) scale(1); filter: brightness(1); }
+  40% { transform: rotate(1deg) translateY(-5px) scale(1.08); filter: brightness(1.22); }
+  70% { transform: rotate(1deg) translateY(1px) scale(.98); }
+}
+.counter-button.is-basket-added, .immersive-basket-button.is-basket-added { animation: basket-added .52s ease-out; }
+.basket-added-dialog { width: min(390px, calc(100% - 1rem)) !important; text-align: center; }
+.basket-added-dialog .panel-header { justify-content: center; }
+.basket-added-actions { display: flex; justify-content: center; margin-top: 1rem; }
+.basket-added-actions .account-action { min-width: 128px; }
+@media (prefers-reduced-motion: reduce) { .counter-button.is-basket-added, .immersive-basket-button.is-basket-added { animation: none; } }
 .yellow-action { color: var(--black); background: var(--yellow); }
 
 @media (max-width: 760px) {

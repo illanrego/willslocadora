@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const page = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../workers/locadora-data/src/index.mjs', import.meta.url), 'utf8');
 
 test('account setup calls the handle a username rather than a public name', () => {
@@ -18,7 +19,7 @@ test('username validation remains valid in modern HTML pattern mode and debounce
 });
 
 test('Cesta and Balcão keep review choices separate from the final three-rental request', () => {
-  assert.match(page, /id="basket-confirmation"[^>]*role="status"/);
+  assert.match(page, /id="basket-added-dialog"[^>]*class="panel-dialog basket-added-dialog"/);
   assert.match(app, /const MAX_CESTA_TITLES = 15/);
   assert.match(app, /function availableRentalSlots\(\)/);
   assert.match(app, /Você ainda pode alugar/);
@@ -26,6 +27,19 @@ test('Cesta and Balcão keep review choices separate from the final three-rental
   assert.match(app, /\$\{state\.counter\.length\} de \$\{MAX_CESTA_TITLES\} fitas escolhidas/);
   assert.match(app, /Escolha até \$\{MAX_CESTA_TITLES\} fitas nas estantes/);
   assert.match(app, /image\.src = title\.poster \? posterTextureUrl\(title\.poster\) : COVER_PLACEHOLDER_URL;[\s\S]*image\.addEventListener\('error', \(\) => \{ image\.src = COVER_PLACEHOLDER_URL; \}/);
+});
+
+
+test('adding a tape confirms its title in an OK dialog and animates the basket controls', () => {
+  assert.match(page, /id="basket-added-message"[^>]*role="status"/);
+  assert.match(page, /id="basket-added-ok"[^>]*value="ok"[^>]*>OK<\/button>/);
+  assert.doesNotMatch(page, /id="basket-confirmation"/);
+  assert.match(app, /function showBasketAdded\(title\) \{[\s\S]*basket-added-message'\)\.textContent = `“\$\{title\.name\}” foi adicionada à Cesta\.`;[\s\S]*basket-added-dialog'\)\.showModal\(\)/);
+  assert.match(app, /function animateBasketAdded\(\) \{[\s\S]*counter-open'[\s\S]*immersive-basket-open/);
+  assert.match(app, /if \(result\.reason === 'added'\) \{\s*animateBasketAdded\(\);\s*showBasketAdded\(title\);\s*\}/);
+  assert.match(styles, /@keyframes basket-added/);
+  assert.match(styles, /\.counter-button\.is-basket-added, \.immersive-basket-button\.is-basket-added/);
+  assert.doesNotMatch(styles, /\.basket-confirmation/);
 });
 
 

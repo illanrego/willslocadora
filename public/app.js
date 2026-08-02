@@ -884,6 +884,21 @@
     return 'Essa fita não pode ser adicionada agora.';
   }
 
+  function animateBasketAdded() {
+    ['#counter-open', '#immersive-basket-open'].forEach((selector) => {
+      const basket = $(selector);
+      if (!basket) return;
+      basket.classList.remove('is-basket-added');
+      void basket.offsetWidth;
+      basket.classList.add('is-basket-added');
+    });
+  }
+
+  function showBasketAdded(title) {
+    $('#basket-added-message').textContent = `“${title.name}” foi adicionada à Cesta.`;
+    $('#basket-added-dialog').showModal();
+  }
+
   function toggleCounter(title) {
     const result = updateRentalBasket(state.counter, title, state.rental.rented);
     state.counter = result.titles;
@@ -898,8 +913,10 @@
     if (status) status.textContent = basketMessage(result.reason);
     const basketStatus = $('#basket-status');
     if (basketStatus) basketStatus.textContent = basketMessage(result.reason);
-    const confirmation = $('#basket-confirmation');
-    if (confirmation) confirmation.textContent = ['added', 'removed'].includes(result.reason) ? basketMessage(result.reason) : '';
+    if (result.reason === 'added') {
+      animateBasketAdded();
+      showBasketAdded(title);
+    }
     if ($('#basket-dialog').open) renderBasket();
     if ($('#balcony-dialog').open) renderBalconyPanel();
     if (state.mode === 'balcony') refreshBalcony();
@@ -1389,6 +1406,7 @@
     $('#return-selected-rentals').addEventListener('click', returnSelectedRentals);
     $('#rental-confirmation-dialog').addEventListener('close', () => setMode('normal'));
     $('#rental-confirmation-dialog').addEventListener('cancel', (event) => event.preventDefault());
+    $('#basket-added-dialog').addEventListener('cancel', (event) => event.preventDefault());
     $('#tip-jar').addEventListener('click', () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; });
     $('#immersive-hud-toggle').addEventListener('click', () => setImmersiveHudCollapsed(!$('#immersive-hud').classList.contains('is-collapsed')));
     $('#immersive-filters-toggle').addEventListener('click', () => {
