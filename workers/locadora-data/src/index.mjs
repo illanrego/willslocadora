@@ -53,6 +53,8 @@ export function databaseError(error) {
   if (error.message === 'active_title_limit') throw new ApiError(409, 'You can have up to three active titles');
   if (error.message === 'title_already_rented') throw new ApiError(409, 'That title is already active at your counter');
   if (error.message === 'profile_required') throw new ApiError(409, 'Choose a public username first');
+  if (error.message === 'watched_history_required') throw new ApiError(403, 'Return this title as watched before reviewing it');
+  if (error.message === 'invalid_review') throw new ApiError(400, 'A review needs a half-star rating and a short text');
   if (['rental_item_not_found', 'active_rental_item_not_found'].includes(error.message)) throw new ApiError(404, 'That active rental item was not found');
   throw new Error('The Locadora archive is unavailable');
 }
@@ -103,6 +105,13 @@ function normalizeTitle(value, { requireSource = true } = {}) {
   const sourceNote = value?.sourceNote == null ? null : String(value.sourceNote).trim().slice(0, 240);
   if (!Number.isSafeInteger(tmdbId) || tmdbId < 1 || !type || !name || name.length > 240 || (requireSource && !source)) return null;
   return { canonicalKey: `${type}:${tmdbId}`, tmdbId, type, name, year, ...(requireSource ? { source, sourceNote } : {}) };
+}
+
+function normalizeReview(value) {
+  const rating = Number(value?.rating);
+  const body = String(value?.body || '').trim().replace(/\s+/g, ' ');
+  if (!Number.isFinite(rating) || rating < 0.5 || rating > 5 || Math.round(rating * 2) !== rating * 2 || !body || body.length > 1000) return null;
+  return { rating, body };
 }
 
 async function readJson(request) {
@@ -174,6 +183,32 @@ export function createSupabaseRepository(env) {
       databaseError(result.error);
       return { id: result.data.id, returnedAt: result.data.returned_at, watchedStatus: result.data.watched_status };
     },
+    async listPublicTitleReviews(canonicalKey) {
+      const result = await database.rpc('get_public_title_reviews', { p_canonical_key: canonicalKey });
+      databaseError(result.error);
+      return result.data || { summary: { averageRating: 0, ratingCount: 0 }, reviews: [] };
+    },
+    async saveReview(userId, canonicalKey, review) {
+      const result = await database.rpc('upsert_review', {
+        p_user_id: userId,
+        p_canonical_key: canonicalKey,
+        p_rating: review.rating,
+        p_body: review.body,
+      }).single();
+      databaseError(result.error);
+      return {
+        id: result.data.id,
+        rating: Number(result.data.rating),
+        body: result.data.body_censored,
+        createdAt: result.data.created_at,
+        updatedAt: result.data.updated_at,
+      };
+    },
+    async canReviewTitle(userId, canonicalKey) {
+      const result = await database.from('rental_items').select('id').eq('user_id', userId).eq('canonical_key', canonicalKey).eq('watched_status', 'watched').not('returned_at', 'is', null).limit(1).maybeSingle();
+      databaseError(result.error);
+      return Boolean(result.data);
+    },
     async isUsernameAvailable(userId, username) {
       const result = await database.from('profiles').select('user_id').eq('username', username).maybeSingle();
       databaseError(result.error);
@@ -219,13 +254,23 @@ export function createLocadoraDataWorker({ authenticate = authenticateClerk, cre
       const isWatchlistRequest = request.method === 'POST' && url.pathname === '/v1/watchlist';
       const isRentalRequest = request.method === 'POST' && url.pathname === '/v1/rentals';
       const returnMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/rental-items\/([^/]+)\/return$/) : null;
-      if (!isStateRequest && !isHistoryRequest && !usernameMatch && !isProfileRequest && !isWatchlistRequest && !isRentalRequest && !returnMatch) return response(request, env, { error: 'Not found' }, 404);
-
-      const userId = await authenticate(request, env);
-      if (!userId) return response(request, env, { error: 'Authentication required' }, 401);
+      const publicReviewsMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/reviews$/) : null;
+      const reviewWriteMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/review$/) : null;
+      const reviewEligibilityMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/review-eligibility$/) : null;
+      if (!isStateRequest && !isHistoryRequest && !usernameMatch && !isProfileRequest && !isWatchlistRequest && !isRentalRequest && !returnMatch && !publicReviewsMatch && !reviewWriteMatch && !reviewEligibilityMatch) return response(request, env, { error: 'Not found' }, 404);
 
       try {
         const repository = createRepository(env);
+        if (publicReviewsMatch) {
+          const canonicalKey = `${publicReviewsMatch[1]}:${publicReviewsMatch[2]}`;
+          return response(request, env, await repository.listPublicTitleReviews(canonicalKey));
+        }
+        const userId = await authenticate(request, env);
+        if (!userId) return response(request, env, { error: 'Authentication required' }, 401);
+        if (reviewEligibilityMatch) {
+          const canonicalKey = `${reviewEligibilityMatch[1]}:${reviewEligibilityMatch[2]}`;
+          return response(request, env, { eligible: await repository.canReviewTitle(userId, canonicalKey) });
+        }
         if (isStateRequest) return response(request, env, await repository.getState(userId));
         if (isHistoryRequest) {
           const offset = Number(url.searchParams.get('offset'));
@@ -234,6 +279,12 @@ export function createLocadoraDataWorker({ authenticate = authenticateClerk, cre
         }
         if (usernameMatch) return response(request, env, { username: usernameMatch[1], available: await repository.isUsernameAvailable(userId, usernameMatch[1]) });
         const body = await readJson(request);
+        if (reviewWriteMatch) {
+          const review = normalizeReview(body);
+          if (!review) return response(request, env, { error: 'A review needs a half-star rating and a short text' }, 400);
+          const canonicalKey = `${reviewWriteMatch[1]}:${reviewWriteMatch[2]}`;
+          return response(request, env, { review: await repository.saveReview(userId, canonicalKey, review) }, 201);
+        }
         if (isWatchlistRequest) {
           const title = normalizeTitle({ ...body?.title, source: body?.source, sourceNote: body?.sourceNote });
           if (!title) return response(request, env, { error: 'Invalid watchlist title' }, 400);

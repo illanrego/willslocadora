@@ -1193,6 +1193,116 @@
     renderReturnButton();
   }
 
+  function reviewRouteForTitle(title) {
+    const tmdbId = Number(title?.tmdbId ?? String(title?.id || '').replace(/^tmdb:/, ''));
+    if (!['movie', 'series'].includes(title?.type) || !Number.isSafeInteger(tmdbId) || tmdbId < 1) return null;
+    return { type: title.type, tmdbId };
+  }
+
+  function hasWatchedTitle(title) {
+    const route = reviewRouteForTitle(title);
+    if (!route) return false;
+    return state.member.history.some((entry) => entry.watchedStatus === 'watched' && String(entry.type || entry.title_type) === route.type && Number(entry.tmdbId ?? entry.tmdb_id) === route.tmdbId);
+  }
+
+  async function canReviewTitle(title) {
+    if (!state.member.signedIn) return false;
+    if (hasWatchedTitle(title)) return true;
+    const route = reviewRouteForTitle(title);
+    if (!route) return false;
+    const result = await window.LocadoraAccount.request(`/v1/titles/${route.type}/${route.tmdbId}/review-eligibility`);
+    return Boolean(result.eligible);
+  }
+
+  function formatReviewRating(rating) {
+    return `${Number(rating).toFixed(1).replace(/\.0$/, '')} ★`;
+  }
+
+  function reviewRatingPicker() {
+    const picker = document.createElement('fieldset');
+    picker.className = 'review-rating-picker';
+    const legend = document.createElement('legend'); legend.textContent = 'Sua nota (meia estrela vale)'; picker.append(legend);
+    for (let step = 1; step <= 10; step += 1) {
+      const rating = step / 2;
+      const id = `review-rating-${String(rating).replace('.', '-')}`;
+      const input = document.createElement('input'); input.id = id; input.name = 'rating'; input.type = 'radio'; input.value = String(rating); input.required = true;
+      const label = document.createElement('label'); label.htmlFor = id; label.textContent = formatReviewRating(rating); label.setAttribute('aria-label', `${rating} estrelas`);
+      picker.append(input, label);
+    }
+    return picker;
+  }
+
+  function appendReviewForm(container, title, eligible) {
+    const route = reviewRouteForTitle(title);
+    if (!route || !state.member.signedIn || !eligible) return;
+    const form = document.createElement('form'); form.className = 'review-form';
+    const heading = document.createElement('h3'); heading.textContent = 'Avalie esta fita';
+    const note = document.createElement('p'); note.className = 'panel-copy'; note.textContent = 'Você marcou esta fita como assistida. Sua nota e comentário serão públicos com seu nome de usuário.';
+    const textLabel = document.createElement('label'); textLabel.htmlFor = 'review-body'; textLabel.textContent = 'Sua resenha';
+    const textarea = document.createElement('textarea'); textarea.id = 'review-body'; textarea.name = 'body'; textarea.required = true; textarea.minLength = 1; textarea.maxLength = 1000; textarea.placeholder = 'O que você achou desta fita?';
+    const status = document.createElement('p'); status.className = 'panel-copy'; status.setAttribute('role', 'status');
+    const submit = document.createElement('button'); submit.type = 'submit'; submit.className = 'account-action'; submit.textContent = 'Publicar avaliação';
+    form.append(heading, note, reviewRatingPicker(), textLabel, textarea, status, submit);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const rating = Number(new FormData(form).get('rating'));
+      const body = textarea.value.trim();
+      if (!rating || !body) return;
+      submit.disabled = true; status.textContent = 'Publicando avaliação…';
+      try {
+        await window.LocadoraAccount.request(`/v1/titles/${route.type}/${route.tmdbId}/review`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rating, body }) });
+        status.textContent = 'Avaliação publicada.';
+        await renderTitleReviews(title);
+      } catch (error) {
+        status.textContent = error.message || 'Não foi possível publicar sua avaliação.';
+        submit.disabled = false;
+      }
+    });
+    container.append(form);
+  }
+
+  async function renderTitleReviews(title) {
+    const content = $('#title-reviews-content');
+    const route = reviewRouteForTitle(title);
+    content.replaceChildren();
+    if (!route) { content.textContent = 'Esta fita ainda não tem identificação suficiente para avaliações.'; return; }
+    const loading = document.createElement('p'); loading.className = 'panel-copy'; loading.textContent = 'Abrindo o livro de avaliações…'; content.append(loading);
+    try {
+      const data = await window.LocadoraAccount.publicRequest(`/v1/titles/${route.type}/${route.tmdbId}/reviews`);
+      const eligible = state.member.signedIn ? await canReviewTitle(title).catch(() => false) : false;
+      content.replaceChildren();
+      const summary = document.createElement('section'); summary.className = 'review-summary';
+      const score = document.createElement('strong'); score.textContent = data.summary.ratingCount ? formatReviewRating(data.summary.averageRating) : 'Sem nota ainda';
+      const count = document.createElement('span'); count.textContent = data.summary.ratingCount ? `${data.summary.ratingCount} ${data.summary.ratingCount === 1 ? 'avaliação pública' : 'avaliações públicas'}` : 'Seja a primeira pessoa a avaliar esta fita.';
+      summary.append(score, count); content.append(summary);
+      if (eligible) appendReviewForm(content, title, eligible);
+      else {
+        const eligibility = document.createElement('p'); eligibility.className = 'panel-copy'; eligibility.textContent = state.member.signedIn ? 'Marque uma devolução desta fita como assistida para publicar uma avaliação.' : 'Entre e marque uma devolução desta fita como assistida para publicar uma avaliação.';
+        content.append(eligibility);
+      }
+      const list = document.createElement('div'); list.className = 'review-list';
+      if (!data.reviews.length) {
+        const empty = document.createElement('p'); empty.className = 'review-empty'; empty.textContent = 'Ainda não há resenhas públicas para esta fita.'; list.append(empty);
+      } else data.reviews.forEach((review) => {
+        const card = document.createElement('article'); card.className = 'review-card';
+        const header = document.createElement('header');
+        const byline = document.createElement('strong'); byline.textContent = `@${review.username}`;
+        const rating = document.createElement('span'); rating.textContent = formatReviewRating(review.rating);
+        const body = document.createElement('p'); body.textContent = review.body;
+        header.append(byline, rating); card.append(header, body); list.append(card);
+      });
+      content.append(list);
+    } catch (error) {
+      content.textContent = error.message || 'Não foi possível carregar as avaliações desta fita.';
+    }
+  }
+
+  async function openTitleReviews(title) {
+    const dialog = $('#title-reviews-dialog');
+    if (!dialog.open) dialog.showModal();
+    await renderTitleReviews(title);
+  }
+
   async function openTitle(title, hydrate = true, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
     const detail = $('#title-detail');
     const token = ++viewerToken;
@@ -1234,7 +1344,10 @@
     });
     const save = document.createElement('button');
     save.type = 'button'; save.textContent = 'Guardar na lista'; save.addEventListener('click', () => saveWatchlist(activeViewerTitle));
-    memberActions.append(basket, save); stage.append(memberActions);
+    const titleReview = document.createElement('button');
+    titleReview.type = 'button'; titleReview.className = 'title-review-action'; titleReview.textContent = '★ Avaliações'; titleReview.setAttribute('aria-label', 'Ver avaliações desta fita');
+    titleReview.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
+    memberActions.append(basket, save, titleReview); stage.append(memberActions);
     detail.append(stage);
     syncTitleBasketAction();
     if (!titleDialog.open) titleDialog.showModal();

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const migration = readFileSync(new URL('../supabase/migrations/20260730_locadora_core.sql', import.meta.url), 'utf8');
 
@@ -29,4 +29,16 @@ test('Supabase return routine completes the watchlist only for watched titles', 
   assert.match(migration, /if p_watched_status = 'watched' then/i);
   assert.match(migration, /completed_at = now\(\)/i);
   assert.match(migration, /enable row level security/i);
+});
+
+test('review migration permits half-star reviews only after a watched return', () => {
+  const reviewMigrationUrl = new URL('../supabase/migrations/20260802_add_title_reviews.sql', import.meta.url);
+  assert.ok(existsSync(reviewMigrationUrl), 'review migration must exist');
+  const reviewMigration = readFileSync(reviewMigrationUrl, 'utf8');
+  assert.match(reviewMigration, /create table public\.reviews/i);
+  assert.match(reviewMigration, /rating numeric\(2, 1\)[\s\S]*rating >= 0\.5[\s\S]*rating <= 5[\s\S]*rating \* 2 = trunc\(rating \* 2\)/i);
+  assert.match(reviewMigration, /create function public\.upsert_review/i);
+  assert.match(reviewMigration, /watched_status = 'watched'/i);
+  assert.match(reviewMigration, /raise exception 'watched_history_required'/i);
+  assert.match(reviewMigration, /create function public\.get_public_title_reviews/i);
 });

@@ -60,9 +60,18 @@
     return body;
   }
 
+  async function publicRequest(path, options = {}) {
+    if (!state.configured) throw new Error('Reviews are not configured yet');
+    const response = await fetch(`${dataApiBase}${path}`, options);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+    return body;
+  }
+
   window.LocadoraAccount = Object.freeze({
     init,
     request,
+    publicRequest,
     state: () => state,
     onChange(listener) { subscribers.add(listener); return () => subscribers.delete(listener); },
     async signIn() { if (!state.configured) throw new Error('Accounts are not configured yet'); await clerk?.openSignIn?.(); },

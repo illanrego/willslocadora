@@ -6,8 +6,11 @@ Clerk owns email/password authentication and browser sessions. This Worker verif
 
 ## Endpoints
 
-All routes require a valid Clerk bearer token and an allowed `Origin`.
+Browser CORS headers are emitted only for allowed origins. All mutation and member-specific routes require a valid Clerk bearer token; public title-review reads intentionally require no bearer token.
 
+- `GET /v1/titles/:type/:tmdbId/reviews` — public aggregate and the 20 most recent public reviews for one canonical movie or series.
+- `GET /v1/titles/:type/:tmdbId/review-eligibility` — verifies the signed-in member has returned that exact title as `watched`.
+- `POST /v1/titles/:type/:tmdbId/review` — creates or replaces the signed-in member’s public written review and `0.5`–`5` half-star rating. The database independently enforces watched-history eligibility.
 - `GET /v1/state` — the member's profile, active watchlist, current rental, and recent return history.
 - `PUT /v1/profile` — creates/updates a lowercase public username.
 - `POST /v1/watchlist` — saves or reactivates a canonical TMDB title.

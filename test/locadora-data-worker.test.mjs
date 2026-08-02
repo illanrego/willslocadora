@@ -59,6 +59,72 @@ test('data Worker returns only the authenticated member state', async () => {
   });
 });
 
+test('data Worker serves public reviews for a canonical title without a Clerk token', async () => {
+  let authenticationAttempts = 0;
+  const calls = [];
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => { authenticationAttempts += 1; return null; },
+    createRepository: () => ({
+      async listPublicTitleReviews(canonicalKey) {
+        calls.push(canonicalKey);
+        return { summary: { averageRating: 4.5, ratingCount: 2 }, reviews: [{ id: 'review-1', username: 'will', rating: 4.5, body: 'Muito bom.', createdAt: '2026-08-02T12:00:00Z' }] };
+      },
+    }),
+  });
+
+  const response = await worker.fetch(jsonRequest('/v1/titles/movie/603/reviews', { token: '' }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+
+  assert.equal(response.status, 200);
+  assert.equal(authenticationAttempts, 0);
+  assert.deepEqual(calls, ['movie:603']);
+  assert.deepEqual(await response.json(), { summary: { averageRating: 4.5, ratingCount: 2 }, reviews: [{ id: 'review-1', username: 'will', rating: 4.5, body: 'Muito bom.', createdAt: '2026-08-02T12:00:00Z' }] });
+});
+
+test('data Worker accepts half-star reviews only from the authenticated member', async () => {
+  const calls = [];
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => 'user_clerk_123',
+    createRepository: () => ({
+      async saveReview(userId, canonicalKey, review) {
+        calls.push({ userId, canonicalKey, review });
+        return { id: 'review-1', username: 'will', ...review, createdAt: '2026-08-02T12:00:00Z', updatedAt: '2026-08-02T12:00:00Z' };
+      },
+    }),
+  });
+
+  const response = await worker.fetch(jsonRequest('/v1/titles/movie/603/review', { method: 'POST', body: { rating: 4.5, body: 'Muito bom.' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+
+  assert.equal(response.status, 201);
+  assert.deepEqual(calls, [{ userId: 'user_clerk_123', canonicalKey: 'movie:603', review: { rating: 4.5, body: 'Muito bom.' } }]);
+  assert.deepEqual(await response.json(), { review: { id: 'review-1', username: 'will', rating: 4.5, body: 'Muito bom.', createdAt: '2026-08-02T12:00:00Z', updatedAt: '2026-08-02T12:00:00Z' } });
+});
+
+test('data Worker checks review eligibility against authenticated watched history', async () => {
+  const calls = [];
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => 'user_clerk_123',
+    createRepository: () => ({
+      async canReviewTitle(userId, canonicalKey) { calls.push({ userId, canonicalKey }); return true; },
+    }),
+  });
+  const response = await worker.fetch(jsonRequest('/v1/titles/series/1396/review-eligibility'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [{ userId: 'user_clerk_123', canonicalKey: 'series:1396' }]);
+  assert.deepEqual(await response.json(), { eligible: true });
+});
+
+test('data Worker rejects non-half-star or blank review submissions before archive writes', async () => {
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => 'user_clerk_123',
+    createRepository: () => ({ saveReview: async () => assert.fail('must not write') }),
+  });
+
+  const response = await worker.fetch(jsonRequest('/v1/titles/movie/603/review', { method: 'POST', body: { rating: 4.2, body: '   ' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: 'A review needs a half-star rating and a short text' });
+});
+
 test('data Worker rejects requests without a valid Clerk token', async () => {
   const worker = createLocadoraDataWorker({
     authenticate: async () => null,

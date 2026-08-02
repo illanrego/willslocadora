@@ -194,6 +194,10 @@ review_report
 
 Ratings/reviews are optional and should be offered during return, never demanded. A user can rent/return without watching and without reviewing. Reviews are public by default and visibly attributed to the author's username; the author may explicitly mark a review private.
 
+### Implemented first review slice
+
+The first delivery is deliberately title-inspector-first: every inspected tape has an indicated `★ Avaliações` action that opens the public rating and review ledger. A review requires a written text and a rating from `0.5` to `5` in `0.5` increments. A member may submit or replace their review only after a server-verified returned `rental_item` for that exact canonical title is marked `watched`; browser state is never trusted as the eligibility proof. Public reads expose only username bylines, rating, display body, and aggregate/title review data. Private visibility, reactions, reports, moderation, edit/delete UI, and display-time curseword masking remain later community work.
+
 ## Recommendation philosophy
 
 No AI is required for MVP. Start deterministic and explainable:

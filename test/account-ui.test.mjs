@@ -77,6 +77,19 @@ test('member rental cards keep covers, details, and Inspect action in separate c
   assert.doesNotMatch(styles, /\.watchlist-item\s*\{\s*grid-template-columns:\s*1fr auto/);
 });
 
+test('tape inspection exposes public half-star reviews and gates the review form on watched history', () => {
+  assert.match(page, /<dialog id="title-reviews-dialog" class="panel-dialog title-reviews-dialog"/);
+  assert.match(page, /id="title-reviews-content"/);
+  assert.match(app, /function openTitleReviews\(title\)/);
+  assert.match(app, /\/v1\/titles\/\$\{route\.type\}\/\$\{route\.tmdbId\}\/reviews/);
+  assert.match(app, /function hasWatchedTitle\(title\)/);
+  assert.match(app, /history\.some\(\(entry\) => entry\.watchedStatus === 'watched'/);
+  assert.match(app, /\/v1\/titles\/\$\{route\.type\}\/\$\{route\.tmdbId\}\/review/);
+  assert.match(app, /titleReview\.textContent = '★ Avaliações'/);
+  assert.match(styles, /\.review-rating-picker/);
+  assert.match(styles, /\.review-card/);
+});
+
 test('account dialog has a member overview with active rentals and expandable history', () => {
   assert.match(page, /id="account-overview"/);
   assert.match(page, /id="account-active-rentals"/);

@@ -176,7 +176,8 @@ test('the member destination is a detailed Member Section rather than a generic 
 
 test('VHS inspection offers the basket as a floating action and labels its tape-back action consistently', () => {
   assert.match(app, /basket\.textContent = 'Botar na cesta';/);
-  assert.match(app, /memberActions\.append\(basket, save\)/);
+  assert.match(app, /memberActions\.append\(basket, save, titleReview\)/);
+  assert.match(app, /titleReview\.textContent = '★ Avaliações';/);
   assert.match(app, /basket\.addEventListener\('click', \(\) => \{[\s\S]*toggleCounter\(current\)/);
   const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
   assert.match(viewer, /atCounter \? copy\.returnTape : copy\.toBasket/);

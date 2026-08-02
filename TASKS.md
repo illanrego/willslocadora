@@ -40,7 +40,8 @@ The public-MVP authority is [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_
 
 - [ ] Provision Clerk + Supabase, set Worker secrets, deploy `locadora-data`, populate `auth-config.js`, and manually playtest the complete live account loop before calling this feature public.
 
-- [ ] Add ratings, public-by-default reviews, private review option, helpful reactions, reports, censorship display, and moderator flow.
+- [~] Title-inspector reviews are implemented locally: public aggregate/recent-review reads; public username bylines; required written text plus `0.5`–`5` half-star ratings; and server-verified eligibility only after the exact title was returned as `watched`. The Supabase migration and `locadora-data` Worker still need authorized deployment and a live browser playtest.
+- [ ] Add private review visibility, helpful reactions, reports, display-time censorship, edit/delete controls, and moderator flow.
 - [ ] Add user-controlled Letterboxd watchlist CSV import and Locadora CSV export.
 - [ ] After the core watchlist is live, add a private owner-only Startpage Worker → separate Locadora integration API; do not put Supabase write secrets in the public read-only Worker or expose it to regular Locadora users.
 
