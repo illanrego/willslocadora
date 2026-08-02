@@ -85,7 +85,14 @@ test('tape inspection exposes public half-star reviews and gates the review form
   assert.match(app, /function hasWatchedTitle\(title\)/);
   assert.match(app, /history\.some\(\(entry\) => entry\.watchedStatus === 'watched'/);
   assert.match(app, /\/v1\/titles\/\$\{route\.type\}\/\$\{route\.tmdbId\}\/review/);
-  assert.match(app, /titleReview\.textContent = '★ Avaliações'/);
+  assert.match(app, /titleReview\.textContent = '★ Avaliações';/);
+  assert.match(app, /utilityActions\.className = 'title-utility-actions';/);
+  assert.match(app, /teaser\.className = 'title-review-teaser';/);
+  assert.match(app, /byline\.textContent = `@\$\{review\.username\} · \$\{formatReviewRating\(review\.rating\)\}`/);
+  assert.match(app, /excerpt\.textContent = reviewExcerpt\(review\.body\)/);
+  assert.match(app, /save\.textContent = 'Adicionar aos favoritos';/);
+  assert.match(styles, /\.title-utility-actions/);
+  assert.match(styles, /\.title-review-teaser/);
   assert.match(styles, /\.review-rating-picker/);
   assert.match(styles, /\.review-card/);
 });

@@ -1214,6 +1214,29 @@
     return Boolean(result.eligible);
   }
 
+  function reviewExcerpt(body, maximum = 160) {
+    const compact = String(body || '').replace(/\s+/g, ' ').trim();
+    return compact.length > maximum ? `${compact.slice(0, maximum).trimEnd()}…` : compact;
+  }
+
+  async function refreshTitleReviewTeaser(title, teaser) {
+    const route = reviewRouteForTitle(title);
+    teaser.hidden = true;
+    teaser.replaceChildren();
+    if (!route) return;
+    try {
+      const data = await window.LocadoraAccount.publicRequest(`/v1/titles/${route.type}/${route.tmdbId}/reviews`);
+      if (activeViewerTitle !== title || !teaser.isConnected) return;
+      const review = data.reviews?.[0];
+      if (!review) return;
+      const byline = document.createElement('strong'); byline.textContent = `@${review.username} · ${formatReviewRating(review.rating)}`;
+      const excerpt = document.createElement('span'); excerpt.textContent = reviewExcerpt(review.body);
+      teaser.setAttribute('aria-label', `Ler avaliação de ${review.username}: ${reviewExcerpt(review.body)}`);
+      teaser.append(byline, excerpt);
+      teaser.hidden = false;
+    } catch { /* The floating controls remain usable if the public review read is unavailable. */ }
+  }
+
   function formatReviewRating(rating) {
     return `${Number(rating).toFixed(1).replace(/\.0$/, '')} ★`;
   }
@@ -1312,6 +1335,8 @@
       if (!titleDialog.open) titleDialog.showModal();
       activeVhsViewer.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
       syncTitleBasketAction();
+      const existingTeaser = detail.querySelector('.title-review-teaser');
+      if (existingTeaser) refreshTitleReviewTeaser(title, existingTeaser);
       if (hydrate) loadTitleMetadata(title).then(() => {
         if (token === viewerToken && titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
       }).catch(() => {});
@@ -1343,11 +1368,19 @@
       activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))));
     });
     const save = document.createElement('button');
-    save.type = 'button'; save.textContent = 'Guardar na lista'; save.addEventListener('click', () => saveWatchlist(activeViewerTitle));
+    save.type = 'button'; save.textContent = 'Adicionar aos favoritos'; save.setAttribute('aria-label', 'Adicionar esta fita aos favoritos'); save.addEventListener('click', () => saveWatchlist(activeViewerTitle));
+    const utilityActions = document.createElement('div');
+    utilityActions.className = 'title-utility-actions';
     const titleReview = document.createElement('button');
     titleReview.type = 'button'; titleReview.className = 'title-review-action'; titleReview.textContent = '★ Avaliações'; titleReview.setAttribute('aria-label', 'Ver avaliações desta fita');
     titleReview.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
-    memberActions.append(basket, save, titleReview); stage.append(memberActions);
+    const teaser = document.createElement('button');
+    teaser.type = 'button'; teaser.className = 'title-review-teaser'; teaser.hidden = true;
+    teaser.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
+    memberActions.append(basket);
+    utilityActions.append(save, titleReview, teaser);
+    stage.append(memberActions, utilityActions);
+    refreshTitleReviewTeaser(title, teaser);
     detail.append(stage);
     syncTitleBasketAction();
     if (!titleDialog.open) titleDialog.showModal();
@@ -1380,7 +1413,7 @@
       if (token !== viewerToken) return;
       stage.classList.add('vhs-stage-error');
       const notice = document.createElement('p'); notice.textContent = `The 3D tape could not be loaded: ${error.message}`;
-      stage.replaceChildren(notice, memberActions);
+      stage.replaceChildren(notice, memberActions, utilityActions);
       return;
     }
 

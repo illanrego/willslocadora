@@ -413,10 +413,16 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .account-history summary { cursor: pointer; }
 .account-history-more { width: 100%; min-height: 38px; margin: .25rem 0 .75rem; border: 1px solid #6a5547; color: var(--cream); background: transparent; cursor: pointer; font: 900 .62rem/1 "Courier New", monospace; text-transform: uppercase; }
 .title-member-actions { position: absolute; z-index: 3; left: .75rem; bottom: .75rem; display: flex; gap: .4rem; }
-.title-member-actions button { min-height: 34px; padding: .4rem .55rem; border: 1px solid rgba(231,216,177,.55); color: var(--cream); background: rgba(16,24,39,.88); font: 900 .58rem/1 "Courier New", monospace; text-transform: uppercase; cursor: pointer; }
-.title-member-actions button:hover, .title-member-actions button:focus-visible { color: var(--ink); background: var(--yellow); outline: 0; }
+.title-member-actions button, .title-utility-actions button { min-height: 34px; padding: .4rem .55rem; border: 1px solid rgba(231,216,177,.55); color: var(--cream); background: rgba(16,24,39,.92); font: 900 .58rem/1 "Courier New", monospace; text-transform: uppercase; cursor: pointer; }
+.title-member-actions button:hover, .title-member-actions button:focus-visible, .title-utility-actions button:hover, .title-utility-actions button:focus-visible { color: var(--ink); background: var(--yellow); outline: 0; }
 .title-member-actions .title-basket-action { color: var(--ink); background: var(--yellow); }
-.title-member-actions .title-review-action { color: #1b1612; background: #e7d8b1; border-color: var(--yellow); }
+.title-utility-actions { position: absolute; z-index: 3; top: 50%; right: clamp(.75rem, 5vw, 4rem); display: grid; width: min(220px, 32vw); gap: .4rem; transform: translateY(-50%); }
+.title-utility-actions > button { width: 100%; text-align: left; box-shadow: 3px 4px 0 rgba(0,0,0,.45); }
+.title-utility-actions .title-review-action { color: #1b1612; background: #e7d8b1; border-color: var(--yellow); }
+.title-review-teaser { display: grid; gap: .35rem; color: #e7d8b1 !important; text-transform: none !important; }
+.title-review-teaser strong { color: var(--yellow); font-size: .64rem; }
+.title-review-teaser span { display: -webkit-box; overflow: hidden; color: #e7d8b1; font: 700 .68rem/1.35 Arial, sans-serif; letter-spacing: normal; text-transform: none; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+@media (max-width: 560px) { .title-utility-actions { top: auto; right: .75rem; bottom: 3.9rem; width: min(190px, calc(100vw - 1.5rem)); transform: none; } .title-review-teaser span { -webkit-line-clamp: 2; } }
 .title-reviews-dialog { width: min(680px, calc(100% - 2rem)); }
 .review-summary { margin: 1rem 0; padding: .8rem; border: 2px solid #715842; background: #17110e; box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 4px 0 rgba(0,0,0,.28); }
 .review-summary strong { color: var(--yellow); font: 900 1.6rem/1 Impact, sans-serif; }
