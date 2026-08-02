@@ -1379,6 +1379,7 @@
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
     $('#balcony-toggle').addEventListener('click', () => setMode('balcony'));
+    $('#balcony-search-open').addEventListener('click', openBalconySearch);
     $('#balcony-return-shelf').addEventListener('click', () => setMode('immersive'));
     $('#balcony-panel-open').addEventListener('click', openRentalDesk);
     $('#balcony-search-form').addEventListener('submit', (event) => { event.preventDefault(); searchBalconyCatalogue(); });

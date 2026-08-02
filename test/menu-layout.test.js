@@ -75,6 +75,12 @@ test('the normal header opens Cesta first and reaches the 2D Balcony through its
   assert.match(app, /function takeBasketToCounter\(\)[\s\S]*openRentalDesk\(\)/);
 });
 
+
+test('the normal header opens Balcony catalogue search without requiring a Cesta selection', () => {
+  assert.match(page, /id="balcony-search-open"[^>]*>Pesquisar no Balcão<\/button>/);
+  assert.match(app, /\$\('#balcony-search-open'\)\.addEventListener\('click', openBalconySearch\)/);
+});
+
 test('Balcão decisions use a temporary subset instead of deleting titles from Cesta', () => {
   assert.match(app, /let balconySelection = null/);
   assert.match(app, /function beginCounterDecision\(\)[\s\S]*prepareCounterSelection\(state\.counter\)/);
