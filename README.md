@@ -1,5 +1,8 @@
 # Will’s Locadora
 
+![Will's Locadora — VHS storefront](docs/screenshot.png)
+
+
 A free, Brazil-first online video-rental discovery experience: browse films as VHS, build a small rental selection, and open known titles in the visitor’s own Stremio app. Locadora is not a player and never promises playback.
 
 ## Current status
