@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17120f">
   <title>Will's Locadora — Pick a year. Find a tape.</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="256x256" href="/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -22,7 +25,7 @@
             <span data-i18n="basket">Cesta</span> <span id="counter-count" aria-label="items in basket">0</span>
           </button>
           <button class="utility-button" id="balcony-search-open" type="button" aria-controls="balcony-search-dialog">Pesquisar no Balcão</button>
-          <button id="watchlist-open" class="utility-button header-icon-button" type="button" aria-label="Minha lista" title="Minha lista">
+          <button id="watchlist-open" class="utility-button header-icon-button" type="button" aria-label="Assistir depois e Favoritos" title="Assistir depois e Favoritos">
             <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
           </button>
           <button id="account-open" class="utility-button header-icon-button" type="button" aria-label="Minha conta" title="Minha conta">
@@ -107,7 +110,10 @@
         </div>
         <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" hidden>← Previous stand</button>
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
-        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog">Cesta <span id="immersive-basket-count">0</span></button>
+        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog" aria-label="Abrir Cesta" title="Abrir Cesta">
+          <svg class="basket-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M5 8h14l-1 12H6L5 8Zm3 0a4 4 0 0 1 8 0M9 12v4m6-4v4"/></svg>
+          <span id="immersive-basket-count">0</span>
+        </button>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
             <div class="immersive-browse-controls">
@@ -203,7 +209,7 @@
         </header>
         <div id="balcony-stage" class="balcony-stage"></div>
         <div class="balcony-member-actions">
-          <button id="balcony-watchlist-open" type="button">Minha lista</button>
+          <button id="balcony-watchlist-open" type="button">Salvos</button>
           <button id="balcony-account-open" type="button">Minha conta</button>
         </div>
       </section>
@@ -251,7 +257,7 @@
       <div class="member-stats" aria-label="Resumo da conta">
         <div><strong id="account-active-count">0/3</strong><span>Fitas alugadas</span></div>
         <div><strong id="account-history-count">0</strong><span>Registros recentes</span></div>
-        <div><strong id="account-watchlist-count">0</strong><span>Na minha lista</span></div>
+        <div><strong id="account-watchlist-count">0</strong><span>Itens salvos</span></div>
       </div>
       <section class="account-rentals" aria-labelledby="account-active-heading">
         <h3 id="account-active-heading">Fitas alugadas</h3>
@@ -267,13 +273,17 @@
     <button id="account-sign-out" class="account-action" type="button" hidden>Sair</button>
   </dialog>
 
-  <dialog id="watchlist-dialog" class="panel-dialog">
+  <dialog id="watchlist-dialog" class="panel-dialog saved-collections-dialog">
     <form method="dialog" class="panel-header">
-      <div><span class="eyebrow">PRATELEIRA PESSOAL</span><h2>Minha lista</h2></div>
-      <button class="dialog-close" value="close" aria-label="Close watchlist">×</button>
+      <div><span class="eyebrow">PRATELEIRAS PESSOAIS</span><h2>Salvos</h2></div>
+      <button class="dialog-close" value="close" aria-label="Close saved collections">×</button>
     </form>
+    <div class="saved-collection-tabs" role="tablist" aria-label="Coleções salvas">
+      <button id="saved-watch-later-tab" type="button" role="tab" aria-selected="true" aria-controls="watchlist-list" data-collection="watch_later"><span aria-hidden="true">＋</span> Assistir depois</button>
+      <button id="saved-favorites-tab" type="button" role="tab" aria-selected="false" aria-controls="watchlist-list" data-collection="favorite"><span aria-hidden="true">★</span> Favoritos</button>
+    </div>
     <p id="watchlist-status" class="panel-copy" role="status" aria-live="polite"></p>
-    <div id="watchlist-list" class="counter-list"></div>
+    <div id="watchlist-list" class="counter-list" role="tabpanel"></div>
   </dialog>
 
   <dialog id="basket-added-dialog" class="panel-dialog basket-added-dialog" aria-labelledby="basket-added-heading">

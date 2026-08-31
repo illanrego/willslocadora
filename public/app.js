@@ -34,7 +34,7 @@
     counter: initialRental.counter,
     // Anonymous browsing can stage titles at the counter, but rentals/history are server-owned after sign-in.
     rental: { rented: null, returned: [] },
-    member: { configured: false, signedIn: false, profile: null, watchlist: [], history: [], historyHasMore: false },
+    member: { configured: false, signedIn: false, profile: null, watchlist: [], savedTitles: [], history: [], historyHasMore: false },
     request: null,
     stand: 0,
     metadata: new Map(),
@@ -58,6 +58,7 @@
   let immersiveToken = 0;
   let balcony = null;
   let returnToBalconySearch = false;
+  let inspectionOrigin = null;
   let usernameAvailabilityTimer = 0;
   let usernameAvailabilityToken = 0;
   let pendingRental = false;
@@ -158,7 +159,11 @@
   }
 
   function applyMemberData(data) {
-    state.member = { ...state.member, profile: data.profile, watchlist: data.watchlist || [], history: data.history || [], historyHasMore: Boolean(data.historyHasMore) };
+    const savedTitles = Array.isArray(data.savedTitles)
+      ? data.savedTitles
+      : Object.values(data.collections || {}).flat();
+    const watchlist = data.watchlist || data.collections?.watch_later || [];
+    state.member = { ...state.member, profile: data.profile, watchlist, savedTitles, history: data.history || [], historyHasMore: Boolean(data.historyHasMore) };
     const activeTitles = (data.activeRental?.items || []).map(localRentalTitle);
     state.rental.rented = data.activeRental && activeTitles.length ? { id: data.activeRental.id, titles: activeTitles } : null;
     state.rental.returned = (data.history || []).map(localRentalTitle);
@@ -215,7 +220,7 @@
     image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL;
   }
 
-  function accountTitleItem(title, meta) {
+  function accountTitleItem(title, meta, origin = { source: 'account_active', dialogId: 'account-dialog' }) {
     const memberTitle = memberTitleForViewer(title);
     const item = document.createElement('article'); item.className = 'counter-item account-title-item';
     const text = document.createElement('div');
@@ -226,9 +231,17 @@
     image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
     refreshAccountTitleCard(memberTitle, meta, { image, name, detail });
     const inspect = document.createElement('button');
-    inspect.className = 'account-title-inspect'; inspect.type = 'button'; inspect.textContent = 'Inspecionar';
+    inspect.className = 'account-title-inspect'; inspect.id = `${origin.source}-inspect-${title.tmdbId || title.id}`; inspect.type = 'button'; inspect.textContent = 'Inspecionar';
     inspect.addEventListener('click', async () => {
-      inspect.disabled = true;
+      inspectionOrigin = {
+        source: origin.source,
+        dialogId: origin.dialogId || '',
+        focusId: inspect.id,
+        scrollTop: origin.dialogId ? $(`#${origin.dialogId}`)?.scrollTop || 0 : 0,
+        mode: state.mode,
+      };
+      const sourceDialog = origin.dialogId ? $(`#${origin.dialogId}`) : null;
+      sourceDialog?.close();
       try { await loadTitleMetadata(memberTitle); }
       catch { /* The branded fallback remains usable when metadata is unavailable. */ }
       finally {
@@ -256,14 +269,14 @@
     const rental = state.rental.rented;
     $('#account-active-count').textContent = `${rental?.titles.length || 0}/3`;
     $('#account-history-count').textContent = String(history.length);
-    $('#account-watchlist-count').textContent = String(state.member.watchlist.length);
+    $('#account-watchlist-count').textContent = String(new Set((state.member.savedTitles.length ? state.member.savedTitles : state.member.watchlist).map(canonicalTitleKey)).size);
     const active = $('#account-active-rentals'); active.replaceChildren();
     if (!rental?.titles.length) active.textContent = 'Nenhuma fita alugada agora.';
-    else active.append(...rental.titles.map((title) => accountTitleItem(title, `alugada em ${accountDate(title.rentedAt)}`)));
+    else active.append(...rental.titles.map((title) => accountTitleItem(title, `alugada em ${accountDate(title.rentedAt)}`, { source: 'account_active', dialogId: 'account-dialog' })));
     $('#account-return-counter').hidden = !rental?.titles.length;
     const historyList = $('#account-history'); historyList.replaceChildren();
     if (!history.length) historyList.textContent = 'Ainda não há devoluções no seu histórico.';
-    else historyList.append(...history.map((title) => accountTitleItem(title, `${title.watchedStatus === 'watched' ? 'assistida' : title.watchedStatus === 'not_watched' ? 'não assistida' : 'sem confirmação'} · devolvida em ${accountDate(title.returnedAt)}`)));
+    else historyList.append(...history.map((title) => accountTitleItem(title, `${title.watchedStatus === 'watched' ? 'assistida' : title.watchedStatus === 'not_watched' ? 'não assistida' : 'sem confirmação'} · devolvida em ${accountDate(title.returnedAt)}`, { source: 'history', dialogId: 'account-dialog' })));
     $('#account-history-more').hidden = !historyHasMore;
   }
 
@@ -301,38 +314,125 @@
     }
   }
 
+  let activeSavedCollection = 'watch_later';
+
+  function canonicalTitleKey(title) {
+    const id = String(title?.id || title?.tmdbId || title?.tmdb_id || '').replace(/^tmdb:/, '');
+    return title?.type && id ? `${title.type}:${id}` : '';
+  }
+
+  function savedTitleCollections(title) {
+    const key = canonicalTitleKey(title);
+    const collections = new Set();
+    const saved = state.member.savedTitles.length ? state.member.savedTitles : state.member.watchlist.map((item) => ({ ...item, collection: 'watch_later' }));
+    saved.forEach((item) => {
+      if (canonicalTitleKey(item) !== key) return;
+      if (Array.isArray(item.collections)) item.collections.forEach((collection) => collections.add(collection));
+      else if (['watch_later', 'favorite'].includes(item.collection)) collections.add(item.collection);
+    });
+    return collections;
+  }
+
+  function savedCollectionEntries(collection) {
+    const entries = [];
+    const seen = new Set();
+    const saved = state.member.savedTitles.length ? state.member.savedTitles : state.member.watchlist.map((item) => ({ ...item, collection: 'watch_later' }));
+    saved.forEach((item) => {
+      const memberships = Array.isArray(item.collections) ? item.collections : [item.collection || 'watch_later'];
+      if (!memberships.includes(collection)) return;
+      const key = canonicalTitleKey(item);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      entries.push(item);
+    });
+    return entries;
+  }
+
+  function renderSavedTabs() {
+    document.querySelectorAll('.saved-collection-tabs [data-collection]').forEach((tab) => {
+      const selected = tab.dataset.collection === activeSavedCollection;
+      tab.setAttribute('aria-selected', String(selected));
+      tab.classList.toggle('is-active', selected);
+    });
+  }
+
+  function syncTitleSavedActions() {
+    if (!activeViewerTitle) return;
+    const collections = savedTitleCollections(activeViewerTitle);
+    document.querySelectorAll('[data-saved-collection]').forEach((button) => {
+      const collection = button.dataset.savedCollection;
+      const active = collections.has(collection);
+      button.setAttribute('aria-pressed', String(active));
+      button.classList.toggle('is-active', active);
+      button.textContent = collection === 'favorite' ? '★' : '＋';
+      button.setAttribute('aria-label', `${active ? 'Remover' : 'Adicionar'} ${collection === 'favorite' ? 'dos Favoritos' : 'de Assistir depois'}`);
+    });
+  }
+
+  function createSavedActions(title) {
+    const actions = document.createElement('div');
+    actions.className = 'saved-row-actions';
+    const collections = savedTitleCollections(title);
+    for (const [collection, symbol, label] of [['watch_later', '＋', 'Assistir depois'], ['favorite', '★', 'Favoritos']]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'saved-icon-action';
+      button.textContent = symbol;
+      button.setAttribute('aria-pressed', String(collections.has(collection)));
+      button.setAttribute('aria-label', `${collections.has(collection) ? 'Remover' : 'Adicionar'} ${label}: ${title.name}`);
+      button.addEventListener('click', () => saveTitleCollection(title, collection));
+      actions.append(button);
+    }
+    return actions;
+  }
+
   function renderWatchlist() {
     const list = $('#watchlist-list');
     list.replaceChildren();
+    renderSavedTabs();
     if (!state.member.signedIn) {
-      $('#watchlist-status').textContent = state.member.configured ? 'Entre para abrir sua prateleira pessoal.' : 'A prateleira pessoal será ativada quando as contas forem configuradas.';
+      $('#watchlist-status').textContent = state.member.configured ? 'Entre para abrir suas prateleiras pessoais.' : 'As prateleiras pessoais serão ativadas quando as contas forem configuradas.';
       return;
     }
-    $('#watchlist-status').textContent = state.member.profile ? `${state.member.watchlist.length} título(s) guardado(s).` : 'Escolha um nome público antes de guardar títulos.';
-    if (!state.member.watchlist.length) { list.textContent = 'Sua prateleira está vazia.'; return; }
-    state.member.watchlist.forEach((title) => {
-      const item = document.createElement('article'); item.className = 'counter-item watchlist-item';
-      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name;
-      const meta = document.createElement('time'); meta.dateTime = title.addedAt; meta.textContent = `${title.year || '—'} · ${title.type}`;
-      text.append(name, meta);
-      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitle(localRentalTitle(title)));
-      item.append(text, inspect); list.append(item);
+    const label = activeSavedCollection === 'favorite' ? 'Favoritos' : 'Assistir depois';
+    const entries = savedCollectionEntries(activeSavedCollection);
+    $('#watchlist-status').textContent = state.member.profile ? `${entries.length} título(s) em ${label}.` : 'Escolha um nome público antes de guardar títulos.';
+    if (!entries.length) { list.textContent = `${label} está vazia.`; return; }
+    entries.forEach((title) => {
+      const item = document.createElement('article'); item.className = 'counter-item saved-title-item';
+      const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
+      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('time'); meta.dateTime = title.addedAt || ''; meta.textContent = `${title.year || '—'} · ${title.type}`; text.append(name, meta);
+      const actions = document.createElement('div'); actions.className = 'saved-title-actions';
+      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `${activeSavedCollection}-inspect-${title.tmdbId || title.id}`; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitleFromOrigin(localRentalTitle(title), { source: activeSavedCollection, dialogId: 'watchlist-dialog', focusId: inspect.id }));
+      const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'saved-icon-action'; toggle.textContent = activeSavedCollection === 'favorite' ? '★' : '＋'; toggle.setAttribute('aria-label', `${activeSavedCollection === 'favorite' ? 'Remover dos favoritos' : 'Remover de Assistir depois'}: ${title.name}`); toggle.setAttribute('aria-pressed', 'true'); toggle.addEventListener('click', () => saveTitleCollection(title, activeSavedCollection));
+      actions.append(toggle, inspect); item.append(image, text, actions); list.append(item);
     });
   }
 
   function openAccount(message = '') { renderAccount(); if (message) $('#account-status').textContent = message; if (!$('#account-dialog').open) $('#account-dialog').showModal(); }
-  function openWatchlist() { renderWatchlist(); if (!$('#watchlist-dialog').open) $('#watchlist-dialog').showModal(); }
+  function openWatchlist() { activeSavedCollection = 'watch_later'; renderWatchlist(); if (!$('#watchlist-dialog').open) $('#watchlist-dialog').showModal(); }
 
-  async function saveWatchlist(title) {
+  async function saveTitleCollection(title, collection) {
+    if (!['watch_later', 'favorite'].includes(collection)) return;
     try {
       requireMember();
       const remote = serializeRentalTitle(title);
       if (!remote) throw new Error('This title does not have a canonical TMDB record yet');
-      await window.LocadoraAccount.request('/v1/watchlist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: remote, source: 'locadora' }) });
+      const active = savedTitleCollections(title).has(collection);
+      const path = active
+        ? `/v1/collections/${collection}/${remote.type}/${remote.tmdbId}`
+        : `/v1/collections/${collection}`;
+      await window.LocadoraAccount.request(path, active
+        ? { method: 'DELETE' }
+        : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: remote, collection, source: 'locadora' }) });
       await refreshMemberData();
-      openWatchlist();
+      renderWatchlist();
+      syncTitleSavedActions();
     } catch (error) { openAccount(error.message); }
   }
+
+  function saveWatchlist(title) { return saveTitleCollection(title, 'watch_later'); }
+
 
   async function initMemberAccount() {
     try {
@@ -347,7 +447,7 @@
         memberSessionVersion += 1;
         pendingReturns.clear();
         const signedOut = state.member.signedIn && !next.signedIn;
-        state.member = { ...state.member, ...next, ...(signedOut ? { profile: null, watchlist: [], history: [], historyHasMore: false } : {}) };
+        state.member = { ...state.member, ...next, ...(signedOut ? { profile: null, watchlist: [], savedTitles: [], history: [], historyHasMore: false } : {}) };
         if (signedOut) {
           state.rental = { rented: null, returned: [] };
           pendingRental = false;
@@ -433,7 +533,7 @@
         const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
         const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.type === 'series' ? t('series') : t('movies')} · ${title.year || '—'}`; text.append(name, meta);
         const actions = document.createElement('div'); actions.className = 'return-choices';
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToBalconySearch = true; balconySearchDialog.close(); openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); });
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `search-inspect-${title.type}-${title.id}`; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToBalconySearch = true; openTitleFromOrigin(title, { source: 'search', dialogId: 'balcony-search-dialog', focusId: inspect.id }, true, posterTextureUrl(title.poster || posterFallback(title))); });
         const add = document.createElement('button'); add.type = 'button'; add.className = 'primary-inline-action'; add.dataset.titleKey = `${title.type}:${title.id}`; add.textContent = isAtCounter(title) ? 'Tirar da cesta' : 'Botar na cesta'; add.disabled = !isAtCounter(title) && state.counter.length >= MAX_CESTA_TITLES; add.addEventListener('click', () => {
           const result = toggleCounter(title);
           const selectedKeys = new Set(state.counter.map((item) => `${item.type}:${item.id}`));
@@ -444,7 +544,7 @@
           });
           status.textContent = basketMessage(result.reason);
         });
-        actions.append(inspect, add); item.append(image, text, actions); results.append(item);
+        actions.append(inspect, add, createSavedActions(title)); item.append(image, text, actions); results.append(item);
       });
     } catch { status.textContent = state.locale === 'pt-BR' ? 'O catálogo está indisponível agora.' : 'The catalogue is unavailable right now.'; }
   }
@@ -574,7 +674,7 @@
       letterboxd.href = createLetterboxdUrl(title);
       letterboxd.setAttribute('aria-label', `Open ${title.name} on Letterboxd`);
       button.setAttribute('aria-label', `Inspect ${title.name}, ${title.year || 'year unknown'}`);
-      button.addEventListener('click', () => openTitle(title, true, posterTextureUrl(image.currentSrc || image.src)));
+      button.addEventListener('click', () => openTitleFromOrigin(title, { source: 'shelf', mode: state.mode }, true, posterTextureUrl(image.currentSrc || image.src)));
       article.dataset.titleId = title.id;
       grid.append(node);
     });
@@ -645,7 +745,7 @@
       container: stage,
       titles: immersiveTitles(),
       heading: `${genreLabel(genres[state.genreIndex])} · ${state.year}`,
-      onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
+      onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'shelf', mode: 'immersive' }, true, posterUrl),
     });
     $('#immersive-status').textContent = '3D is unavailable. Showing tape fronts instead.';
     syncImmersiveStandControls();
@@ -668,7 +768,7 @@
         type: state.type,
         stand: state.stand,
         ...immersiveVisuals(),
-        onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
+        onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'shelf', mode: 'immersive' }, true, posterUrl),
       });
       stage.querySelector('.immersive-canvas')?.focus();
       $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
@@ -763,7 +863,7 @@
       balcony?.dispose();
       balcony = null;
       $('#balcony-stage').replaceChildren();
-      setImmersiveHudCollapsed(false);
+      setImmersiveHudCollapsed(true);
       mountImmersive();
     }
     else if (isBalcony) {
@@ -1071,7 +1171,7 @@
     const list = $('#rental-confirmation-list');
     const titles = state.rental.rented?.titles || (rental?.rental?.items || []).map(localRentalTitle);
     $('#rental-confirmation-status').textContent = `${titles.length} ${titles.length === 1 ? 'fita está' : 'fitas estão'} no seu pacote ativo. Boa sessão — você pode devolver tudo no Balcão depois.`;
-    list.replaceChildren(...titles.map((title) => accountTitleItem(title, 'na sacola')));
+    list.replaceChildren(...titles.map((title) => accountTitleItem(title, 'na sacola', { source: 'rental_confirmation', dialogId: 'rental-confirmation-dialog' })));
     if ($('#balcony-dialog').open) $('#balcony-dialog').close();
     if (!dialog.open) dialog.showModal();
   }
@@ -1084,7 +1184,7 @@
       container: stage,
       titles,
       heading: 'Balcão · tape fronts',
-      onSelect: (title, posterUrl) => openTitle(title, true, posterUrl),
+      onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'balcony', mode: 'balcony' }, true, posterUrl),
       onAction: openRentalDesk,
       onSearch: openBalconySearch,
       actionLabel: state.locale === 'pt-BR' ? 'Abrir controles do balcão' : 'Open counter controls',
@@ -1162,9 +1262,9 @@
       const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
       const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · ${title.type === 'series' ? 'Série' : 'Filme'}`; text.append(name, meta);
       const actions = document.createElement('div'); actions.className = 'return-choices';
-      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Ver fita'; inspect.addEventListener('click', () => openTitle(title));
+      const inspect = document.createElement('button'); inspect.id = `balcony-inspect-${title.type}-${title.id}`; inspect.type = 'button'; inspect.textContent = 'Ver fita'; inspect.addEventListener('click', () => openTitleFromOrigin(title, { source: 'balcony', dialogId: 'balcony-dialog', focusId: inspect.id }));
       const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Não levar'; remove.addEventListener('click', () => removeFromCounterDecision(title));
-      actions.append(inspect, remove); item.append(image, text, actions); counterList.append(item);
+      actions.append(inspect, remove, createSavedActions(title)); item.append(image, text, actions); counterList.append(item);
     });
     if (!rented) { rentedList.textContent = 'Nenhum pacote alugado agora.'; renderReturnButton(); return; }
     rented.titles.forEach((title) => {
@@ -1326,6 +1426,34 @@
     await renderTitleReviews(title);
   }
 
+  function openTitleFromOrigin(title, origin = {}, hydrate = true, posterUrl) {
+    const dialog = origin.dialogId ? $(`#${origin.dialogId}`) : null;
+    inspectionOrigin = {
+      source: origin.source || 'shelf',
+      dialogId: origin.dialogId || '',
+      focusId: origin.focusId || '',
+      scrollTop: dialog ? dialog.scrollTop : 0,
+      mode: origin.mode || state.mode,
+    };
+    if (dialog?.open) dialog.close();
+    return openTitle(title, hydrate, posterUrl);
+  }
+
+  function restoreInspectionOrigin() {
+    const origin = inspectionOrigin;
+    inspectionOrigin = null;
+    returnToBalconySearch = false;
+    if (!origin) return;
+    const dialog = origin.dialogId ? $(`#${origin.dialogId}`) : null;
+    if (!dialog) return;
+    if (!dialog.open) dialog.showModal();
+    window.requestAnimationFrame(() => {
+      dialog.scrollTop = origin.scrollTop || 0;
+      const focusTarget = origin.focusId ? document.getElementById(origin.focusId) : null;
+      focusTarget?.focus({ preventScroll: true });
+    });
+  }
+
   async function openTitle(title, hydrate = true, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
     const detail = $('#title-detail');
     const token = ++viewerToken;
@@ -1335,6 +1463,7 @@
       if (!titleDialog.open) titleDialog.showModal();
       activeVhsViewer.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
       syncTitleBasketAction();
+      syncTitleSavedActions();
       const existingTeaser = detail.querySelector('.title-review-teaser');
       if (existingTeaser) refreshTitleReviewTeaser(title, existingTeaser);
       if (hydrate) loadTitleMetadata(title).then(() => {
@@ -1367,8 +1496,19 @@
       toggleCounter(current);
       activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))));
     });
-    const save = document.createElement('button');
-    save.type = 'button'; save.textContent = 'Adicionar aos favoritos'; save.setAttribute('aria-label', 'Adicionar esta fita aos favoritos'); save.addEventListener('click', () => saveWatchlist(activeViewerTitle));
+    const savedActions = document.createElement('div');
+    savedActions.className = 'title-saved-actions';
+    for (const [collection, symbol, label] of [['watch_later', '＋', 'Assistir depois'], ['favorite', '★', 'Favoritos']]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.savedCollection = collection;
+      button.className = 'saved-icon-action';
+      button.textContent = symbol;
+      button.setAttribute('aria-label', `Adicionar a ${label}`);
+      button.setAttribute('aria-pressed', 'false');
+      button.addEventListener('click', () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, collection); });
+      savedActions.append(button);
+    }
     const utilityActions = document.createElement('div');
     utilityActions.className = 'title-utility-actions';
     const titleReview = document.createElement('button');
@@ -1378,11 +1518,12 @@
     teaser.type = 'button'; teaser.className = 'title-review-teaser'; teaser.hidden = true;
     teaser.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
     memberActions.append(basket);
-    utilityActions.append(save, titleReview, teaser);
+    utilityActions.append(savedActions, titleReview, teaser);
     stage.append(memberActions, utilityActions);
     refreshTitleReviewTeaser(title, teaser);
     detail.append(stage);
     syncTitleBasketAction();
+    syncTitleSavedActions();
     if (!titleDialog.open) titleDialog.showModal();
 
     try {
@@ -1451,15 +1592,16 @@
       const actions = document.createElement('div');
       actions.className = 'counter-item-actions';
       const inspect = document.createElement('button');
+      inspect.id = `basket-inspect-${title.type}-${title.id}`;
       inspect.type = 'button';
       inspect.textContent = 'Ver fita';
-      inspect.addEventListener('click', () => openTitle(title));
+      inspect.addEventListener('click', () => openTitleFromOrigin(title, { source: 'cesta', dialogId: 'basket-dialog', focusId: inspect.id }));
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.textContent = 'Tirar';
       remove.setAttribute('aria-label', `Tirar ${title.name} da cesta`);
       remove.addEventListener('click', () => toggleCounter(title));
-      actions.append(inspect, remove);
+      actions.append(inspect, remove, createSavedActions(title));
       item.append(image, text, actions);
       list.append(item);
     });
@@ -1580,6 +1722,10 @@
     });
     titleDialog.addEventListener('close', () => {
       viewerToken += 1;
+      if (inspectionOrigin) {
+        restoreInspectionOrigin();
+        return;
+      }
       if (!returnToBalconySearch) return;
       returnToBalconySearch = false;
       window.requestAnimationFrame(() => openBalconySearch(true));
@@ -1590,6 +1736,8 @@
     $('#take-basket-counter').addEventListener('click', takeBasketToCounter);
     $('#account-return-counter').addEventListener('click', openReturnDesk);
     $('#watchlist-open').addEventListener('click', openWatchlist);
+    $('#saved-watch-later-tab').addEventListener('click', () => { activeSavedCollection = 'watch_later'; renderWatchlist(); });
+    $('#saved-favorites-tab').addEventListener('click', () => { activeSavedCollection = 'favorite'; renderWatchlist(); });
     $('#balcony-watchlist-open').addEventListener('click', openWatchlist);
     $('#immersive-account-open').addEventListener('click', () => openAccount());
     $('#balcony-account-open').addEventListener('click', () => openAccount());

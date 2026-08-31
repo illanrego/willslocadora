@@ -90,7 +90,8 @@ test('tape inspection exposes public half-star reviews and gates the review form
   assert.match(app, /teaser\.className = 'title-review-teaser';/);
   assert.match(app, /byline\.textContent = `@\$\{review\.username\} · \$\{formatReviewRating\(review\.rating\)\}`/);
   assert.match(app, /excerpt\.textContent = reviewExcerpt\(review\.body\)/);
-  assert.match(app, /save\.textContent = 'Adicionar aos favoritos';/);
+  assert.match(app, /savedActions\.className = 'title-saved-actions';/);
+  assert.match(app, /button\.dataset\.savedCollection = collection/);
   assert.match(styles, /\.title-utility-actions/);
   assert.match(styles, /\.title-review-teaser/);
   assert.match(styles, /\.review-rating-picker/);
@@ -186,4 +187,33 @@ test('private account API supports paged history and authenticated username avai
   assert.match(worker, /async listHistory\(userId, offset\)/);
   assert.match(worker, /async isUsernameAvailable\(userId, username\)/);
   assert.match(app, /\/v1\/usernames\/\$\{encodeURIComponent\(username\)\}/);
+});
+
+test('title inspection records a source and restores that source after closing', () => {
+  assert.match(app, /let inspectionOrigin = null/);
+  assert.match(app, /function openTitleFromOrigin\(title, origin/);
+  assert.match(app, /let inspectionOrigin = null/);
+  assert.match(app, /function openTitleFromOrigin\(title, origin/);
+  assert.match(app, /inspectionOrigin = \{/);
+  assert.match(app, /function restoreInspectionOrigin\(\)/);
+  assert.match(app, /origin\.dialogId/);
+  assert.match(app, /origin\.focusId/);
+  assert.match(app, /origin\.scrollTop/);
+});
+
+test('all list-origin title actions use the shared inspection entry point', () => {
+  assert.match(app, /openTitleFromOrigin\(localRentalTitle\(title\), \{ source: activeSavedCollection/);
+  assert.match(app, /activeSavedCollection = 'favorite'/);
+  assert.match(app, /openTitleFromOrigin\(title, \{ source: 'cesta'/);
+  assert.match(app, /openTitleFromOrigin\(title, \{ source: 'balcony'/);
+});
+
+test('saved collections expose independent Assistir depois and Favoritos controls', () => {
+  assert.match(page, /id="saved-watch-later-tab"/);
+  assert.match(page, /id="saved-favorites-tab"/);
+  assert.match(app, /function saveTitleCollection\(title, collection\)/);
+  assert.match(app, /!\['watch_later', 'favorite'\]\.includes\(collection\)/);
+  assert.match(app, /Object\.values\(data\.collections \|\| \{\}\)\.flat\(\)/);
+  assert.match(app, /`\/v1\/collections\/\$\{collection\}`/);
+  assert.match(app, /aria-pressed/);
 });

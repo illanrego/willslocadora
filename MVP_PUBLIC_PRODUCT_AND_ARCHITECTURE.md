@@ -63,7 +63,7 @@ Require an account only for actions that need durable personal data:
 - renting titles;
 - returning a rental;
 - recording watched/not watched;
-- saving a personal watchlist;
+- saving a title to Assistir depois or Favoritos;
 - rating/reviewing;
 - viewing personal rental history.
 
@@ -146,24 +146,25 @@ rental_item
 
 Only one active rental exists per user, with at most three active `rental_item` rows. The title snapshots preserve meaningful rental history even if upstream metadata changes, while `returned_at - rented_at` provides the days held.
 
-### Personal watchlist
+### Personal saved collections
 
 ```text
-watchlist_item
+saved_title_membership
 - id
 - user_id
-- canonical title key (unique per user)
+- canonical title key (unique per user and collection)
 - tmdb_id
 - title_type: movie | series
 - title_title_snapshot
 - release_year_snapshot
+- collection: watch_later | favorite
 - source: locadora | letterboxd | startpage
 - source_note (nullable)
 - added_at
-- completed_at (nullable)
+- completed_at (nullable; meaningful only for watch_later)
 ```
 
-The active watchlist is a special personal shelf between the public shelves and the Balcão. Returning a matching rented title as `watched` automatically completes and removes it from the active watchlist; `not_watched` and `unknown` leave it there. Saving a previously completed title reactivates that same watchlist record rather than creating a duplicate. A saved title is interest, not watched history, rating, or rental history.
+Assistir depois and Favoritos are independent personal shelves between the public shelves and the Balcão. One title may have one membership in each collection without duplicating its canonical title identity. Returning a matching rented title as `watched` automatically completes/removes only its active Assistir depois membership; Favoritos remains unchanged. Returning as `not_watched` or `unknown` leaves Assistir depois active. Re-saving a completed Assistir depois title reactivates its existing membership rather than creating a duplicate. A saved title is interest, not watched history, rating, or rental history. The collection identifiers are also the stable basis for future dedicated immersive stands.
 
 ### Reviews and community
 
@@ -398,14 +399,14 @@ No feature, account, rental history, or recommendation is paywalled in MVP.
 
 ## Balcony visual direction
 
-The Balcony is the next frontend-first, non-free-roam counter experiment. It uses local state to make one active Balcão pile move through `counter → rented → returned`, before the public backend exists. It also holds the distinct voluntary 3D tip jar, a return area, a staff-side CRT counter, and a subtle username/rental-card cue. The CRT visibly says “Clique para pesquisar título”; a physical/visible Balcão action says “Alugar títulos”. The 3D Balcão and its 2D fallback must offer the same rental, search, watchlist, return, and counter actions. The personal watchlist shelf sits between ordinary shelves and the Balcão, with a floating access button beside the CRT. Its detailed visual brief, interaction model, supporter-thank-you outcomes, and local-state acceptance checkpoint are in [`docs/balcony.md`](docs/balcony.md).
+The Balcony is the next frontend-first, non-free-roam counter experiment. It uses local state to make one active Balcão pile move through `counter → rented → returned`, before the public backend exists. It also holds the distinct voluntary 3D tip jar, a return area, a staff-side CRT counter, and a subtle username/rental-card cue. The CRT visibly says “Clique para pesquisar título”; a physical/visible Balcão action says “Alugar títulos”. The 3D Balcão and its 2D fallback must offer the same rental, search, saved-collection, return, and counter actions. The Assistir depois and Favoritos shelves sit between ordinary shelves and the Balcão, with a floating saved-collections access button beside the CRT. Their collection identifiers are designed for future dedicated immersive stands. Its detailed visual brief, interaction model, supporter-thank-you outcomes, and local-state acceptance checkpoint are in [`docs/balcony.md`](docs/balcony.md).
 
 ## MVP scope
 
 Ship when a person can:
 
 1. browse the public GitHub Pages store;
-2. sign in with Clerk email + password and choose a unique public username when they choose to rent, save a watchlist title, or review;
+2. sign in with Clerk email + password and choose a unique public username when they choose to rent, save a title to Assistir depois or Favoritos, or review;
 3. rent and retain up to three active titles without a due date;
 4. return each item as watched, not watched, or unknown;
 5. view their rental history;
@@ -431,8 +432,8 @@ Ship when a person can:
 Resolved MVP decisions:
 
 - The first Letterboxd import is watchlist-only; diary/ratings/reviews are deferred.
-- Active rentals have no due date, allow at most three titles per user, and measure days held from per-title timestamps.
-- The active watchlist is a shelf beside the Balcão. A watched return automatically removes the title; unknown and not-watched returns retain it; re-saving a completed title reactivates its existing record.
-- Startpage-to-Locadora watchlist saving is private owner tooling through a narrow Startpage Worker → separate private Locadora integration API, never the public read-only Worker or a public feature in the first release.
+- Cesta holds up to fifteen candidate titles; active rentals have no due date, allow at most three titles per user, and measure days held from per-title timestamps.
+- Assistir depois and Favoritos are independent saved-title collections. A watched return automatically removes only the matching Assistir depois membership; unknown and not-watched returns retain it; Favoritos remains independent. Collection identifiers are reserved for future dedicated immersive stands.
+- Startpage-to-Locadora Assistir depois saving is private owner tooling through a narrow Startpage Worker → separate private Locadora integration API, never the public read-only Worker or a public feature in the first release.
 - Accounts require a unique public username; reviews are public by default under that username unless the author explicitly marks one private. Email remains private.
 - Ordinary cursewords are automatically censored in displayed review text, not grounds for deleting the review by themselves. Reports go to an admin queue; moderators may hide/remove content for policy violations beyond this automatic censoring.

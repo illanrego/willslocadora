@@ -13,7 +13,7 @@ function corsHeaders(request, env) {
   if (!allowedOrigins(env.ALLOWED_ORIGINS).has(origin)) return {};
   return {
     'access-control-allow-origin': origin,
-    'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
+    'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'access-control-allow-headers': 'authorization, content-type',
     vary: 'origin',
   };
@@ -78,6 +78,10 @@ function mapWatchlistRow(row) {
   return { ...mapTitleRow(row), source: row.source, sourceNote: row.source_note, addedAt: row.added_at, completedAt: row.completed_at };
 }
 
+function mapCollectionRow(row) {
+  return { ...mapWatchlistRow(row), collection: row.collection };
+}
+
 function mapRentalItemRow(row) {
   return { ...mapTitleRow(row), rentedAt: row.rented_at, returnedAt: row.returned_at, watchedStatus: row.watched_status };
 }
@@ -135,9 +139,10 @@ export function createSupabaseRepository(env) {
       databaseError(result.error);
       return { userId: result.data.user_id, username: result.data.username, createdAt: result.data.created_at };
     },
-    async saveWatchlist(userId, title) {
-      const result = await database.rpc('save_watchlist_item', {
+    async saveCollectionMembership(userId, collection, title) {
+      const result = await database.rpc('save_saved_title_membership', {
         p_user_id: userId,
+        p_collection: collection,
         p_canonical_key: title.canonicalKey,
         p_tmdb_id: title.tmdbId,
         p_title_type: title.type,
@@ -147,18 +152,19 @@ export function createSupabaseRepository(env) {
         p_source_note: title.sourceNote,
       }).single();
       databaseError(result.error);
-      return {
-        id: result.data.id,
-        canonicalKey: result.data.canonical_key,
-        tmdbId: result.data.tmdb_id,
-        type: result.data.title_type,
-        name: result.data.title_snapshot,
-        year: result.data.release_year_snapshot,
-        source: result.data.source,
-        sourceNote: result.data.source_note,
-        addedAt: result.data.added_at,
-        completedAt: result.data.completed_at,
-      };
+      return mapCollectionRow(result.data);
+    },
+    async saveWatchlist(userId, title) {
+      const membership = await this.saveCollectionMembership(userId, 'watch_later', title);
+      const { collection, ...watchlistItem } = membership;
+      return watchlistItem;
+    },
+    async removeCollectionMembership(userId, collection, canonicalKey) {
+      const result = await database.rpc('remove_saved_title_membership', {
+        p_user_id: userId, p_collection: collection, p_canonical_key: canonicalKey,
+      });
+      databaseError(result.error);
+      return { removed: Boolean(result.data) };
     },
     async rentTitles(userId, titles) {
       const result = await database.rpc('rent_titles', {
@@ -226,14 +232,18 @@ export function createSupabaseRepository(env) {
     async getState(userId) {
       const [profileResult, watchlistResult, rentalResult, history] = await Promise.all([
         database.from('profiles').select('user_id, username, created_at').eq('user_id', userId).maybeSingle(),
-        database.from('watchlist_items').select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, source, source_note, added_at').eq('user_id', userId).is('completed_at', null).order('added_at', { ascending: false }),
+        database.from('saved_title_memberships').select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, collection, source, source_note, added_at, completed_at').eq('user_id', userId).order('added_at', { ascending: false }),
         database.from('rentals').select('id, opened_at, rental_items(id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at, returned_at, watched_status)').eq('user_id', userId).is('returned_at', null).maybeSingle(),
         this.listHistory(userId, 0),
       ]);
       [profileResult, watchlistResult, rentalResult].forEach(({ error }) => databaseError(error));
       return {
         profile: profileResult.data ? { userId: profileResult.data.user_id, username: profileResult.data.username, createdAt: profileResult.data.created_at } : null,
-        watchlist: (watchlistResult.data || []).map(mapWatchlistRow),
+        watchlist: (watchlistResult.data || []).filter((row) => row.collection === 'watch_later' && !row.completed_at).map(mapWatchlistRow),
+        collections: {
+          watch_later: (watchlistResult.data || []).filter((row) => row.collection === 'watch_later' && !row.completed_at).map(mapCollectionRow),
+          favorite: (watchlistResult.data || []).filter((row) => row.collection === 'favorite').map(mapCollectionRow),
+        },
         activeRental: mapActiveRentalRow(rentalResult.data),
         history: history.history,
         historyHasMore: history.hasMore,
@@ -252,12 +262,15 @@ export function createLocadoraDataWorker({ authenticate = authenticateClerk, cre
       const usernameMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/usernames\/([a-z0-9_-]{3,24})$/) : null;
       const isProfileRequest = request.method === 'PUT' && url.pathname === '/v1/profile';
       const isWatchlistRequest = request.method === 'POST' && url.pathname === '/v1/watchlist';
+      const collectionMatch = url.pathname.match(/^\/v1\/collections\/(watch_later|favorite)(?:\/(movie|series)\/([1-9][0-9]*))?$/);
+      const isCollectionSaveRequest = request.method === 'POST' && collectionMatch && !collectionMatch[2];
+      const isCollectionRemoveRequest = request.method === 'DELETE' && collectionMatch && collectionMatch[2];
       const isRentalRequest = request.method === 'POST' && url.pathname === '/v1/rentals';
       const returnMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/rental-items\/([^/]+)\/return$/) : null;
       const publicReviewsMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/reviews$/) : null;
       const reviewWriteMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/review$/) : null;
       const reviewEligibilityMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/review-eligibility$/) : null;
-      if (!isStateRequest && !isHistoryRequest && !usernameMatch && !isProfileRequest && !isWatchlistRequest && !isRentalRequest && !returnMatch && !publicReviewsMatch && !reviewWriteMatch && !reviewEligibilityMatch) return response(request, env, { error: 'Not found' }, 404);
+      if (!isStateRequest && !isHistoryRequest && !usernameMatch && !isProfileRequest && !isWatchlistRequest && !isCollectionSaveRequest && !isCollectionRemoveRequest && !isRentalRequest && !returnMatch && !publicReviewsMatch && !reviewWriteMatch && !reviewEligibilityMatch) return response(request, env, { error: 'Not found' }, 404);
 
       try {
         const repository = createRepository(env);
@@ -272,6 +285,9 @@ export function createLocadoraDataWorker({ authenticate = authenticateClerk, cre
           return response(request, env, { eligible: await repository.canReviewTitle(userId, canonicalKey) });
         }
         if (isStateRequest) return response(request, env, await repository.getState(userId));
+        if (isCollectionRemoveRequest) {
+          return response(request, env, await repository.removeCollectionMembership(userId, collectionMatch[1], `${collectionMatch[2]}:${collectionMatch[3]}`));
+        }
         if (isHistoryRequest) {
           const offset = Number(url.searchParams.get('offset'));
           if (!Number.isInteger(offset) || offset < 0 || offset > 10000) return response(request, env, { error: 'Invalid history offset' }, 400);
@@ -289,6 +305,11 @@ export function createLocadoraDataWorker({ authenticate = authenticateClerk, cre
           const title = normalizeTitle({ ...body?.title, source: body?.source, sourceNote: body?.sourceNote });
           if (!title) return response(request, env, { error: 'Invalid watchlist title' }, 400);
           return response(request, env, { watchlistItem: await repository.saveWatchlist(userId, title) }, 201);
+        }
+        if (isCollectionSaveRequest) {
+          const title = normalizeTitle({ ...body?.title, source: body?.source, sourceNote: body?.sourceNote });
+          if (!title) return response(request, env, { error: 'Invalid collection title' }, 400);
+          return response(request, env, { membership: await repository.saveCollectionMembership(userId, collectionMatch[1], title) }, 201);
         }
         if (isRentalRequest) {
           const titles = Array.isArray(body?.titles) ? body.titles.map((title) => normalizeTitle(title, { requireSource: false })) : [];

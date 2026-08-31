@@ -21,6 +21,7 @@ function createRepository() {
       return {
         profile: { userId, username: 'will' },
         watchlist: [],
+        collections: { watch_later: [], favorite: [] },
         activeRental: { id: 'rental-1', items: [] },
         history: [],
       };
@@ -54,6 +55,7 @@ test('data Worker returns only the authenticated member state', async () => {
   assert.deepEqual(await response.json(), {
     profile: { userId: 'user_clerk_123', username: 'will' },
     watchlist: [],
+    collections: { watch_later: [], favorite: [] },
     activeRental: { id: 'rental-1', items: [] },
     history: [],
   });
@@ -315,4 +317,27 @@ test('data Worker checks public username availability for the authenticated memb
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { username: 'will_rego', available: true });
+});
+
+test('data Worker saves an independent favorite membership through the collection route', async () => {
+  const calls = [];
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => 'user_clerk_123',
+    createRepository: () => ({
+      async saveCollectionMembership(userId, collection, title) { calls.push({ userId, collection, title }); return { id: 'favorite-1', collection, ...title }; },
+    }),
+  });
+  const response = await worker.fetch(jsonRequest('/v1/collections/favorite', { method: 'POST', body: { title: { tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 }, source: 'locadora' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(response.status, 201);
+  assert.deepEqual(calls, [{ userId: 'user_clerk_123', collection: 'favorite', title: { canonicalKey: 'movie:603', tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999, source: 'locadora', sourceNote: null } }]);
+  assert.deepEqual(await response.json(), { membership: { id: 'favorite-1', collection: 'favorite', canonicalKey: 'movie:603', tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999, source: 'locadora', sourceNote: null } });
+});
+
+test('data Worker removes only the requested private collection membership', async () => {
+  const calls = [];
+  const worker = createLocadoraDataWorker({ authenticate: async () => 'user_clerk_123', createRepository: () => ({ async removeCollectionMembership(...args) { calls.push(args); return { removed: true }; } }) });
+  const response = await worker.fetch(jsonRequest('/v1/collections/favorite/movie/603', { method: 'DELETE' }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [['user_clerk_123', 'favorite', 'movie:603']]);
+  assert.deepEqual(await response.json(), { removed: true });
 });

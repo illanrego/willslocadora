@@ -21,7 +21,7 @@ test('normal browsing keeps compact select controls in the header and streaming 
 
 
 test('watchlist and account use accessible icon buttons that remain visible on phones', () => {
-  assert.match(page, /id="watchlist-open"[^>]*class="utility-button header-icon-button"[^>]*aria-label="Minha lista"[\s\S]*?<svg aria-hidden="true"/);
+  assert.match(page, /id="watchlist-open"[^>]*aria-label="Assistir depois e Favoritos"/);
   assert.match(page, /id="account-open"[^>]*class="utility-button header-icon-button"[^>]*aria-label="Minha conta"[\s\S]*?<svg aria-hidden="true"/);
   assert.match(css, /\.header-actions \.header-icon-button \{ display: inline-grid;/);
   assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*\.header-actions \.header-icon-button \{ display: inline-grid;/);
@@ -138,7 +138,7 @@ test('the rental desk explains the rental-store flow: choose basket, decide at c
 test('rental confirmation uses the same 2D tape cards as the counter rather than a decorative 3D bag', () => {
   assert.doesNotMatch(page, /rental-confirmation-bag/);
   assert.doesNotMatch(page, /rental-confirmation-bag-count/);
-  assert.match(app, /list\.replaceChildren\(\.\.\.titles\.map\(\(title\) => accountTitleItem\(title, 'na sacola'\)\)\)/);
+  assert.match(app, /list\.replaceChildren\(\.\.\.titles\.map\(\(title\) => accountTitleItem\(title, 'na sacola', \{ source: 'rental_confirmation', dialogId: 'rental-confirmation-dialog' \}\)\)\)/);
   assert.match(page, /id="rental-confirmation-home"[^>]*>Voltar para a página inicial<\/button>/);
   assert.doesNotMatch(page, /Close rental confirmation/);
 });
@@ -177,8 +177,8 @@ test('the member destination is a detailed Member Section rather than a generic 
 test('VHS inspection offers the basket as a floating action and labels its tape-back action consistently', () => {
   assert.match(app, /basket\.textContent = 'Botar na cesta';/);
   assert.match(app, /memberActions\.append\(basket\)/);
-  assert.match(app, /utilityActions\.append\(save, titleReview, teaser\)/);
-  assert.match(app, /save\.textContent = 'Adicionar aos favoritos';/);
+  assert.match(app, /utilityActions\.append\(savedActions, titleReview, teaser\)/);
+  assert.match(app, /savedActions\.className = 'title-saved-actions';/);
   assert.match(app, /basket\.addEventListener\('click', \(\) => \{[\s\S]*toggleCounter\(current\)/);
   const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
   assert.match(viewer, /atCounter \? copy\.returnTape : copy\.toBasket/);

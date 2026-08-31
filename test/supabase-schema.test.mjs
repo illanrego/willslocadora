@@ -42,3 +42,16 @@ test('review migration permits half-star reviews only after a watched return', (
   assert.match(reviewMigration, /raise exception 'watched_history_required'/i);
   assert.match(reviewMigration, /create function public\.get_public_title_reviews/i);
 });
+
+test('saved collections migration preserves watchlist rows and isolates collection memberships', () => {
+  const collectionMigration = readFileSync(new URL('../supabase/migrations/20260803_saved_title_collections.sql', import.meta.url), 'utf8');
+  assert.match(collectionMigration, /create table public\.saved_title_memberships/i);
+  assert.match(collectionMigration, /insert into public\.saved_title_memberships[\s\S]*from public\.watchlist_items/i);
+  assert.match(collectionMigration, /'watch_later'/i);
+  assert.match(collectionMigration, /unique \(user_id, canonical_key, collection\)/i);
+  assert.match(collectionMigration, /collection text not null check \(collection in \('watch_later', 'favorite'\)\)/i);
+  assert.match(collectionMigration, /create function public\.save_saved_title_membership/i);
+  assert.match(collectionMigration, /create function public\.remove_saved_title_membership/i);
+  assert.match(collectionMigration, /create or replace function public\.return_rental_item/i);
+  assert.match(collectionMigration, /saved_title_memberships[\s\S]*collection = 'watch_later'/i);
+});

@@ -9,7 +9,7 @@ There is no `Separados` / Picks shelf.
 
 The pre-rental flow has two deliberately separate states:
 
-- **Cesta local:** up to three distinct titles chosen while browsing. It persists locally until a package is rented.
+- **Cesta local:** up to fifteen distinct titles chosen while browsing. It persists locally until the visitor removes titles or the relevant rental flow completes.
 - **Decisão no Balcão:** a temporary copy of the Cesta. Removing a tape here means “não levar hoje” and does not mutate the Cesta itself. Only this temporary subset is sent when the visitor confirms `Alugar pacote`.
 
 A tape reaches Cesta only when the visitor deliberately adds it from a VHS detail view. The normal and immersive Cesta buttons open the same review surface; `Levar ao Balcão` then opens the 2D desk or moves the immersive visitor into the 3D Balcão.
@@ -41,7 +41,7 @@ HISTÓRICO + LISTA ATUALIZADOS
 
 Rules:
 
-- The basket never contains more than three distinct titles.
+- The Cesta never contains more than fifteen distinct titles.
 - Shelf/search titles retain a canonical `tmdb:<id>` rental identity; an IMDb ID is carried separately for Stremio, IMDb, and Letterboxd handoffs.
 - `Alugar pacote` sends the current temporary Balcão subset in one authenticated request and creates one active rental.
 - Removing a tape at the Balcão does not delete it from the local Cesta; abandoning the desk and reopening Cesta restores the full browsing selection.
