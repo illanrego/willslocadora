@@ -103,7 +103,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   box(2.18, .08, .76, new THREE.MeshStandardMaterial({ color: 0xb9b6a8, roughness: .72 }), 0, 0, 0, keyboard);
   const keyMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e0cf, roughness: .62 });
   for (let row = 0; row < 4; row += 1) for (let col = 0; col < 10; col += 1) box(.16, .045, .12, keyMaterial, -.78 + col * .175, .06, -.24 + row * .15, keyboard);
-  const returns = new THREE.Group(); returns.position.set(-5.15, COUNTER_TOP + .525, -.55); room.add(returns);
+  const returns = new THREE.Group(); returns.position.set(-5.15, COUNTER_TOP + .525, -.55); returns.userData.action = 'bag'; room.add(returns);
   const basket = new THREE.Mesh(new THREE.BoxGeometry(2.25, 1.05, 1.3), new THREE.MeshStandardMaterial({ color: 0x8c9aa0, metalness: .72, roughness: .3, wireframe: true })); returns.add(basket);
   const returnLabel = new THREE.Mesh(new THREE.PlaneGeometry(1.9, .38), new THREE.MeshBasicMaterial({ map: labelTexture('DEVOLUÇÕES', { width: 500, height: 110, background: '#9b342a' }) })); returnLabel.position.set(0, .72, .68); returns.add(returnLabel);
   (rental.returned || []).slice(-7).forEach((entry, index) => { const tape = box(.78, .22, .48, dark, -.65 + (index % 3) * .62, -.18 + Math.floor(index / 3) * .21, .05, returns); tape.rotation.y = index * .2; });
@@ -113,7 +113,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   const pixSticker = new THREE.Mesh(new THREE.PlaneGeometry(.68, .8), new THREE.MeshBasicMaterial({ map: pixDemonstrationTexture() })); pixSticker.position.set(0, -.03, .526); jar.add(pixSticker); jar.userData.action = 'tip';
   const donationPlaque = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .3), new THREE.MeshBasicMaterial({ map: labelTexture('DOAÇÕES', { width: 380, height: 90, background: '#31636b' }) })); donationPlaque.position.set(1.28, COUNTER_TOP + .42, .42); room.add(donationPlaque);
   const counterObject = new THREE.Group(); counterObject.position.copy(COUNTER_POSITION); room.add(counterObject);
-  const interactive = [crt, keyboard, jar, awardsFrame]; const clickableCues = [crt, keyboard, jar]; const tapeRecords = [];
+  const interactive = [crt, keyboard, jar, awardsFrame, returns]; const clickableCues = [crt, keyboard, jar, returns]; const tapeRecords = [];
   if (rental.counter.length) {
     const cordMaterial = new THREE.MeshStandardMaterial({ color: 0x2b170d, roughness: .9 });
     box(.035, .7, .035, cordMaterial, -.95, -.45, 1.32, counterObject);

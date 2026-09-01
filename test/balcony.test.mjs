@@ -26,6 +26,13 @@ test('Balcony makes search and current-rental-decision review readable and click
   assert.match(balcony, /hoveredInteractive/);
 });
 
+test('the physical return basket opens the dedicated return window', () => {
+  assert.match(balcony, /returns\.userData\.action = 'bag'/);
+  assert.match(balcony, /const interactive = \[crt, keyboard, jar, awardsFrame, returns\]/);
+  assert.match(balcony, /target\?\.userData\.action === 'bag'\) onBagSelect/);
+  assert.match(page, /id="returns-dialog"/);
+});
+
 test('VHS title viewing has an explicit close control', () => {
   assert.match(page, /id="title-dialog"[\s\S]*aria-label="Close title"/);
 });

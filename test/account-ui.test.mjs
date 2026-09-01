@@ -23,7 +23,7 @@ test('Cesta and Balcão keep review choices separate from the final three-rental
   assert.match(app, /const MAX_CESTA_TITLES = 15/);
   assert.match(app, /function availableRentalSlots\(\)/);
   assert.match(app, /Você ainda pode alugar/);
-  assert.match(app, /Pesquisar título no Balcão/);
+  assert.match(app, /Pesquisar títulos/);
   assert.match(app, /\$\{state\.counter\.length\} de \$\{MAX_CESTA_TITLES\} fitas escolhidas/);
   assert.match(app, /Escolha até \$\{MAX_CESTA_TITLES\} fitas nas estantes/);
   assert.match(app, /image\.src = title\.poster \? posterTextureUrl\(title\.poster\) : COVER_PLACEHOLDER_URL;[\s\S]*image\.addEventListener\('error', \(\) => \{ image\.src = COVER_PLACEHOLDER_URL; \}/);
@@ -43,8 +43,8 @@ test('adding a tape confirms its title in an OK dialog and animates the basket c
 });
 
 
-test('Retirada catalogue search keeps its Cesta action available with active rentals until fifteen titles', () => {
-  const searchStart = app.indexOf('async function searchRetrievalCatalogue()');
+test('catalogue search keeps its Cesta action available with active rentals until fifteen titles', () => {
+  const searchStart = app.indexOf('async function searchCatalog()');
   const searchEnd = app.indexOf('function setYear', searchStart);
   const search = app.slice(searchStart, searchEnd);
   assert.match(search, /state\.counter\.length >= MAX_CESTA_TITLES/);
@@ -119,7 +119,7 @@ test('a rent confirmation interrupted by identity setup resumes the same basket'
 });
 
 test('signed-out rental state clears persisted and 3D Balcony surfaces', () => {
-  assert.match(app, /if \(signedOut\) \{\s*state\.rental = \{ rented: null, returned: \[\] \};\s*pendingRental = false;\s*balconySelection = null;\s*saveCounter\(\);\s*renderBalconyPanel\(\);\s*refreshBalcony\(\);\s*\}/);
+  assert.match(app, /if \(signedOut\) \{\s*state\.rental = \{ rented: null, returned: \[\] \};\s*pendingRental = false;\s*balconySelection = null;\s*saveCounter\(\);\s*renderBalconyPanel\(\);\s*renderReturnPanel\(\);\s*refreshBalcony\(\);\s*\}/);
 });
 
 test('returning rented tapes posts watched outcomes through the shared return submitter', () => {
@@ -147,7 +147,7 @@ test('Minha conta is reachable in immersive modes and routes returns through the
   assert.match(page, /id="balcony-account-open"/);
   assert.match(app, /\$\('#immersive-account-open'\)\.addEventListener\('click', \(\) => openAccount\(\)\)/);
   assert.match(app, /\$\('#balcony-account-open'\)\.addEventListener\('click', \(\) => openAccount\(\)\)/);
-  assert.match(app, /function openReturnDesk\(\)[\s\S]*state\.mode === 'immersive'[\s\S]*setMode\('balcony'\)[\s\S]*openRentalDesk/);
+  assert.match(app, /function openReturnDesk\(\)[\s\S]*state\.mode === 'immersive'[\s\S]*setMode\('balcony'\)[\s\S]*openReturnWindow/);
 });
 
 test('returning rented tapes refreshes canonical state even when only part of the batch succeeds', () => {

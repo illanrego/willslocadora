@@ -24,7 +24,7 @@
           <button class="counter-button" id="counter-open" type="button" aria-controls="basket-dialog">
             <span data-i18n="basket">Cesta</span> <span id="counter-count" aria-label="items in basket">0</span>
           </button>
-          <button class="utility-button" id="retrieval-open" type="button" aria-controls="retrieval-dialog">Retirada</button>
+          <button class="utility-button" id="catalog-search-open" type="button" aria-controls="catalog-search-dialog">Pesquisar títulos</button>
           <button id="watchlist-open" class="utility-button header-icon-button" type="button" aria-label="Assistir depois e Favoritos" title="Assistir depois e Favoritos">
             <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
           </button>
@@ -110,7 +110,7 @@
         </div>
         <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" hidden>← Previous stand</button>
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
-        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog" aria-label="Abrir Retirada e Cesta" title="Abrir Retirada e Cesta">
+        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog" aria-label="Abrir Cesta" title="Abrir Cesta">
           <svg class="basket-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M5 8h14l-1 12H6L5 8Zm3 0a4 4 0 0 1 8 0M9 12v4m6-4v4"/></svg>
           <span id="immersive-basket-count">0</span>
         </button>
@@ -118,7 +118,6 @@
           <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M3 8h18M5 8v11h14V8M8 5h8l2 3H6l2-3Zm-1 14h10"/></svg>
           <span>Balcão</span>
         </button>
-        <button id="immersive-donation-open" class="immersive-donation-button" type="button" aria-controls="retrieval-dialog" aria-label="Doações" title="Doações">♥</button>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
             <div class="immersive-browse-controls">
@@ -318,7 +317,7 @@
     <div class="basket-actions">
       <form method="dialog"><button class="basket-secondary-action" value="browse">Continuar escolhendo</button></form>
       <button id="take-basket-counter" class="balcony-rent-button" type="button">Levar ao Balcão</button>
-      <button id="retirada-tip-jar" class="tip-jar-button" type="button">Doações · manter as luzes acesas</button>
+      <button id="basket-donation" class="tip-jar-button" type="button">Doações · manter as luzes acesas</button>
     </div>
   </dialog>
 
@@ -336,14 +335,23 @@
       </ol>
       <div id="balcony-counter-list" class="counter-list"></div>
       <button id="rent-counter" class="balcony-rent-button balcony-primary-action" type="button">Alugar pacote</button>
-      <button id="retrieval-open-counter" class="counter-search-button" type="button">Abrir espaço de Retirada</button>
+      <button id="catalog-search-open-counter" class="counter-search-button" type="button">Pesquisar títulos</button>
     </section>
+    <button id="tip-jar" class="tip-jar-button" type="button" data-i18n="tipJar">Mantenha as luzes da Locadora acesas.</button>
+  </dialog>
+
+  <dialog id="returns-dialog" class="panel-dialog returns-dialog">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow">BALCÃO · DEVOLUÇÕES</span><h2>Devolver fitas</h2></div>
+      <button class="dialog-close" value="close" aria-label="Fechar devoluções">×</button>
+    </form>
+    <p id="return-panel-status" class="panel-copy" role="status" aria-live="polite"></p>
     <section id="balcony-return-controls" class="balcony-return-controls" aria-labelledby="balcony-return-heading">
       <h3 id="balcony-return-heading" data-i18n="returns">Devoluções</h3>
       <div id="balcony-rented-list" class="counter-list"></div>
       <button id="return-selected-rentals" class="balcony-rent-button balcony-primary-action" type="button" hidden>Devolver fitas selecionadas</button>
     </section>
-    <button id="tip-jar" class="tip-jar-button" type="button" data-i18n="tipJar">Mantenha as luzes da Locadora acesas.</button>
+    <button id="return-tip-jar" class="tip-jar-button" type="button" data-i18n="tipJar">Mantenha as luzes da Locadora acesas.</button>
   </dialog>
 
   <dialog id="rental-confirmation-dialog" class="panel-dialog rental-confirmation-dialog">
@@ -355,18 +363,17 @@
     <form method="dialog"><button id="rental-confirmation-home" class="account-action" value="home">Voltar para a página inicial</button></form>
   </dialog>
 
-  <dialog id="retrieval-dialog" class="panel-dialog retrieval-dialog">
+  <dialog id="catalog-search-dialog" class="panel-dialog catalog-search-dialog">
     <form method="dialog" class="panel-header">
-      <div><span class="eyebrow">ESPAÇO DE RETIRADA</span><h2>Retirada</h2></div>
+      <div><span class="eyebrow">CATÁLOGO GERAL</span><h2>Pesquisar títulos</h2></div>
       <button class="dialog-close" value="close" aria-label="Close catalogue terminal">×</button>
     </form>
-    <form id="retrieval-form" class="source-form">
-      <label for="retrieval-input">Buscar título</label>
-      <div><input id="retrieval-input" type="search" minlength="2" maxlength="80" autocomplete="off" placeholder="Ex.: Matrix"><button type="submit">Buscar</button></div>
+    <form id="catalog-search-form" class="source-form">
+      <label for="catalog-search-input">Buscar título</label>
+      <div><input id="catalog-search-input" type="search" minlength="2" maxlength="80" autocomplete="off" placeholder="Ex.: Matrix"><button type="submit">Buscar</button></div>
     </form>
-    <p id="retrieval-status" class="panel-copy" role="status" aria-live="polite">Digite ao menos duas letras.</p>
-    <div id="retrieval-results" class="counter-list"></div>
-    <button id="retrieval-donation" class="tip-jar-button" type="button">Doações · manter as luzes acesas</button>
+    <p id="catalog-search-status" class="panel-copy" role="status" aria-live="polite">Digite ao menos duas letras.</p>
+    <div id="catalog-search-results" class="counter-list"></div>
   </dialog>
 
   <dialog id="sources-dialog" class="panel-dialog sources-dialog">

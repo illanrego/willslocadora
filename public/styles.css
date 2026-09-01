@@ -764,8 +764,8 @@ dialog.panel-dialog {
   .saved-title-actions button { flex: 1; }
 }
 
-/* Retrieval and rental are separate destinations; both keep support optional. */
-.immersive-balcony-button, .immersive-donation-button {
+/* Rental and return are separate windows; both keep support optional. */
+.immersive-balcony-button {
   position: absolute;
   z-index: 6;
   display: inline-flex;
@@ -785,8 +785,7 @@ dialog.panel-dialog {
 }
 .immersive-balcony-button { bottom: 1rem; left: 5.9rem; padding: .55rem .75rem; }
 .immersive-balcony-button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.immersive-donation-button { top: 1rem; left: 1rem; min-width: 46px; padding: .55rem; color: #ffd8b0; border-color: #c87f55; background: rgba(74,31,31,.92); font-size: 1rem; }
-.immersive-balcony-button:hover, .immersive-balcony-button:focus-visible, .immersive-donation-button:hover, .immersive-donation-button:focus-visible { color: var(--blue-deep); background: var(--yellow); outline: 0; }
+.immersive-balcony-button:hover, .immersive-balcony-button:focus-visible { color: var(--blue-deep); background: var(--yellow); outline: 0; }
 
 /* Keep the genre label and year field in their own readable control boxes. */
 .immersive-hud:not(.is-collapsed) .immersive-browse-controls { grid-template-columns: minmax(0, 1fr) 82px 116px 52px; }
@@ -825,8 +824,7 @@ dialog.panel-dialog {
 @media (max-width: 560px) {
   .immersive-balcony-button { left: 5.25rem; }
   .immersive-balcony-button span { display: none; }
-  .immersive-donation-button { top: .75rem; left: .75rem; }
   .account-saved-collections { grid-template-columns: 1fr; }
   .account-section-heading h3 { font-size: 1rem; }
-  .header-actions #retrieval-open { display: inline-flex; }
+  .header-actions #catalog-search-open { display: inline-flex; }
 }

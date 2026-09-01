@@ -49,7 +49,7 @@
   const emptyState = $('#empty-state');
   const titleDialog = $('#title-dialog');
 
-  const retrievalDialog = $('#retrieval-dialog');
+  const catalogSearchDialog = $('#catalog-search-dialog');
   const sourcesDialog = $('#sources-dialog');
   let activeVhsViewer = null;
   let activeViewerTitle = null;
@@ -57,7 +57,7 @@
   let immersiveShelf = null;
   let immersiveToken = 0;
   let balcony = null;
-  let returnToRetrieval = false;
+  let returnToCatalogSearch = false;
   let inspectionOrigin = null;
   let usernameAvailabilityTimer = 0;
   let usernameAvailabilityToken = 0;
@@ -182,6 +182,7 @@
     applyMemberData(data);
     renderWatchlist();
     renderBalconyPanel();
+    renderReturnPanel();
     refreshBalcony();
   }
 
@@ -514,6 +515,7 @@
           balconySelection = null;
           saveCounter();
           renderBalconyPanel();
+          renderReturnPanel();
           refreshBalcony();
         }
         renderAccount();
@@ -568,13 +570,13 @@
     return body;
   }
 
-  function openRetrieval(preserve = false) {
+  function openCatalogSearch(preserve = false) {
     if (!preserve) {
-      $('#retrieval-results').replaceChildren();
-      $('#retrieval-status').textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.';
+      $('#catalog-search-results').replaceChildren();
+      $('#catalog-search-status').textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.';
     }
-    if (!retrievalDialog.open) retrievalDialog.showModal();
-    $('#retrieval-input').focus();
+    if (!catalogSearchDialog.open) catalogSearchDialog.showModal();
+    $('#catalog-search-input').focus();
   }
 
   function donationMessage() {
@@ -583,20 +585,15 @@
       : 'Donations will stay optional and get their own flow. No payment is active yet.';
   }
 
-  function openDonationFromRetrieval() {
-    openRetrieval(true);
-    $('#retrieval-status').textContent = donationMessage();
-  }
-
   function showBasketDonationNotice() {
     $('#basket-status').textContent = donationMessage();
   }
 
-  async function searchRetrievalCatalogue() {
-    const input = $('#retrieval-input');
+  async function searchCatalog() {
+    const input = $('#catalog-search-input');
     const query = input.value.trim();
-    const status = $('#retrieval-status');
-    const results = $('#retrieval-results');
+    const status = $('#catalog-search-status');
+    const results = $('#catalog-search-results');
     results.replaceChildren();
     if (query.length < 2) { status.textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.'; return; }
     status.textContent = state.locale === 'pt-BR' ? 'Consultando o catálogo…' : 'Searching the catalogue…';
@@ -608,7 +605,7 @@
         const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
         const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.type === 'series' ? t('series') : t('movies')} · ${title.year || '—'}`; text.append(name, meta);
         const actions = document.createElement('div'); actions.className = 'return-choices';
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `search-inspect-${title.type}-${title.id}`; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToRetrieval = true; openTitleFromOrigin(title, { source: 'search', dialogId: 'retrieval-dialog', focusId: inspect.id }, true, posterTextureUrl(title.poster || posterFallback(title))); });
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `search-inspect-${title.type}-${title.id}`; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToCatalogSearch = true; openTitleFromOrigin(title, { source: 'search', dialogId: 'catalog-search-dialog', focusId: inspect.id }, true, posterTextureUrl(title.poster || posterFallback(title))); });
         const add = document.createElement('button'); add.type = 'button'; add.className = 'primary-inline-action'; add.dataset.titleKey = `${title.type}:${title.id}`; add.textContent = isAtCounter(title) ? 'Tirar da cesta' : 'Botar na cesta'; add.disabled = !isAtCounter(title) && state.counter.length >= MAX_CESTA_TITLES; add.addEventListener('click', () => {
           const result = toggleCounter(title);
           const selectedKeys = new Set(state.counter.map((item) => `${item.type}:${item.id}`));
@@ -1094,6 +1091,7 @@
     }
     if ($('#basket-dialog').open) renderBasket();
     if ($('#balcony-dialog').open) renderBalconyPanel();
+    if ($('#returns-dialog').open) renderReturnPanel();
     if (state.mode === 'balcony') refreshBalcony();
     return result;
   }
@@ -1192,17 +1190,18 @@
         saveCounter();
         renderAccountOverview();
         renderBalconyPanel();
+        renderReturnPanel();
         refreshBalcony();
       }
       let syncFailed = false;
       try { await refreshMemberData(); }
       catch { syncFailed = true; }
-      $('#balcony-panel-status').textContent = (result.failed.length
+      $('#return-panel-status').textContent = (result.failed.length
         ? `${result.succeeded.length} fitas devolvidas; ${result.failed.length} não puderam ser devolvidas. As pendentes continuam marcadas para tentar de novo.`
         : 'Devolução registrada. As fitas voltaram para o acervo.')
         + (syncFailed ? ' Minha conta será sincronizada quando a conexão voltar.' : '');
     } catch (error) {
-      $('#balcony-panel-status').textContent = error.message;
+      $('#return-panel-status').textContent = error.message;
     } finally {
       returnRequestInFlight = false;
       button.disabled = false;
@@ -1235,10 +1234,10 @@
     if ($('#account-dialog').open) $('#account-dialog').close();
     if (state.mode === 'immersive') {
       setMode('balcony');
-      window.requestAnimationFrame(openRentalDesk);
+      window.requestAnimationFrame(openReturnWindow);
       return;
     }
-    openRentalDesk();
+    openReturnWindow();
   }
 
   function showRentalConfirmation(rental) {
@@ -1248,6 +1247,7 @@
     $('#rental-confirmation-status').textContent = `${titles.length} ${titles.length === 1 ? 'fita está' : 'fitas estão'} no seu pacote ativo. Boa sessão — você pode devolver tudo no Balcão depois.`;
     list.replaceChildren(...titles.map((title) => accountTitleItem(title, 'na sacola', { source: 'rental_confirmation', dialogId: 'rental-confirmation-dialog' })));
     if ($('#balcony-dialog').open) $('#balcony-dialog').close();
+    if ($('#returns-dialog').open) $('#returns-dialog').close();
     if (!dialog.open) dialog.showModal();
   }
 
@@ -1261,8 +1261,10 @@
       heading: 'Balcão · tape fronts',
       onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'balcony', mode: 'balcony' }, true, posterUrl),
       onAction: openRentalDesk,
-      onSearch: openRetrieval,
+      onSearch: openCatalogSearch,
+      onReturn: openReturnDesk,
       actionLabel: state.locale === 'pt-BR' ? 'Abrir controles do balcão' : 'Open counter controls',
+      returnLabel: state.locale === 'pt-BR' ? 'Abrir devoluções' : 'Open returns',
     });
   }
 
@@ -1279,9 +1281,9 @@
         year: state.year,
         copy: { collectiveAwards: t('collectiveAwards'), collectiveAwardLines: [t('collectiveAwardOne'), t('collectiveAwardTwo'), t('collectiveAwardThree')] },
         onCounterSelect: openRentalDesk,
-        onSearch: openRetrieval,
+        onSearch: openCatalogSearch,
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
-        onBagSelect: openRentalDesk,
+        onBagSelect: openReturnDesk,
         onTip: () => { openRentalDesk(); $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; },
         onCollectiveAwards: () => { openRentalDesk(); $('#balcony-panel-status').textContent = t('collectiveAwardsNotice'); },
       });
@@ -1294,25 +1296,25 @@
   function refreshBalcony() { if (state.mode === 'balcony') mountBalcony(); }
 
   function openRentalDesk() {
+    if ($('#returns-dialog').open) $('#returns-dialog').close();
     if (balconySelection === null) beginCounterDecision();
     renderBalconyPanel();
     if (!$('#balcony-dialog').open) $('#balcony-dialog').showModal();
   }
 
+  function openReturnWindow(message = '') {
+    if ($('#balcony-dialog').open) $('#balcony-dialog').close();
+    renderReturnPanel();
+    if (message) $('#return-panel-status').textContent = message;
+    if (!$('#returns-dialog').open) $('#returns-dialog').showModal();
+  }
+
   function renderBalconyPanel() {
     const counterList = $('#balcony-counter-list');
-    const rentedList = $('#balcony-rented-list');
-    counterList.replaceChildren(); rentedList.replaceChildren();
+    counterList.replaceChildren();
     const rented = state.rental.rented;
     $('#balcony-context').textContent = state.mode === 'balcony' ? 'BALCÃO · SALA 3D' : 'BALCÃO · ATENDIMENTO 2D';
-    $('#tip-jar').hidden = false;
     $('#balcony-rental-controls').hidden = false;
-    $('#balcony-return-controls').hidden = !rented;
-    if (!rented) pendingReturns.clear();
-    else {
-      const activeIds = new Set(rented.titles.map((title) => title.rentalItemId).filter(Boolean));
-      for (const itemId of pendingReturns.keys()) if (!activeIds.has(itemId)) pendingReturns.delete(itemId);
-    }
     const decisionTitles = counterDecisionTitles();
     const capacity = decisionTitles.length;
     const available = availableRentalSlots();
@@ -1330,8 +1332,8 @@
           : `${capacity} ${capacity === 1 ? 'fita chegou' : 'fitas chegaram'} ao balcão. Você ainda ficará com no máximo 3 fitas ativas.`
       : rented
         ? `${rented.titles.length} de 3 fitas estão no seu pacote ativo. Você pode montar outra decisão enquanto houver vagas.`
-        : 'Pesquise um título no Balcão ou escolha fitas nas estantes. Depois use a Cesta para decidir o que levar.';
-    if (!capacity) counterList.textContent = 'Nenhuma fita nesta decisão. Pesquisar título no Balcão.';
+        : 'Escolha fitas nas estantes ou pesquise títulos. Depois revise a Cesta antes de alugar.';
+    if (!capacity) counterList.textContent = 'Nenhuma fita nesta decisão. Pesquisar títulos.';
     decisionTitles.forEach((title) => {
       const item = document.createElement('article'); item.className = 'counter-item basket-item';
       const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
@@ -1341,7 +1343,24 @@
       const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Não levar'; remove.addEventListener('click', () => removeFromCounterDecision(title));
       actions.append(inspect, remove, createSavedActions(title)); item.append(image, text, actions); counterList.append(item);
     });
-    if (!rented) { rentedList.textContent = 'Nenhum pacote alugado agora.'; renderReturnButton(); return; }
+  }
+
+  function renderReturnPanel() {
+    const rentedList = $('#balcony-rented-list');
+    rentedList.replaceChildren();
+    const rented = state.rental.rented;
+    $('#balcony-return-controls').hidden = !rented;
+    $('#return-panel-status').textContent = rented
+      ? 'Selecione uma ou mais fitas e indique se foram assistidas antes de confirmar.'
+      : 'Não há fitas ativas para devolver.';
+    if (!rented) {
+      pendingReturns.clear();
+      rentedList.textContent = 'Nenhum pacote alugado agora.';
+      renderReturnButton();
+      return;
+    }
+    const activeIds = new Set(rented.titles.map((title) => title.rentalItemId).filter(Boolean));
+    for (const itemId of pendingReturns.keys()) if (!activeIds.has(itemId)) pendingReturns.delete(itemId);
     rented.titles.forEach((title) => {
       const item = document.createElement('article'); item.className = 'counter-item balcony-return-item';
       const selected = Boolean(title.rentalItemId && pendingReturns.has(title.rentalItemId));
@@ -1517,7 +1536,7 @@
   function restoreInspectionOrigin() {
     const origin = inspectionOrigin;
     inspectionOrigin = null;
-    returnToRetrieval = false;
+    returnToCatalogSearch = false;
     if (!origin) return;
     const dialog = origin.dialogId ? $(`#${origin.dialogId}`) : null;
     if (!dialog) return;
@@ -1760,11 +1779,10 @@
     $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
     $('#balcony-toggle').addEventListener('click', () => setMode('balcony'));
     $('#immersive-balcony-open').addEventListener('click', () => setMode('balcony'));
-    $('#immersive-donation-open').addEventListener('click', openDonationFromRetrieval);
-    $('#retrieval-open').addEventListener('click', openRetrieval);
+    $('#catalog-search-open').addEventListener('click', openCatalogSearch);
     $('#balcony-return-shelf').addEventListener('click', () => setMode('immersive'));
     $('#balcony-panel-open').addEventListener('click', openRentalDesk);
-    $('#retrieval-form').addEventListener('submit', (event) => { event.preventDefault(); searchRetrievalCatalogue(); });
+    $('#catalog-search-form').addEventListener('submit', (event) => { event.preventDefault(); searchCatalog(); });
     $('#balcony-zoom-in').addEventListener('click', () => balcony?.zoomIn());
     $('#balcony-zoom-out').addEventListener('click', () => balcony?.zoomOut());
     $('#rent-counter').addEventListener('click', rentCounter);
@@ -1773,8 +1791,8 @@
     $('#rental-confirmation-dialog').addEventListener('cancel', (event) => event.preventDefault());
     $('#basket-added-dialog').addEventListener('cancel', (event) => event.preventDefault());
     $('#tip-jar').addEventListener('click', () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; });
-    $('#retirada-tip-jar').addEventListener('click', showBasketDonationNotice);
-    $('#retrieval-donation').addEventListener('click', openDonationFromRetrieval);
+    $('#return-tip-jar').addEventListener('click', () => { $('#return-panel-status').textContent = donationMessage(); });
+    $('#basket-donation').addEventListener('click', showBasketDonationNotice);
     $('#immersive-hud-toggle').addEventListener('click', () => setImmersiveHudCollapsed(!$('#immersive-hud').classList.contains('is-collapsed')));
     $('#immersive-filters-toggle').addEventListener('click', () => {
       setImmersiveFilters($('#immersive-filters').hidden);
@@ -1805,12 +1823,12 @@
         restoreInspectionOrigin();
         return;
       }
-      if (!returnToRetrieval) return;
-      returnToRetrieval = false;
-      window.requestAnimationFrame(() => openRetrieval(true));
+      if (!returnToCatalogSearch) return;
+      returnToCatalogSearch = false;
+      window.requestAnimationFrame(() => openCatalogSearch(true));
     });
     $('#counter-open').addEventListener('click', openBasket);
-    $('#retrieval-open-counter').addEventListener('click', openRetrieval);
+    $('#catalog-search-open-counter').addEventListener('click', openCatalogSearch);
     $('#immersive-basket-open').addEventListener('click', openBasket);
     $('#take-basket-counter').addEventListener('click', takeBasketToCounter);
     $('#account-return-counter').addEventListener('click', openReturnDesk);

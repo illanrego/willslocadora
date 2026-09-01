@@ -37,16 +37,16 @@ test('dialog and member cards use the uniform raised Locadora frame instead of a
   assert.match(css, /\.member-stats div \{[^}]*border: 2px solid #765640;[^}]*box-shadow: inset 0 1px 0 rgba\(255,255,255,.06\), 0 4px 0 rgba\(0,0,0,.3\);/);
 });
 
-test('Retirada catalogue search is an accessible native dialog', () => {
-  assert.match(page, /<dialog id="retrieval-dialog" class="panel-dialog retrieval-dialog">/);
-  assert.match(page, /<form id="retrieval-form"[^>]*>/);
-  assert.match(page, /<input id="retrieval-input"[^>]*type="search"[^>]*minlength="2"/);
-  assert.match(page, /id="retrieval-status"[^>]*role="status"/);
-  assert.match(page, /id="retrieval-results"/);
-  assert.match(app, /function openRetrieval\(preserve = false\)/);
+test('catalogue search is an accessible native dialog', () => {
+  assert.match(page, /<dialog id="catalog-search-dialog" class="panel-dialog catalog-search-dialog">/);
+  assert.match(page, /<form id="catalog-search-form"[^>]*>/);
+  assert.match(page, /<input id="catalog-search-input"[^>]*type="search"[^>]*minlength="2"/);
+  assert.match(page, /id="catalog-search-status"[^>]*role="status"/);
+  assert.match(page, /id="catalog-search-results"/);
+  assert.match(app, /function openCatalogSearch\(preserve = false\)/);
   assert.match(app, /api\(`\/api\/search\?\$\{new URLSearchParams/);
-  assert.match(app, /let returnToRetrieval = false;/);
-  assert.match(app, /openRetrieval\(true\)/);
+  assert.match(app, /let returnToCatalogSearch = false;/);
+  assert.match(app, /openCatalogSearch\(true\)/);
 });
 test('immersive navigation separates Balcony from settings and filters', () => {
   assert.match(page, /class="immersive-destination[\s\S]*id="balcony-toggle"/);
@@ -64,13 +64,19 @@ test('collapsed immersive HUD keeps its nested restore button visible', () => {
   assert.match(css, /\.immersive-hud\.is-collapsed \.immersive-hud-strip > :not\(\.immersive-menu-actions\), \.immersive-hud\.is-collapsed \.immersive-menu-actions > :not\(#immersive-hud-toggle\)/);
 });
 
-test('the rental desk keeps Retirada and returns behind the Cesta-to-Balcão transition', () => {
-  assert.match(page, /id="retrieval-open-counter"[^>]*>/);
-  assert.match(page, /id="rent-counter"/);
-  assert.match(page, /id="balcony-rented-list"/);
-  assert.match(app, /function openRentalDesk\(\) \{[\s\S]*renderBalconyPanel\(\);\s*if \(!\$\('#balcony-dialog'\)\.open\) \$\('#balcony-dialog'\)\.showModal\(\);\s*\}/);
-  assert.match(app, /\$\('#counter-open'\)\.addEventListener\('click', openBasket\)/);
-  assert.match(app, /\$\('#retrieval-open-counter'\)\.addEventListener\('click', openRetrieval\)/);
+test('rental and return use separate Balcão windows', () => {
+  assert.match(page, /id="catalog-search-open-counter"[^>]*>Pesquisar títulos<\/button>/);
+  assert.match(page, /id="returns-dialog"/);
+  assert.match(page, /id="return-panel-status"[^>]*role="status"/);
+  const rentalDialog = page.match(/<dialog id="balcony-dialog"[\s\S]*?<\/dialog>/)?.[0] || '';
+  const returnsDialog = page.match(/<dialog id="returns-dialog"[\s\S]*?<\/dialog>/)?.[0] || '';
+  assert.doesNotMatch(rentalDialog, /balcony-return-controls/);
+  assert.doesNotMatch(returnsDialog, /balcony-rental-controls/);
+  assert.match(returnsDialog, /balcony-rented-list/);
+  assert.match(app, /function openRentalDesk\(\) \{[\s\S]*if \(!\$\('#balcony-dialog'\)\.open\) \$\('#balcony-dialog'\)\.showModal\(\);\s*\}/);
+  assert.match(app, /function openReturnWindow\(message = ''\)/);
+  assert.match(app, /\$\('#catalog-search-open-counter'\)\.addEventListener\('click', openCatalogSearch\)/);
+  assert.match(app, /window\.requestAnimationFrame\(openReturnWindow\)/);
 });
 
 test('immersive mode exposes a basket independently from the Balcony', () => {
@@ -97,9 +103,9 @@ test('the normal header opens Cesta first and reaches the 2D Balcony through its
 });
 
 
-test('the normal header opens Retirada search without requiring a Cesta selection', () => {
-  assert.match(page, /id="retrieval-open"[^>]*>Retirada<\/button>/);
-  assert.match(app, /\$\('#retrieval-open'\)\.addEventListener\('click', openRetrieval\)/);
+test('the normal header opens catalogue search without requiring a Cesta selection', () => {
+  assert.match(page, /id="catalog-search-open"[^>]*>Pesquisar títulos<\/button>/);
+  assert.match(app, /\$\('#catalog-search-open'\)\.addEventListener\('click', openCatalogSearch\)/);
 });
 
 test('Balcão decisions use a temporary subset instead of deleting titles from Cesta', () => {
@@ -165,12 +171,12 @@ test('repeat rentals remain available through the shared three-active-tape cap a
   assert.doesNotMatch(balcony, /rental\.rented/);
 });
 
-test('both retrieval and rental spaces keep donations visible without activating payment', () => {
-  assert.match(page, /id="retirada-tip-jar"/);
-  assert.match(page, /id="retrieval-donation"/);
+test('rental and return windows keep donations visible without activating payment', () => {
+  assert.match(page, /id="basket-donation"/);
   assert.match(page, /id="tip-jar"/);
-  assert.match(page, /id="immersive-donation-open"/);
-  assert.match(app, /\$\('#tip-jar'\)\.hidden = false;/);
+  assert.match(page, /id="return-tip-jar"/);
+  assert.doesNotMatch(page, /id="immersive-donation-open"/);
+  assert.match(app, /\$\('#return-tip-jar'\)\.addEventListener/);
   assert.match(app, /function donationMessage\(\)/);
 });
 

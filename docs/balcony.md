@@ -1,20 +1,22 @@
 # The Balcony — implemented rental counter
 
 **Status:** implemented in the 2D and 3D experiences. The signed-in rental state is authoritative in the private `locadora-data` Worker; the anonymous basket remains local until confirmation.
-**Purpose:** make Locadora’s browse → Retirada → Cesta → Balcão → return loop tangible, legible, and identical in normal and immersive modes.
+**Purpose:** make Locadora’s browse → Cesta → Balcão rental → return loop tangible, legible, and identical in normal and immersive modes.
 
 ## Core rule
 
 There is no `Separados` / Picks shelf.
 
-There are two deliberate customer-facing spaces:
+There is one physical customer-facing space: the Balcão. Its two operations use separate windows:
 
-- **Retirada:** the separate search/selection space. It helps the visitor find tapes and place candidates in Cesta; it never rents.
-- **Balcão:** the separate rental/return space. It reviews the temporary decision and is the only place where an authenticated package is confirmed.
+- **Aluguel:** the Cesta-to-Balcão decision window. It reviews the titles being picked for the package and is the only place where rental is confirmed.
+- **Devoluções:** a separate return window. It only shows active rented tapes and their watched-state choices.
+
+The catalogue search window is separate from both operations. It only finds titles and never mixes rental or return options into the search surface.
 
 The pre-rental flow keeps two separate states:
 
-- **Cesta local:** up to fifteen distinct titles chosen while browsing or in Retirada. It persists locally until the visitor removes titles or the relevant rental flow completes.
+- **Cesta local:** up to fifteen distinct titles chosen while browsing or searching the catalogue. It persists locally until the visitor removes titles or the relevant rental flow completes.
 - **Decisão no Balcão:** a temporary copy of the Cesta. Removing a tape here means “não levar hoje” and does not mutate the Cesta itself. Only this temporary subset is sent when the visitor confirms `Alugar pacote`.
 
 A tape reaches Cesta only when the visitor deliberately adds it from a VHS detail view. The normal and immersive Cesta buttons open the same review surface; `Levar ao Balcão` then opens the 2D desk or moves the immersive visitor into the 3D Balcão.
@@ -37,7 +39,7 @@ PACOTE ATIVO (1 locação, todas as fitas juntas)
   │  mostra sacola + confirmação; ao fechar, volta à página inicial
   ▼
 MINHA CONTA mostra as fitas alugadas
-  │  "Devolver no Balcão" abre o Balcão 2D ou o Balcão 3D atual
+  │  "Devolver no Balcão" abre a janela Devoluções no modo 2D ou 3D
   ▼
 DEVOLUÇÃO — marcar fitas, escolher assistida / não assistida / não sei, confirmar tudo em um botão
   ▼
@@ -116,8 +118,8 @@ Include a physical membership cue tied to the real member section:
 
 The counter includes an old beige/black CRT monitor and keyboard.
 
-- Its screen clearly reads `PESQUISAR TÍTULOS` and opens the same native search used by the 2D Retirada.
-- The CRT remains a physical, compact prop rather than a second dashboard or canvas-only control surface. Its search action opens Retirada, not rental confirmation.
+- Its screen clearly reads `PESQUISAR TÍTULOS` and opens the separate catalogue-search window.
+- The CRT remains a physical, compact prop rather than a second dashboard or canvas-only control surface. Its search action opens the catalogue-search window, not rental confirmation.
 - A subtle hover lift plus pointer cursor communicates that it is clickable.
 
 ### 6. Voluntary 3D tip jar
