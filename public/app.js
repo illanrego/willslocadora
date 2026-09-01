@@ -460,7 +460,12 @@
     });
   }
 
-  function openAccount(message = '') { renderAccount(); if (message) $('#account-status').textContent = message; if (!$('#account-dialog').open) $('#account-dialog').showModal(); }
+  function openAccount(message = '') {
+    if (state.member.profile) usernameEditing = false;
+    renderAccount();
+    if (message) $('#account-status').textContent = message;
+    if (!$('#account-dialog').open) $('#account-dialog').showModal();
+  }
   function openWatchlist(collection = activeSavedCollection) { activeSavedCollection = collection; renderWatchlist(); if (!$('#watchlist-dialog').open) $('#watchlist-dialog').showModal(); }
 
   async function saveTitleCollection(title, collection) {
@@ -715,9 +720,16 @@
 
   function loadTitleMetadata(title) {
     const key = `${state.locale}:${title.type}:${title.id}`;
+    const canonicalId = String(title.id || '');
+    const canonicalType = title.type;
     return hydrateTitleMetadata(state.metadata, key, title, () => (
       api(`/api/meta?${new URLSearchParams({ type: title.type, id: title.id, locale: state.locale })}`).then(({ meta }) => meta)
-    ));
+    )).then((hydrated) => {
+      // Metadata may carry an IMDb id; never let it replace the canonical TMDB identity used for rents/saves.
+      if (String(canonicalId).startsWith('tmdb:')) hydrated.id = canonicalId;
+      hydrated.type = hydrated.type || canonicalType;
+      return hydrated;
+    });
   }
 
   function renderShelf(titles, stand, append) {
@@ -1171,7 +1183,8 @@
     try {
       requireMember();
       const sessionVersion = memberSessionVersion;
-      const entries = [...pendingReturns.entries()].map(([itemId, entry]) => ({ itemId, watchedStatus: entry.watchedStatus }));
+      const submitted = [...pendingReturns.entries()].map(([itemId, entry]) => ({ itemId, watchedStatus: entry.watchedStatus, title: entry.title }));
+      const entries = submitted.map(({ itemId, watchedStatus }) => ({ itemId, watchedStatus }));
       const result = await submitRentalReturns(entries, (itemId, watchedStatus) => {
         if (!state.member.signedIn || sessionVersion !== memberSessionVersion) throw new Error('rental_session_changed');
         return window.LocadoraAccount.request(`/v1/rental-items/${itemId}/return`, {
@@ -1196,6 +1209,10 @@
       let syncFailed = false;
       try { await refreshMemberData(); }
       catch { syncFailed = true; }
+      const returnedTitles = submitted
+        .filter((entry) => succeeded.has(entry.itemId))
+        .map((entry) => ({ ...entry.title, watchedStatus: entry.watchedStatus }));
+      if (returnedTitles.length) showReturnConfirmation(returnedTitles, result.failed.length, syncFailed);
       $('#return-panel-status').textContent = (result.failed.length
         ? `${result.succeeded.length} fitas devolvidas; ${result.failed.length} não puderam ser devolvidas. As pendentes continuam marcadas para tentar de novo.`
         : 'Devolução registrada. As fitas voltaram para o acervo.')
@@ -1207,6 +1224,35 @@
       button.disabled = false;
       renderReturnButton();
     }
+  }
+
+  function reviewReturnSuggestion(title) {
+    window.requestAnimationFrame(() => openTitleReviews(memberTitleForViewer(title)));
+  }
+
+  function showReturnConfirmation(titles, failed = 0, syncFailed = false) {
+    const dialog = $('#return-confirmation-dialog');
+    const list = $('#return-confirmation-list');
+    const status = $('#return-confirmation-status');
+    list.replaceChildren();
+    const niceCount = titles.length === 1 ? 'fita voltou' : 'fitas voltaram';
+    status.textContent = `Boa sessão! ${titles.length} ${niceCount} para o acervo.${failed ? ` ${failed} não puderam ser devolvidas.` : ''}${syncFailed ? ' A conta será sincronizada quando a conexão voltar.' : ''}`;
+    titles.forEach((title) => {
+      const item = document.createElement('article'); item.className = 'counter-item return-confirmation-item';
+      const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
+      const text = document.createElement('div');
+      const name = document.createElement('strong'); name.textContent = title.name;
+      const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · ${title.watchedStatus === 'watched' ? 'assistida' : title.watchedStatus === 'not_watched' ? 'não assistida' : 'sem confirmação'}`;
+      text.append(name, meta);
+      item.append(image, text);
+      if (title.watchedStatus === 'watched') {
+        const review = document.createElement('button'); review.type = 'button'; review.className = 'return-review-action'; review.textContent = '★ Avaliar'; review.setAttribute('aria-label', `Avaliar ${title.name}`);
+        review.addEventListener('click', () => { dialog.close(); reviewReturnSuggestion(title); });
+        item.append(review);
+      }
+      list.append(item);
+    });
+    if (!dialog.open) dialog.showModal();
   }
 
   function togglePendingReturn(title, checked) {

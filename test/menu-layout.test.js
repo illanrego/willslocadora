@@ -59,6 +59,21 @@ test('immersive navigation keeps Balcão and 2D as persistent floating destinati
   assert.match(page, /id="immersive-filters-toggle"[^>]*>\s*<span[^>]*>⌕<\/span>\s*<span[^>]*data-i18n="filters"/);
 });
 
+test('Minha conta is a floating destination on the immersive shelf, not a HUD menu action', () => {
+  const hud = page.match(/<nav class="immersive-menu-actions"[^>]*>[\s\S]*?<\/nav>/)?.[0] || '';
+  assert.doesNotMatch(hud, /immersive-account-open/);
+  assert.match(page, /id="immersive-account-open"[^>]*class="immersive-account-button"/);
+  assert.match(page, /class="immersive-primary-actions"[\s\S]*id="immersive-account-open"/);
+  assert.match(app, /\$\('#immersive-account-open'\)\.addEventListener\('click', \(\) => openAccount\(\)\)/);
+  assert.match(css, /\.immersive-account-button/);
+});
+
+test('return confirmation dialog is present in the markup', () => {
+  assert.match(page, /id="return-confirmation-dialog"[^>]*class="panel-dialog return-confirmation-dialog"/);
+  assert.match(css, /@keyframes return-stamp/);
+  assert.match(css, /\.return-review-action/);
+});
+
 test('locale refresh relabels each genre selector without indexing across both option lists', () => {
   assert.doesNotMatch(app, /#genre-select option, #immersive-genre-select option/);
   assert.match(app, /for \(const select of \[\$\('#genre-select'\), \$\('#immersive-genre-select'\)\]\) \{\s*select\.querySelectorAll\('option'\)\.forEach\(\(option, index\) => \{ option\.textContent = genreLabel\(genres\[index\]\); \}\);/);

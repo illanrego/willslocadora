@@ -119,6 +119,10 @@
             <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M3 8h18M5 8v11h14V8M8 5h8l2 3H6l2-3Zm-1 14h10"/></svg>
             <span>Balcão</span>
           </button>
+          <button id="immersive-account-open" class="immersive-account-button" type="button" aria-label="Minha conta" title="Minha conta">
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="3.25"/><path d="M5 21c.7-4.1 3-6.15 7-6.15S18.3 16.9 19 21"/></svg>
+            <span>Conta</span>
+          </button>
         </div>
         <button id="immersive-2d-open" class="immersive-2d-button" type="button" aria-label="Voltar ao modo 2D" title="Voltar ao modo 2D">2D</button>
         <header id="immersive-hud" class="immersive-hud">
@@ -141,7 +145,6 @@
             <nav class="immersive-menu-actions" aria-label="Immersive actions">
               <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="filters">Filtros</span></button>
               <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false"><span aria-hidden="true">⚙</span><span data-i18n="settings">Ajustes</span></button>
-              <button id="immersive-account-open" type="button"><span aria-hidden="true">▣</span><span>Minha conta</span></button>
               <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Ocultar menu">Ocultar</button>
             </nav>
           </div>
@@ -349,6 +352,15 @@
       <button id="return-selected-rentals" class="balcony-rent-button balcony-primary-action" type="button" hidden>Devolver fitas selecionadas</button>
     </section>
     <button id="return-tip-jar" class="tip-jar-button" type="button" data-i18n="tipJar">Mantenha as luzes da Locadora acesas.</button>
+  </dialog>
+
+  <dialog id="return-confirmation-dialog" class="panel-dialog return-confirmation-dialog">
+    <header class="panel-header">
+      <div><span class="eyebrow">BALCÃO · DEVOLUÇÃO</span><h2>Fitas devolvidas</h2></div>
+    </header>
+    <p id="return-confirmation-status" class="panel-copy" role="status" aria-live="polite"></p>
+    <div id="return-confirmation-list" class="counter-list"></div>
+    <form method="dialog"><button id="return-confirmation-close" class="account-action" value="ok">Fechar</button></form>
   </dialog>
 
   <dialog id="rental-confirmation-dialog" class="panel-dialog rental-confirmation-dialog">

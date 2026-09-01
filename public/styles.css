@@ -870,8 +870,9 @@ dialog.panel-dialog {
   gap: .6rem;
 }
 .immersive-primary-actions > .immersive-basket-button,
-.immersive-primary-actions > .immersive-balcony-button { position: static; }
-.immersive-basket-button, .immersive-balcony-button, .immersive-2d-button,
+.immersive-primary-actions > .immersive-balcony-button,
+.immersive-primary-actions > .immersive-account-button { position: static; }
+.immersive-basket-button, .immersive-balcony-button, .immersive-account-button, .immersive-2d-button,
 .immersive-room .immersive-zoom button, .immersive-room .immersive-stand-button,
 .immersive-room #immersive-hud-toggle, .immersive-room .immersive-hud-strip > button,
 .immersive-room .immersive-menu-actions button, .immersive-room .immersive-settings button,
@@ -886,7 +887,9 @@ dialog.panel-dialog {
   box-shadow: 4px 5px 0 var(--blue-deep), 0 0 16px rgba(0,0,0,.2);
   font-weight: 900;
 }
-.immersive-basket-button, .immersive-balcony-button { min-height: 52px; }
+.immersive-basket-button, .immersive-balcony-button, .immersive-account-button { min-height: 52px; }
+.immersive-account-button { min-width: 118px; }
+.immersive-account-button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .immersive-basket-button .immersive-basket-label { color: var(--blue-deep) !important; background: transparent !important; }
 .immersive-basket-button #immersive-basket-count { color: var(--cream) !important; background: var(--red) !important; }
 .immersive-room .immersive-zoom button { border-radius: 50%; }
@@ -895,6 +898,7 @@ dialog.panel-dialog {
 .immersive-room .immersive-hud button[aria-pressed="true"] { color: var(--cream) !important; background: var(--red) !important; }
 .immersive-basket-button:hover, .immersive-basket-button:focus-visible,
 .immersive-balcony-button:hover, .immersive-balcony-button:focus-visible,
+.immersive-account-button:hover, .immersive-account-button:focus-visible,
 .immersive-2d-button:hover, .immersive-2d-button:focus-visible,
 .immersive-room .immersive-zoom button:hover, .immersive-room .immersive-zoom button:focus-visible,
 .immersive-room .immersive-stand-button:hover, .immersive-room .immersive-stand-button:focus-visible,
@@ -975,3 +979,30 @@ dialog.panel-dialog {
   background: var(--red) !important;
   outline: 0;
 }
+
+/* The return confirmation is a celebratory receipt, and watched tapes invite a review. */
+.return-confirmation-dialog { width: min(560px, calc(100% - 1rem)) !important; }
+.return-confirmation-item { grid-template-columns: 54px minmax(0, 1fr) auto; }
+.return-confirmation-item .return-review-action {
+  align-self: center;
+  color: var(--blue-deep);
+  background: var(--cream);
+  border: 2px solid var(--red);
+  border-radius: 4px;
+  box-shadow: 3px 4px 0 var(--blue-deep);
+  min-height: 40px;
+  padding: .5rem .7rem;
+  cursor: pointer;
+  font: 900 .62rem/1 "Courier New", monospace;
+  text-transform: uppercase;
+  animation: return-stamp 1.5s ease-out;
+}
+.return-confirmation-item .return-review-action:hover, .return-confirmation-item .return-review-action:focus-visible { color: var(--cream); background: var(--red); outline: 0; }
+@keyframes return-stamp {
+  0% { transform: scale(1.45) rotate(-8deg); opacity: 0; }
+  45% { transform: scale(.96) rotate(3deg); opacity: 1; }
+  60% { transform: scale(1.04) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+@media (max-width: 560px) { .return-confirmation-item { grid-template-columns: 46px minmax(0, 1fr); } .return-confirmation-item .return-review-action { grid-column: 1 / -1; } }
+@media (prefers-reduced-motion: reduce) { .return-confirmation-item .return-review-action { animation: none; } }

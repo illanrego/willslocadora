@@ -54,7 +54,7 @@ test('catalogue search keeps its Cesta action available with active rentals unti
 test('yellow actions use dark text and return submission retains a selected subset', () => {
   const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
   assert.match(styles, /\.yellow-action[\s\S]*color: var\(--black\)/);
-  assert.match(app, /const entries = \[\.\.\.pendingReturns\.entries\(\)\]/);
+  assert.match(app, /const submitted = \[\.\.\.pendingReturns\.entries\(\)\]/);
 });
 
 test('member and rented-package cards hydrate TMDB covers and metadata before inspection', () => {
@@ -241,4 +241,25 @@ test('Minha conta renders both independent personal shelves', () => {
   assert.match(app, /function renderAccountSavedCollections\(\)/);
   assert.match(app, /renderAccountSavedCollections\(\);/);
   assert.match(app, /const id = String\(title\?\.tmdbId \?\? title\?\.tmdb_id \?\? title\?\.id/);
+});
+
+test('account edit form stays hidden until the edit control is clicked', () => {
+  assert.match(app, /function openAccount\(message = ''\) \{\s*if \(state\.member\.profile\) usernameEditing = false;/);
+  assert.match(app, /const editing = signedIn && \(!profile \|\| usernameEditing\)/);
+  assert.match(page, /id="username-form"[^>]*hidden/);
+  assert.match(page, /id="account-edit-username"[^>]*aria-controls="username-form"/);
+});
+
+test('metadata hydration never replaces the canonical TMDB identity', () => {
+  assert.match(app, /const canonicalId = String\(title\.id \|\| ''\);/);
+  assert.match(app, /if \(String\(canonicalId\)\.startsWith\('tmdb:'\)\) hydrated\.id = canonicalId;/);
+});
+
+test('return flow confirms the deed and suggests reviewing watched tapes', () => {
+  assert.match(page, /id="return-confirmation-dialog"/);
+  assert.match(app, /function showReturnConfirmation\(titles, failed = 0, syncFailed = false\)/);
+  assert.match(app, /Boa sessão!/);
+  assert.match(app, /const review = document\.createElement\('button'\); review\.type = 'button'; review\.className = 'return-review-action'; review\.textContent = '★ Avaliar'/);
+  assert.match(app, /function reviewReturnSuggestion\(title\)/);
+  assert.match(app, /window\.requestAnimationFrame\(\(\) => openTitleReviews\(memberTitleForViewer\(title\)\)\)/);
 });
