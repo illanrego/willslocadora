@@ -118,7 +118,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
     const cordMaterial = new THREE.MeshStandardMaterial({ color: 0x2b170d, roughness: .9 });
     box(.035, .7, .035, cordMaterial, -.95, -.45, 1.32, counterObject);
     box(.035, .7, .035, cordMaterial, .95, -.45, 1.32, counterObject);
-    const reviewSign = new THREE.Mesh(new THREE.PlaneGeometry(3.35, .78), new THREE.MeshBasicMaterial({ map: labelTexture(`REVISAR DECISÃO · ${rental.counter.length}`, { width: 900, height: 210, background: '#a9342c', color: '#fff0bf' }) }));
+    const reviewSign = new THREE.Mesh(new THREE.PlaneGeometry(3.35, .78), new THREE.MeshBasicMaterial({ map: labelTexture(`ESCOLHER / ALUGAR FITAS · ${rental.counter.length}`, { width: 900, height: 210, background: '#a9342c', color: '#fff0bf' }) }));
     reviewSign.position.set(0, -.82, 1.34); reviewSign.userData.action = 'counter'; reviewSign.userData.cueScale = 1; counterObject.add(reviewSign); interactive.push(reviewSign); clickableCues.push(reviewSign);
   }
   rental.counter.forEach((title, index) => {

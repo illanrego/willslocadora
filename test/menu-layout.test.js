@@ -48,8 +48,13 @@ test('catalogue search is an accessible native dialog', () => {
   assert.match(app, /let returnToCatalogSearch = false;/);
   assert.match(app, /openCatalogSearch\(true\)/);
 });
-test('immersive navigation separates Balcony from settings and filters', () => {
-  assert.match(page, /class="immersive-destination[\s\S]*id="balcony-toggle"/);
+test('immersive navigation keeps Balcão and 2D as persistent floating destinations', () => {
+  assert.match(page, /id="immersive-balcony-open"[^>]*aria-label="Abrir Balcão de aluguel"/);
+  assert.match(page, /id="immersive-2d-open"[^>]*aria-label="Voltar ao modo 2D"/);
+  assert.doesNotMatch(page, /class="immersive-destination"/);
+  assert.doesNotMatch(page, /id="balcony-toggle"/);
+  assert.match(app, /\$\('#immersive-balcony-open'\)\.addEventListener\('click', \(\) => setMode\('balcony'\)\)/);
+  assert.match(app, /\$\('#immersive-2d-open'\)\.addEventListener\('click', \(\) => setMode\('normal'\)\)/);
   assert.match(page, /id="immersive-settings-toggle"[^>]*>\s*<span[^>]*>⚙<\/span>\s*<span[^>]*data-i18n="settings"/);
   assert.match(page, /id="immersive-filters-toggle"[^>]*>\s*<span[^>]*>⌕<\/span>\s*<span[^>]*data-i18n="filters"/);
 });
@@ -81,7 +86,8 @@ test('rental and return use separate Balcão windows', () => {
 
 test('immersive mode exposes a basket independently from the Balcony', () => {
   assert.match(page, /class="immersive-picker immersive-genre-picker"/);
-  assert.match(page, /id="immersive-basket-open"[^>]*aria-controls="basket-dialog"/);
+  assert.match(page, /id="immersive-basket-open"[^>]*aria-controls="basket-dialog"[^>]*>\s*[\s\S]*immersive-basket-label/);
+  assert.match(page, /id="immersive-2d-open"/);
   assert.match(page, /id="basket-dialog"/);
   assert.match(page, /id="take-basket-counter"[^>]*>Levar ao Balcão<\/button>/);
   assert.match(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openBasket\)/);
@@ -93,7 +99,8 @@ test('immersive mode exposes a basket independently from the Balcony', () => {
   assert.match(css, /\.immersive-basket-button/);
   assert.match(page, /id="immersive-balcony-open"[^>]*aria-label="Abrir Balcão de aluguel"/);
   assert.match(app, /\$\('#immersive-balcony-open'\)\.addEventListener\('click', \(\) => setMode\('balcony'\)\)/);
-  assert.match(css, /\.immersive-balcony-button/);
+  assert.match(css, /Floating navigation uses cream panels and dark ink/);
+  assert.match(css, /\.immersive-2d-button/);
 });
 
 test('the normal header opens Cesta first and reaches the 2D Balcony through its CTA', () => {

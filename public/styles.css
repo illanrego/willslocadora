@@ -828,3 +828,33 @@ dialog.panel-dialog {
   .account-section-heading h3 { font-size: 1rem; }
   .header-actions #catalog-search-open { display: inline-flex; }
 }
+
+/* Floating navigation uses cream panels and dark ink, not yellow-on-white contrast. */
+.immersive-basket-button, .immersive-balcony-button, .immersive-2d-button {
+  color: #101827;
+  background: #e7d8b1;
+  border: 2px solid #101827;
+  box-shadow: 4px 5px 0 #0d0b0a, 0 0 18px rgba(0,0,0,.2);
+}
+.immersive-basket-button {
+  display: inline-grid;
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
+  width: auto;
+  min-width: 126px;
+  gap: .45rem;
+}
+.immersive-basket-button .immersive-basket-label { width: auto; height: auto; margin: 0; color: #101827; background: transparent; font-size: .68rem; }
+.immersive-basket-button #immersive-basket-count { width: 24px; height: 24px; margin: 0; color: #e7d8b1; background: #9e3634; font-size: .7rem; }
+.immersive-balcony-button { min-width: 132px; }
+.immersive-2d-button { position: absolute; z-index: 6; top: 1rem; left: 1rem; min-width: 52px; min-height: 44px; padding: .55rem .7rem; cursor: pointer; font: 900 .7rem/1 "Courier New", monospace; letter-spacing: .06em; }
+.immersive-basket-button:hover, .immersive-basket-button:focus-visible, .immersive-balcony-button:hover, .immersive-balcony-button:focus-visible, .immersive-2d-button:hover, .immersive-2d-button:focus-visible { color: #e7d8b1; background: #9e3634; outline: 0; }
+.immersive-basket-button:hover .immersive-basket-label, .immersive-basket-button:focus-visible .immersive-basket-label { color: #e7d8b1; }
+
+/* During tape inspection, Cesta sits beside the case instead of in a corner. */
+.title-member-actions { top: 50%; bottom: auto; left: clamp(.75rem, 9vw, 7rem); flex-direction: column; transform: translateY(-50%); }
+.title-member-actions .title-basket-action { color: #101827; background: #e7d8b1; border-color: #101827; }
+.title-member-actions .title-basket-action:hover, .title-member-actions .title-basket-action:focus-visible { color: #e7d8b1; background: #9e3634; }
+@media (max-width: 560px) {
+  .immersive-2d-button { top: .75rem; left: .75rem; }
+  .title-member-actions { top: auto; bottom: 1rem; left: .75rem; transform: none; }
+}

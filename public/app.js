@@ -1776,8 +1776,7 @@
       $('#immersive-ignore-store-year').checked = event.currentTarget.checked;
     });
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
-    $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
-    $('#balcony-toggle').addEventListener('click', () => setMode('balcony'));
+    $('#immersive-2d-open').addEventListener('click', () => setMode('normal'));
     $('#immersive-balcony-open').addEventListener('click', () => setMode('balcony'));
     $('#catalog-search-open').addEventListener('click', openCatalogSearch);
     $('#balcony-return-shelf').addEventListener('click', () => setMode('immersive'));

@@ -112,12 +112,13 @@
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
         <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog" aria-label="Abrir Cesta" title="Abrir Cesta">
           <svg class="basket-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M5 8h14l-1 12H6L5 8Zm3 0a4 4 0 0 1 8 0M9 12v4m6-4v4"/></svg>
-          <span id="immersive-basket-count">0</span>
+          <span class="immersive-basket-label">Cesta</span><span id="immersive-basket-count">0</span>
         </button>
         <button id="immersive-balcony-open" class="immersive-balcony-button" type="button" aria-label="Abrir Balcão de aluguel" title="Abrir Balcão de aluguel">
           <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M3 8h18M5 8v11h14V8M8 5h8l2 3H6l2-3Zm-1 14h10"/></svg>
           <span>Balcão</span>
         </button>
+        <button id="immersive-2d-open" class="immersive-2d-button" type="button" aria-label="Voltar ao modo 2D" title="Voltar ao modo 2D">2D</button>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
             <div class="immersive-browse-controls">
@@ -139,14 +140,8 @@
               <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="filters">Filtros</span></button>
               <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false"><span aria-hidden="true">⚙</span><span data-i18n="settings">Ajustes</span></button>
               <button id="immersive-account-open" type="button"><span aria-hidden="true">▣</span><span>Minha conta</span></button>
-              <span class="immersive-menu-divider" aria-hidden="true"></span>
-              <button id="normal-mode-return" type="button" data-i18n="return">Voltar</button>
               <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Ocultar menu">Ocultar</button>
             </nav>
-            <div class="immersive-destination">
-              <span class="immersive-destination-copy"><span data-i18n="counter">Balcão</span><small>3D</small></span>
-              <button id="balcony-toggle" type="button" aria-controls="balcony-room" data-i18n="enter">Entrar</button>
-            </div>
           </div>
           <div id="immersive-filters" class="immersive-filters" hidden>
             <fieldset class="immersive-picker immersive-provider-picker">
