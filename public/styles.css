@@ -763,3 +763,70 @@ dialog.panel-dialog {
   .saved-title-actions { grid-column: 1 / -1; justify-content: stretch; }
   .saved-title-actions button { flex: 1; }
 }
+
+/* Retrieval and rental are separate destinations; both keep support optional. */
+.immersive-balcony-button, .immersive-donation-button {
+  position: absolute;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  min-height: 52px;
+  border: 2px solid var(--yellow);
+  border-radius: 14px;
+  color: var(--cream);
+  background: rgba(8,13,23,.92);
+  box-shadow: 4px 5px 0 rgba(0,0,0,.5), 0 0 24px rgba(201,154,46,.12);
+  cursor: pointer;
+  font: 900 .62rem/1 "Courier New", monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.immersive-balcony-button { bottom: 1rem; left: 5.9rem; padding: .55rem .75rem; }
+.immersive-balcony-button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.immersive-donation-button { top: 1rem; left: 1rem; min-width: 46px; padding: .55rem; color: #ffd8b0; border-color: #c87f55; background: rgba(74,31,31,.92); font-size: 1rem; }
+.immersive-balcony-button:hover, .immersive-balcony-button:focus-visible, .immersive-donation-button:hover, .immersive-donation-button:focus-visible { color: var(--blue-deep); background: var(--yellow); outline: 0; }
+
+/* Keep the genre label and year field in their own readable control boxes. */
+.immersive-hud:not(.is-collapsed) .immersive-browse-controls { grid-template-columns: minmax(0, 1fr) 82px 116px 52px; }
+.immersive-genre-picker { grid-template-columns: max-content minmax(0, 1fr); min-width: 0; }
+.immersive-genre-picker select { min-width: 0 !important; width: 100%; }
+.immersive-year-picker { display: grid; grid-template-columns: 1fr; gap: .15rem; align-content: center; width: auto; min-width: 0; }
+.immersive-year-picker input { width: 100%; min-width: 0; }
+
+/* Account identity is read-only until the member deliberately enters edit mode. */
+.member-card-username { position: relative; min-width: 0; padding-right: 2.4rem; }
+.member-edit-button { position: absolute; top: 50%; right: 0; display: grid; width: 34px; min-height: 34px; padding: 0; place-items: center; border: 2px solid #24364d; border-radius: 4px; color: #24364d; background: #ead9ad; box-shadow: 2px 2px 0 #6a5525; cursor: pointer; font-size: 1.05rem; transform: translateY(-50%); }
+.member-edit-button:hover, .member-edit-button:focus-visible { color: #fff4d1; background: var(--red); outline: 0; }
+#username-form > div { flex-wrap: wrap; }
+#username-form > div button { min-width: 92px; }
+#username-cancel { color: var(--cream); background: #2b211b; }
+.username-availability { font-family: "Courier New", monospace; }
+.account-saved-collections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; margin: 1.2rem 0; }
+.account-saved-collection { min-width: 0; padding: .8rem; border: 1px solid #624b3b; border-radius: 5px; background: rgba(0,0,0,.16); }
+.account-section-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.account-section-heading h3 { margin: 0; color: var(--yellow); font: 900 1.1rem/1 Impact, sans-serif; text-transform: uppercase; }
+.account-section-link { min-height: 30px; padding: .35rem .5rem; border: 1px solid #765640; color: var(--cream); background: #17110e; cursor: pointer; font: 900 .56rem/1 "Courier New", monospace; text-transform: uppercase; }
+.account-section-link:hover, .account-section-link:focus-visible { color: var(--blue-deep); background: var(--yellow); outline: 0; }
+.account-saved-collection .counter-list { padding-bottom: 0; }
+.account-saved-collection .saved-title-item { grid-template-columns: 40px minmax(0, 1fr); gap: .5rem; }
+.account-saved-collection .saved-title-item img { width: 40px; height: 58px; }
+.account-saved-collection .saved-title-actions { grid-column: 1 / -1; justify-content: stretch; }
+.account-saved-collection .saved-title-actions > * { flex: 1; }
+.account-saved-collection .saved-row-actions { flex: 0 0 auto; }
+.account-saved-collection .saved-row-actions .saved-icon-action { flex: 0 0 32px; }
+.basket-actions .tip-jar-button { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 760px) {
+  .immersive-hud:not(.is-collapsed) .immersive-browse-controls { grid-template-columns: minmax(0, 1fr) 86px; }
+  .immersive-hud:not(.is-collapsed) .immersive-genre-picker { grid-column: 1 / -1; }
+  .immersive-hud:not(.is-collapsed) .immersive-year-picker { grid-column: 1; }
+}
+@media (max-width: 560px) {
+  .immersive-balcony-button { left: 5.25rem; }
+  .immersive-balcony-button span { display: none; }
+  .immersive-donation-button { top: .75rem; left: .75rem; }
+  .account-saved-collections { grid-template-columns: 1fr; }
+  .account-section-heading h3 { font-size: 1rem; }
+  .header-actions #retrieval-open { display: inline-flex; }
+}

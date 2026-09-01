@@ -1,15 +1,20 @@
 # The Balcony — implemented rental counter
 
 **Status:** implemented in the 2D and 3D experiences. The signed-in rental state is authoritative in the private `locadora-data` Worker; the anonymous basket remains local until confirmation.
-**Purpose:** make Locadora’s browse → basket → counter → return loop tangible, legible, and identical in normal and immersive modes.
+**Purpose:** make Locadora’s browse → Retirada → Cesta → Balcão → return loop tangible, legible, and identical in normal and immersive modes.
 
 ## Core rule
 
 There is no `Separados` / Picks shelf.
 
-The pre-rental flow has two deliberately separate states:
+There are two deliberate customer-facing spaces:
 
-- **Cesta local:** up to fifteen distinct titles chosen while browsing. It persists locally until the visitor removes titles or the relevant rental flow completes.
+- **Retirada:** the separate search/selection space. It helps the visitor find tapes and place candidates in Cesta; it never rents.
+- **Balcão:** the separate rental/return space. It reviews the temporary decision and is the only place where an authenticated package is confirmed.
+
+The pre-rental flow keeps two separate states:
+
+- **Cesta local:** up to fifteen distinct titles chosen while browsing or in Retirada. It persists locally until the visitor removes titles or the relevant rental flow completes.
 - **Decisão no Balcão:** a temporary copy of the Cesta. Removing a tape here means “não levar hoje” and does not mutate the Cesta itself. Only this temporary subset is sent when the visitor confirms `Alugar pacote`.
 
 A tape reaches Cesta only when the visitor deliberately adds it from a VHS detail view. The normal and immersive Cesta buttons open the same review surface; `Levar ao Balcão` then opens the 2D desk or moves the immersive visitor into the 3D Balcão.
@@ -18,7 +23,7 @@ A tape reaches Cesta only when the visitor deliberately adds it from a VHS detai
 ESTANTE / BUSCA
   │  inspecionar uma fita ou usar "Botar na cesta"
   ▼
-CESTA LOCAL (0–3 títulos distintos)
+CESTA LOCAL (0–15 títulos distintos)
   │  levar ao Balcão para decidir o pacote final
   ▼
 BALCÃO — revisar, remover fitas que não vão sair hoje, então "Alugar pacote"
@@ -111,8 +116,8 @@ Include a physical membership cue tied to the real member section:
 
 The counter includes an old beige/black CRT monitor and keyboard.
 
-- Its screen clearly reads `PESQUISAR TÍTULOS` and opens the same native search used by the 2D Balcão.
-- The CRT remains a physical, compact prop rather than a second dashboard or canvas-only control surface.
+- Its screen clearly reads `PESQUISAR TÍTULOS` and opens the same native search used by the 2D Retirada.
+- The CRT remains a physical, compact prop rather than a second dashboard or canvas-only control surface. Its search action opens Retirada, not rental confirmation.
 - A subtle hover lift plus pointer cursor communicates that it is clickable.
 
 ### 6. Voluntary 3D tip jar

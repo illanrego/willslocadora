@@ -24,7 +24,7 @@
           <button class="counter-button" id="counter-open" type="button" aria-controls="basket-dialog">
             <span data-i18n="basket">Cesta</span> <span id="counter-count" aria-label="items in basket">0</span>
           </button>
-          <button class="utility-button" id="balcony-search-open" type="button" aria-controls="balcony-search-dialog">Pesquisar no Balcão</button>
+          <button class="utility-button" id="retrieval-open" type="button" aria-controls="retrieval-dialog">Retirada</button>
           <button id="watchlist-open" class="utility-button header-icon-button" type="button" aria-label="Assistir depois e Favoritos" title="Assistir depois e Favoritos">
             <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
           </button>
@@ -110,10 +110,15 @@
         </div>
         <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" hidden>← Previous stand</button>
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
-        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog" aria-label="Abrir Cesta" title="Abrir Cesta">
+        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog" aria-label="Abrir Retirada e Cesta" title="Abrir Retirada e Cesta">
           <svg class="basket-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M5 8h14l-1 12H6L5 8Zm3 0a4 4 0 0 1 8 0M9 12v4m6-4v4"/></svg>
           <span id="immersive-basket-count">0</span>
         </button>
+        <button id="immersive-balcony-open" class="immersive-balcony-button" type="button" aria-label="Abrir Balcão de aluguel" title="Abrir Balcão de aluguel">
+          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M3 8h18M5 8v11h14V8M8 5h8l2 3H6l2-3Zm-1 14h10"/></svg>
+          <span>Balcão</span>
+        </button>
+        <button id="immersive-donation-open" class="immersive-donation-button" type="button" aria-controls="retrieval-dialog" aria-label="Doações" title="Doações">♥</button>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
             <div class="immersive-browse-controls">
@@ -245,19 +250,29 @@
     <button id="account-sign-in" class="account-action" type="button">Entrar ou criar conta</button>
     <form id="username-form" class="source-form" hidden>
       <label for="username-input">Nome de usuário</label>
-      <div><input id="username-input" name="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_\-]+" autocomplete="username" placeholder="will_rego"><button type="submit">Salvar</button></div>
+      <div><input id="username-input" name="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_\-]+" autocomplete="username" placeholder="will_rego"><button id="username-save" type="submit">Salvar</button><button id="username-cancel" type="button">Cancelar</button></div>
       <p id="username-availability" class="username-availability" role="status" aria-live="polite"></p>
     </form>
     <section id="account-overview" class="account-overview" hidden>
       <div class="member-card" aria-label="Dados da carteirinha">
         <div class="member-card-mark" aria-hidden="true">WL</div>
-        <div><span>Nome de usuário</span><strong id="account-basic-data"></strong></div>
+        <div class="member-card-username"><span>Nome de usuário</span><strong id="account-basic-data"></strong><button id="account-edit-username" class="member-edit-button" type="button" aria-controls="username-form" aria-expanded="false" aria-label="Editar nome de usuário" title="Editar nome de usuário">✎</button></div>
         <div><span>Membro desde</span><strong id="account-member-since">—</strong></div>
       </div>
       <div class="member-stats" aria-label="Resumo da conta">
         <div><strong id="account-active-count">0/3</strong><span>Fitas alugadas</span></div>
         <div><strong id="account-history-count">0</strong><span>Registros recentes</span></div>
         <div><strong id="account-watchlist-count">0</strong><span>Itens salvos</span></div>
+      </div>
+      <div class="account-saved-collections" aria-label="Prateleiras pessoais">
+        <section class="account-saved-collection" aria-labelledby="account-watch-later-heading">
+          <div class="account-section-heading"><h3 id="account-watch-later-heading">＋ Assistir depois</h3><button type="button" class="account-section-link" data-account-collection="watch_later">Abrir lista</button></div>
+          <div id="account-watch-later-list" class="counter-list"></div>
+        </section>
+        <section class="account-saved-collection" aria-labelledby="account-favorites-heading">
+          <div class="account-section-heading"><h3 id="account-favorites-heading">★ Favoritos</h3><button type="button" class="account-section-link" data-account-collection="favorite">Abrir lista</button></div>
+          <div id="account-favorites-list" class="counter-list"></div>
+        </section>
       </div>
       <section class="account-rentals" aria-labelledby="account-active-heading">
         <h3 id="account-active-heading">Fitas alugadas</h3>
@@ -303,6 +318,7 @@
     <div class="basket-actions">
       <form method="dialog"><button class="basket-secondary-action" value="browse">Continuar escolhendo</button></form>
       <button id="take-basket-counter" class="balcony-rent-button" type="button">Levar ao Balcão</button>
+      <button id="retirada-tip-jar" class="tip-jar-button" type="button">Doações · manter as luzes acesas</button>
     </div>
   </dialog>
 
@@ -320,7 +336,7 @@
       </ol>
       <div id="balcony-counter-list" class="counter-list"></div>
       <button id="rent-counter" class="balcony-rent-button balcony-primary-action" type="button">Alugar pacote</button>
-      <button id="counter-search" class="counter-search-button" type="button">Pesquisar título no Balcão</button>
+      <button id="retrieval-open-counter" class="counter-search-button" type="button">Abrir espaço de Retirada</button>
     </section>
     <section id="balcony-return-controls" class="balcony-return-controls" aria-labelledby="balcony-return-heading">
       <h3 id="balcony-return-heading" data-i18n="returns">Devoluções</h3>
@@ -339,17 +355,18 @@
     <form method="dialog"><button id="rental-confirmation-home" class="account-action" value="home">Voltar para a página inicial</button></form>
   </dialog>
 
-  <dialog id="balcony-search-dialog" class="panel-dialog balcony-search-dialog">
+  <dialog id="retrieval-dialog" class="panel-dialog retrieval-dialog">
     <form method="dialog" class="panel-header">
-      <div><span class="eyebrow">CATÁLOGO GERAL</span><h2>Terminal</h2></div>
+      <div><span class="eyebrow">ESPAÇO DE RETIRADA</span><h2>Retirada</h2></div>
       <button class="dialog-close" value="close" aria-label="Close catalogue terminal">×</button>
     </form>
-    <form id="balcony-search-form" class="source-form">
-      <label for="balcony-search-input">Buscar título</label>
-      <div><input id="balcony-search-input" type="search" minlength="2" maxlength="80" autocomplete="off" placeholder="Ex.: Matrix"><button type="submit">Buscar</button></div>
+    <form id="retrieval-form" class="source-form">
+      <label for="retrieval-input">Buscar título</label>
+      <div><input id="retrieval-input" type="search" minlength="2" maxlength="80" autocomplete="off" placeholder="Ex.: Matrix"><button type="submit">Buscar</button></div>
     </form>
-    <p id="balcony-search-status" class="panel-copy" role="status" aria-live="polite">Digite ao menos duas letras.</p>
-    <div id="balcony-search-results" class="counter-list"></div>
+    <p id="retrieval-status" class="panel-copy" role="status" aria-live="polite">Digite ao menos duas letras.</p>
+    <div id="retrieval-results" class="counter-list"></div>
+    <button id="retrieval-donation" class="tip-jar-button" type="button">Doações · manter as luzes acesas</button>
   </dialog>
 
   <dialog id="sources-dialog" class="panel-dialog sources-dialog">

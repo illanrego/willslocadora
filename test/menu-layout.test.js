@@ -37,16 +37,16 @@ test('dialog and member cards use the uniform raised Locadora frame instead of a
   assert.match(css, /\.member-stats div \{[^}]*border: 2px solid #765640;[^}]*box-shadow: inset 0 1px 0 rgba\(255,255,255,.06\), 0 4px 0 rgba\(0,0,0,.3\);/);
 });
 
-test('balcony search terminal is an accessible native dialog', () => {
-  assert.match(page, /<dialog id="balcony-search-dialog" class="panel-dialog balcony-search-dialog">/);
-  assert.match(page, /<form id="balcony-search-form"[^>]*>/);
-  assert.match(page, /<input id="balcony-search-input"[^>]*type="search"[^>]*minlength="2"/);
-  assert.match(page, /id="balcony-search-status"[^>]*role="status"/);
-  assert.match(page, /id="balcony-search-results"/);
-  assert.match(app, /function openBalconySearch\(preserve = false\)/);
+test('Retirada catalogue search is an accessible native dialog', () => {
+  assert.match(page, /<dialog id="retrieval-dialog" class="panel-dialog retrieval-dialog">/);
+  assert.match(page, /<form id="retrieval-form"[^>]*>/);
+  assert.match(page, /<input id="retrieval-input"[^>]*type="search"[^>]*minlength="2"/);
+  assert.match(page, /id="retrieval-status"[^>]*role="status"/);
+  assert.match(page, /id="retrieval-results"/);
+  assert.match(app, /function openRetrieval\(preserve = false\)/);
   assert.match(app, /api\(`\/api\/search\?\$\{new URLSearchParams/);
-  assert.match(app, /let returnToBalconySearch = false;/);
-  assert.match(app, /openBalconySearch\(true\)/);
+  assert.match(app, /let returnToRetrieval = false;/);
+  assert.match(app, /openRetrieval\(true\)/);
 });
 test('immersive navigation separates Balcony from settings and filters', () => {
   assert.match(page, /class="immersive-destination[\s\S]*id="balcony-toggle"/);
@@ -64,13 +64,13 @@ test('collapsed immersive HUD keeps its nested restore button visible', () => {
   assert.match(css, /\.immersive-hud\.is-collapsed \.immersive-hud-strip > :not\(\.immersive-menu-actions\), \.immersive-hud\.is-collapsed \.immersive-menu-actions > :not\(#immersive-hud-toggle\)/);
 });
 
-test('the rental desk keeps catalogue search and returns behind the Cesta-to-Balcão transition', () => {
-  assert.match(page, /id="counter-search"[^>]*>/);
+test('the rental desk keeps Retirada and returns behind the Cesta-to-Balcão transition', () => {
+  assert.match(page, /id="retrieval-open-counter"[^>]*>/);
   assert.match(page, /id="rent-counter"/);
   assert.match(page, /id="balcony-rented-list"/);
   assert.match(app, /function openRentalDesk\(\) \{[\s\S]*renderBalconyPanel\(\);\s*if \(!\$\('#balcony-dialog'\)\.open\) \$\('#balcony-dialog'\)\.showModal\(\);\s*\}/);
   assert.match(app, /\$\('#counter-open'\)\.addEventListener\('click', openBasket\)/);
-  assert.match(app, /\$\('#counter-search'\)\.addEventListener\('click', openBalconySearch\)/);
+  assert.match(app, /\$\('#retrieval-open-counter'\)\.addEventListener\('click', openRetrieval\)/);
 });
 
 test('immersive mode exposes a basket independently from the Balcony', () => {
@@ -85,6 +85,9 @@ test('immersive mode exposes a basket independently from the Balcony', () => {
   assert.match(css, /\.immersive-genre-picker select/);
   assert.match(css, /\.immersive-hud \{[^}]*position: absolute;/);
   assert.match(css, /\.immersive-basket-button/);
+  assert.match(page, /id="immersive-balcony-open"[^>]*aria-label="Abrir Balcão de aluguel"/);
+  assert.match(app, /\$\('#immersive-balcony-open'\)\.addEventListener\('click', \(\) => setMode\('balcony'\)\)/);
+  assert.match(css, /\.immersive-balcony-button/);
 });
 
 test('the normal header opens Cesta first and reaches the 2D Balcony through its CTA', () => {
@@ -94,9 +97,9 @@ test('the normal header opens Cesta first and reaches the 2D Balcony through its
 });
 
 
-test('the normal header opens Balcony catalogue search without requiring a Cesta selection', () => {
-  assert.match(page, /id="balcony-search-open"[^>]*>Pesquisar no Balcão<\/button>/);
-  assert.match(app, /\$\('#balcony-search-open'\)\.addEventListener\('click', openBalconySearch\)/);
+test('the normal header opens Retirada search without requiring a Cesta selection', () => {
+  assert.match(page, /id="retrieval-open"[^>]*>Retirada<\/button>/);
+  assert.match(app, /\$\('#retrieval-open'\)\.addEventListener\('click', openRetrieval\)/);
 });
 
 test('Balcão decisions use a temporary subset instead of deleting titles from Cesta', () => {
@@ -162,9 +165,13 @@ test('repeat rentals remain available through the shared three-active-tape cap a
   assert.doesNotMatch(balcony, /rental\.rented/);
 });
 
-test('the optional tip jar only appears in the 3D Balcony context', () => {
+test('both retrieval and rental spaces keep donations visible without activating payment', () => {
+  assert.match(page, /id="retirada-tip-jar"/);
+  assert.match(page, /id="retrieval-donation"/);
   assert.match(page, /id="tip-jar"/);
-  assert.match(app, /\$\('#tip-jar'\)\.hidden = state\.mode !== 'balcony'/);
+  assert.match(page, /id="immersive-donation-open"/);
+  assert.match(app, /\$\('#tip-jar'\)\.hidden = false;/);
+  assert.match(app, /function donationMessage\(\)/);
 });
 
 test('the member destination is a detailed Member Section rather than a generic account panel', () => {

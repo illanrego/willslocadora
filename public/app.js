@@ -49,7 +49,7 @@
   const emptyState = $('#empty-state');
   const titleDialog = $('#title-dialog');
 
-  const balconySearchDialog = $('#balcony-search-dialog');
+  const retrievalDialog = $('#retrieval-dialog');
   const sourcesDialog = $('#sources-dialog');
   let activeVhsViewer = null;
   let activeViewerTitle = null;
@@ -57,10 +57,12 @@
   let immersiveShelf = null;
   let immersiveToken = 0;
   let balcony = null;
-  let returnToBalconySearch = false;
+  let returnToRetrieval = false;
   let inspectionOrigin = null;
   let usernameAvailabilityTimer = 0;
   let usernameAvailabilityToken = 0;
+  let usernameAvailabilityState = 'idle';
+  let usernameEditing = false;
   let pendingRental = false;
   let rentalRequestInFlight = false;
   let balconySelection = null;
@@ -191,10 +193,16 @@
 
   function renderAccount() {
     const { configured, signedIn, profile } = state.member;
-    $('#account-open').textContent = profile?.username || 'Minha conta';
+    const accountButton = $('#account-open');
+    accountButton.setAttribute('aria-label', profile?.username ? `Minha conta · ${profile.username}` : 'Minha conta');
+    accountButton.title = profile?.username ? `Minha conta · ${profile.username}` : 'Minha conta';
     $('#account-sign-in').hidden = !configured || signedIn;
     $('#account-sign-out').hidden = !signedIn;
-    $('#username-form').hidden = !signedIn;
+    if (!profile) usernameEditing = signedIn;
+    const editing = signedIn && (!profile || usernameEditing);
+    $('#username-form').hidden = !editing;
+    $('#account-edit-username').hidden = !signedIn || !profile;
+    $('#account-edit-username').setAttribute('aria-expanded', String(editing));
     $('#username-input').value = profile?.username || '';
     $('#account-status').textContent = !configured
       ? 'Personal accounts will open here once the Locadora account service is configured.'
@@ -270,6 +278,7 @@
     $('#account-active-count').textContent = `${rental?.titles.length || 0}/3`;
     $('#account-history-count').textContent = String(history.length);
     $('#account-watchlist-count').textContent = String(new Set((state.member.savedTitles.length ? state.member.savedTitles : state.member.watchlist).map(canonicalTitleKey)).size);
+    renderAccountSavedCollections();
     const active = $('#account-active-rentals'); active.replaceChildren();
     if (!rental?.titles.length) active.textContent = 'Nenhuma fita alugada agora.';
     else active.append(...rental.titles.map((title) => accountTitleItem(title, `alugada em ${accountDate(title.rentedAt)}`, { source: 'account_active', dialogId: 'account-dialog' })));
@@ -298,27 +307,50 @@
     return /^[a-z0-9_-]{3,24}$/.test(username) ? username : '';
   }
 
+  function syncUsernameSubmit() {
+    const button = $('#username-save');
+    button.disabled = usernameAvailabilityState === 'checking' || usernameAvailabilityState === 'unavailable' || usernameAvailabilityState === 'invalid';
+  }
+
   async function checkUsernameAvailability(value) {
     const status = $('#username-availability');
     const username = usernameCandidate(value);
     const token = ++usernameAvailabilityToken;
-    if (!username) { status.textContent = value ? 'Use 3–24 lowercase letters, numbers, _ or -.' : ''; return; }
-    if (username === state.member.profile?.username) { status.textContent = 'Esse é o seu nome público atual.'; return; }
+    if (!username) {
+      usernameAvailabilityState = value ? 'invalid' : 'idle';
+      status.textContent = value ? 'Use 3–24 lowercase letters, numbers, _ or -.' : '';
+      syncUsernameSubmit();
+      return;
+    }
+    if (username === state.member.profile?.username) {
+      usernameAvailabilityState = 'available';
+      status.textContent = 'Esse é o seu nome público atual.';
+      syncUsernameSubmit();
+      return;
+    }
+    usernameAvailabilityState = 'checking';
     status.textContent = 'Checando disponibilidade…';
+    syncUsernameSubmit();
     try {
       const result = await window.LocadoraAccount.request(`/v1/usernames/${encodeURIComponent(username)}`);
       if (token !== usernameAvailabilityToken) return;
+      usernameAvailabilityState = result.available ? 'available' : 'unavailable';
       status.textContent = result.available ? 'Nome disponível.' : 'Esse nome já está em uso.';
+      syncUsernameSubmit();
     } catch (error) {
-      if (token === usernameAvailabilityToken) status.textContent = error.message;
+      if (token === usernameAvailabilityToken) {
+        usernameAvailabilityState = 'invalid';
+        status.textContent = error.message;
+        syncUsernameSubmit();
+      }
     }
   }
 
   let activeSavedCollection = 'watch_later';
 
   function canonicalTitleKey(title) {
-    const id = String(title?.id || title?.tmdbId || title?.tmdb_id || '').replace(/^tmdb:/, '');
-    return title?.type && id ? `${title.type}:${id}` : '';
+    const id = String(title?.tmdbId ?? title?.tmdb_id ?? title?.id ?? '').replace(/^tmdb:/, '');
+    return title?.type && id && /^\d+$/.test(id) ? `${title.type}:${id}` : '';
   }
 
   function savedTitleCollections(title) {
@@ -346,6 +378,24 @@
       entries.push(item);
     });
     return entries;
+  }
+
+  function renderAccountSavedCollections() {
+    for (const [collection, listId, label] of [['watch_later', 'account-watch-later-list', 'Assistir depois'], ['favorite', 'account-favorites-list', 'Favoritos']]) {
+      const list = $(`#${listId}`);
+      list.replaceChildren();
+      const entries = savedCollectionEntries(collection);
+      if (!entries.length) { list.textContent = `${label} está vazia.`; continue; }
+      entries.forEach((savedTitle) => {
+        const title = memberTitleForViewer(savedTitle);
+        const item = document.createElement('article'); item.className = 'counter-item saved-title-item';
+        const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
+        const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('time'); meta.dateTime = title.addedAt || ''; meta.textContent = `${title.year || '—'} · ${title.type}`; text.append(name, meta);
+        const actions = document.createElement('div'); actions.className = 'saved-title-actions';
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `account-${collection}-inspect-${title.tmdbId || title.id}`; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitleFromOrigin(title, { source: collection, dialogId: 'account-dialog', focusId: inspect.id }));
+        actions.append(createSavedActions(title), inspect); item.append(image, text, actions); list.append(item);
+      });
+    }
   }
 
   function renderSavedTabs() {
@@ -410,7 +460,7 @@
   }
 
   function openAccount(message = '') { renderAccount(); if (message) $('#account-status').textContent = message; if (!$('#account-dialog').open) $('#account-dialog').showModal(); }
-  function openWatchlist() { activeSavedCollection = 'watch_later'; renderWatchlist(); if (!$('#watchlist-dialog').open) $('#watchlist-dialog').showModal(); }
+  function openWatchlist(collection = activeSavedCollection) { activeSavedCollection = collection; renderWatchlist(); if (!$('#watchlist-dialog').open) $('#watchlist-dialog').showModal(); }
 
   async function saveTitleCollection(title, collection) {
     if (!['watch_later', 'favorite'].includes(collection)) return;
@@ -422,10 +472,20 @@
       const path = active
         ? `/v1/collections/${collection}/${remote.type}/${remote.tmdbId}`
         : `/v1/collections/${collection}`;
-      await window.LocadoraAccount.request(path, active
+      const result = await window.LocadoraAccount.request(path, active
         ? { method: 'DELETE' }
         : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: remote, collection, source: 'locadora' }) });
-      await refreshMemberData();
+      const key = canonicalTitleKey(title);
+      if (active) {
+        state.member.savedTitles = state.member.savedTitles.filter((item) => canonicalTitleKey(item) !== key || (Array.isArray(item.collections) ? !item.collections.includes(collection) : item.collection !== collection));
+      } else if (result.membership) {
+        state.member.savedTitles = [...state.member.savedTitles, result.membership];
+      }
+      renderAccount();
+      renderWatchlist();
+      syncTitleSavedActions();
+      try { await refreshMemberData(); }
+      catch { $('#watchlist-status').textContent = 'Atualizado. A lista será sincronizada quando a conexão voltar.'; }
       renderWatchlist();
       syncTitleSavedActions();
     } catch (error) { openAccount(error.message); }
@@ -508,20 +568,35 @@
     return body;
   }
 
-  function openBalconySearch(preserve = false) {
+  function openRetrieval(preserve = false) {
     if (!preserve) {
-      $('#balcony-search-results').replaceChildren();
-      $('#balcony-search-status').textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.';
+      $('#retrieval-results').replaceChildren();
+      $('#retrieval-status').textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.';
     }
-    if (!balconySearchDialog.open) balconySearchDialog.showModal();
-    $('#balcony-search-input').focus();
+    if (!retrievalDialog.open) retrievalDialog.showModal();
+    $('#retrieval-input').focus();
   }
 
-  async function searchBalconyCatalogue() {
-    const input = $('#balcony-search-input');
+  function donationMessage() {
+    return state.locale === 'pt-BR'
+      ? 'Doações serão opcionais e terão um fluxo próprio. Nenhum pagamento está ativo ainda.'
+      : 'Donations will stay optional and get their own flow. No payment is active yet.';
+  }
+
+  function openDonationFromRetrieval() {
+    openRetrieval(true);
+    $('#retrieval-status').textContent = donationMessage();
+  }
+
+  function showBasketDonationNotice() {
+    $('#basket-status').textContent = donationMessage();
+  }
+
+  async function searchRetrievalCatalogue() {
+    const input = $('#retrieval-input');
     const query = input.value.trim();
-    const status = $('#balcony-search-status');
-    const results = $('#balcony-search-results');
+    const status = $('#retrieval-status');
+    const results = $('#retrieval-results');
     results.replaceChildren();
     if (query.length < 2) { status.textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.'; return; }
     status.textContent = state.locale === 'pt-BR' ? 'Consultando o catálogo…' : 'Searching the catalogue…';
@@ -533,7 +608,7 @@
         const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
         const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.type === 'series' ? t('series') : t('movies')} · ${title.year || '—'}`; text.append(name, meta);
         const actions = document.createElement('div'); actions.className = 'return-choices';
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `search-inspect-${title.type}-${title.id}`; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToBalconySearch = true; openTitleFromOrigin(title, { source: 'search', dialogId: 'balcony-search-dialog', focusId: inspect.id }, true, posterTextureUrl(title.poster || posterFallback(title))); });
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `search-inspect-${title.type}-${title.id}`; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToRetrieval = true; openTitleFromOrigin(title, { source: 'search', dialogId: 'retrieval-dialog', focusId: inspect.id }, true, posterTextureUrl(title.poster || posterFallback(title))); });
         const add = document.createElement('button'); add.type = 'button'; add.className = 'primary-inline-action'; add.dataset.titleKey = `${title.type}:${title.id}`; add.textContent = isAtCounter(title) ? 'Tirar da cesta' : 'Botar na cesta'; add.disabled = !isAtCounter(title) && state.counter.length >= MAX_CESTA_TITLES; add.addEventListener('click', () => {
           const result = toggleCounter(title);
           const selectedKeys = new Set(state.counter.map((item) => `${item.type}:${item.id}`));
@@ -1186,7 +1261,7 @@
       heading: 'Balcão · tape fronts',
       onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'balcony', mode: 'balcony' }, true, posterUrl),
       onAction: openRentalDesk,
-      onSearch: openBalconySearch,
+      onSearch: openRetrieval,
       actionLabel: state.locale === 'pt-BR' ? 'Abrir controles do balcão' : 'Open counter controls',
     });
   }
@@ -1204,7 +1279,7 @@
         year: state.year,
         copy: { collectiveAwards: t('collectiveAwards'), collectiveAwardLines: [t('collectiveAwardOne'), t('collectiveAwardTwo'), t('collectiveAwardThree')] },
         onCounterSelect: openRentalDesk,
-        onSearch: openBalconySearch,
+        onSearch: openRetrieval,
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
         onBagSelect: openRentalDesk,
         onTip: () => { openRentalDesk(); $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; },
@@ -1230,7 +1305,7 @@
     counterList.replaceChildren(); rentedList.replaceChildren();
     const rented = state.rental.rented;
     $('#balcony-context').textContent = state.mode === 'balcony' ? 'BALCÃO · SALA 3D' : 'BALCÃO · ATENDIMENTO 2D';
-    $('#tip-jar').hidden = state.mode !== 'balcony';
+    $('#tip-jar').hidden = false;
     $('#balcony-rental-controls').hidden = false;
     $('#balcony-return-controls').hidden = !rented;
     if (!rented) pendingReturns.clear();
@@ -1442,7 +1517,7 @@
   function restoreInspectionOrigin() {
     const origin = inspectionOrigin;
     inspectionOrigin = null;
-    returnToBalconySearch = false;
+    returnToRetrieval = false;
     if (!origin) return;
     const dialog = origin.dialogId ? $(`#${origin.dialogId}`) : null;
     if (!dialog) return;
@@ -1684,10 +1759,12 @@
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#normal-mode-return').addEventListener('click', () => setMode('normal'));
     $('#balcony-toggle').addEventListener('click', () => setMode('balcony'));
-    $('#balcony-search-open').addEventListener('click', openBalconySearch);
+    $('#immersive-balcony-open').addEventListener('click', () => setMode('balcony'));
+    $('#immersive-donation-open').addEventListener('click', openDonationFromRetrieval);
+    $('#retrieval-open').addEventListener('click', openRetrieval);
     $('#balcony-return-shelf').addEventListener('click', () => setMode('immersive'));
     $('#balcony-panel-open').addEventListener('click', openRentalDesk);
-    $('#balcony-search-form').addEventListener('submit', (event) => { event.preventDefault(); searchBalconyCatalogue(); });
+    $('#retrieval-form').addEventListener('submit', (event) => { event.preventDefault(); searchRetrievalCatalogue(); });
     $('#balcony-zoom-in').addEventListener('click', () => balcony?.zoomIn());
     $('#balcony-zoom-out').addEventListener('click', () => balcony?.zoomOut());
     $('#rent-counter').addEventListener('click', rentCounter);
@@ -1696,6 +1773,8 @@
     $('#rental-confirmation-dialog').addEventListener('cancel', (event) => event.preventDefault());
     $('#basket-added-dialog').addEventListener('cancel', (event) => event.preventDefault());
     $('#tip-jar').addEventListener('click', () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; });
+    $('#retirada-tip-jar').addEventListener('click', showBasketDonationNotice);
+    $('#retrieval-donation').addEventListener('click', openDonationFromRetrieval);
     $('#immersive-hud-toggle').addEventListener('click', () => setImmersiveHudCollapsed(!$('#immersive-hud').classList.contains('is-collapsed')));
     $('#immersive-filters-toggle').addEventListener('click', () => {
       setImmersiveFilters($('#immersive-filters').hidden);
@@ -1726,22 +1805,40 @@
         restoreInspectionOrigin();
         return;
       }
-      if (!returnToBalconySearch) return;
-      returnToBalconySearch = false;
-      window.requestAnimationFrame(() => openBalconySearch(true));
+      if (!returnToRetrieval) return;
+      returnToRetrieval = false;
+      window.requestAnimationFrame(() => openRetrieval(true));
     });
     $('#counter-open').addEventListener('click', openBasket);
-    $('#counter-search').addEventListener('click', openBalconySearch);
+    $('#retrieval-open-counter').addEventListener('click', openRetrieval);
     $('#immersive-basket-open').addEventListener('click', openBasket);
     $('#take-basket-counter').addEventListener('click', takeBasketToCounter);
     $('#account-return-counter').addEventListener('click', openReturnDesk);
     $('#watchlist-open').addEventListener('click', openWatchlist);
     $('#saved-watch-later-tab').addEventListener('click', () => { activeSavedCollection = 'watch_later'; renderWatchlist(); });
     $('#saved-favorites-tab').addEventListener('click', () => { activeSavedCollection = 'favorite'; renderWatchlist(); });
+    document.querySelectorAll('[data-account-collection]').forEach((button) => button.addEventListener('click', () => {
+      activeSavedCollection = button.dataset.accountCollection;
+      $('#account-dialog').close();
+      openWatchlist();
+    }));
     $('#balcony-watchlist-open').addEventListener('click', openWatchlist);
     $('#immersive-account-open').addEventListener('click', () => openAccount());
     $('#balcony-account-open').addEventListener('click', () => openAccount());
     $('#account-open').addEventListener('click', () => openAccount());
+    $('#account-edit-username').addEventListener('click', () => {
+      usernameEditing = true;
+      usernameAvailabilityState = 'available';
+      renderAccount();
+      $('#username-input').focus();
+    });
+    $('#username-cancel').addEventListener('click', () => {
+      window.clearTimeout(usernameAvailabilityTimer);
+      usernameEditing = false;
+      usernameAvailabilityState = 'idle';
+      $('#username-availability').textContent = '';
+      renderAccount();
+    });
     $('#account-sign-in').addEventListener('click', async () => {
       $('#account-dialog').close();
       try { await window.LocadoraAccount.signIn(); }
@@ -1753,20 +1850,33 @@
     });
     $('#username-input').addEventListener('input', (event) => {
       window.clearTimeout(usernameAvailabilityTimer);
+      usernameAvailabilityState = 'checking';
+      syncUsernameSubmit();
       const username = event.currentTarget.value;
       usernameAvailabilityTimer = window.setTimeout(() => checkUsernameAvailability(username), 250);
     });
     $('#username-form').addEventListener('submit', async (event) => {
       event.preventDefault();
+      window.clearTimeout(usernameAvailabilityTimer);
       const input = $('#username-input');
+      await checkUsernameAvailability(input.value);
+      if (usernameAvailabilityState !== 'available') return;
+      const save = $('#username-save');
+      save.disabled = true;
       try {
         const { profile } = await window.LocadoraAccount.request('/v1/profile', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: input.value }) });
         state.member.profile = profile;
+        usernameEditing = false;
+        usernameAvailabilityState = 'idle';
         $('#username-availability').textContent = 'Nome público salvo.';
         renderAccount();
         await refreshMemberData();
         await resumePendingRental();
-      } catch (error) { $('#account-status').textContent = error.message; }
+      } catch (error) {
+        usernameAvailabilityState = 'invalid';
+        $('#account-status').textContent = error.message;
+        syncUsernameSubmit();
+      }
     });
     $('#account-history-more').addEventListener('click', loadMoreAccountHistory);
     if (window.locadoraIsPublic) {

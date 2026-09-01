@@ -43,8 +43,8 @@ test('adding a tape confirms its title in an OK dialog and animates the basket c
 });
 
 
-test('Balcony catalogue search keeps its Cesta action available with active rentals until fifteen titles', () => {
-  const searchStart = app.indexOf('async function searchBalconyCatalogue()');
+test('Retirada catalogue search keeps its Cesta action available with active rentals until fifteen titles', () => {
+  const searchStart = app.indexOf('async function searchRetrievalCatalogue()');
   const searchEnd = app.indexOf('function setYear', searchStart);
   const search = app.slice(searchStart, searchEnd);
   assert.match(search, /state\.counter\.length >= MAX_CESTA_TITLES/);
@@ -216,4 +216,29 @@ test('saved collections expose independent Assistir depois and Favoritos control
   assert.match(app, /Object\.values\(data\.collections \|\| \{\}\)\.flat\(\)/);
   assert.match(app, /`\/v1\/collections\/\$\{collection\}`/);
   assert.match(app, /aria-pressed/);
+});
+
+test('saved title actions reconcile UUID-backed memberships with the canonical TMDB title', () => {
+  assert.match(app, /const id = String\(title\?\.tmdbId \?\? title\?\.tmdb_id \?\? title\?\.id/);
+  assert.match(app, /const result = await window\.LocadoraAccount\.request\(path/);
+  assert.match(app, /state\.member\.savedTitles = \[\.\.\.state\.member\.savedTitles, result\.membership\]/);
+  assert.match(app, /syncTitleSavedActions\(\);/);
+});
+
+test('member username stays read-only until the edit control is activated and checks availability before saving', () => {
+  assert.match(page, /id="account-edit-username"[^>]*aria-controls="username-form"/);
+  assert.match(page, /id="username-form"[^>]*hidden/);
+  assert.match(page, /id="username-save"/);
+  assert.match(page, /id="username-cancel"/);
+  assert.match(app, /const editing = signedIn && \(!profile \|\| usernameEditing\)/);
+  assert.match(app, /usernameAvailabilityState = result\.available \? 'available' : 'unavailable'/);
+  assert.match(app, /if \(usernameAvailabilityState !== 'available'\) return;/);
+});
+
+test('Minha conta renders both independent personal shelves', () => {
+  assert.match(page, /id="account-watch-later-list"/);
+  assert.match(page, /id="account-favorites-list"/);
+  assert.match(app, /function renderAccountSavedCollections\(\)/);
+  assert.match(app, /renderAccountSavedCollections\(\);/);
+  assert.match(app, /const id = String\(title\?\.tmdbId \?\? title\?\.tmdb_id \?\? title\?\.id/);
 });
