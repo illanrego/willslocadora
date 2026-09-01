@@ -202,7 +202,8 @@ test('title inspection records a source and restores that source after closing',
 });
 
 test('all list-origin title actions use the shared inspection entry point', () => {
-  assert.match(app, /openSavedTitleFromOrigin\(title, \{ source: activeSavedCollection/);
+  assert.match(app, /function createSavedCollectionCard\(savedTitle, collection, dialogId\)/);
+  assert.match(app, /openSavedTitleFromOrigin\(title, \{ source: collection, dialogId, mode: state\.mode \}\)/);
   assert.match(app, /activeSavedCollection = 'favorite'/);
   assert.match(app, /openTitleFromOrigin\(title, \{ source: 'cesta'/);
   assert.match(app, /openTitleFromOrigin\(title, \{ source: 'balcony'/);
@@ -225,17 +226,30 @@ test('saved title actions reconcile UUID-backed memberships with the canonical T
   assert.match(app, /syncTitleSavedActions\(\);/);
 });
 
-test('saved lists hydrate their canonical tape before inspection and expose an explicit per-list removal', () => {
+test('saved lists hydrate covers, open inspection from the tape or name, and expose basket and removal actions', () => {
   const savedInspectionStart = app.indexOf('async function openSavedTitleFromOrigin');
   const savedInspectionEnd = app.indexOf('function renderAccountSavedCollections', savedInspectionStart);
   const savedInspection = app.slice(savedInspectionStart, savedInspectionEnd);
   assert.match(savedInspection, /const memberTitle = memberTitleForViewer\(title\)/);
   assert.match(savedInspection, /await loadTitleMetadata\(memberTitle\)/);
   assert.match(savedInspection, /openTitle\(memberTitle, false\)/);
+  assert.match(app, /function createSavedCollectionCard\(savedTitle, collection, dialogId\)/);
+  assert.match(app, /const title = memberTitleForViewer\(savedTitle\)/);
+  assert.match(app, /image\.addEventListener\('click', \(\) => openSavedTitleFromOrigin/);
+  assert.match(app, /name\.addEventListener\('click', openInspector\)/);
+  assert.match(app, /function hydrateSavedTitleCard\(title, item, \{ image, name, meta \}\)/);
+  assert.match(app, /loadTitleMetadata\(title\)\.then/);
+  assert.match(app, /function createSavedCollectionBasketAction\(title\)/);
+  assert.match(app, /add\.textContent = 'Botar na cesta'/);
+  assert.match(app, /createSavedCollectionBasketAction\(title\), createSavedCollectionRemoveAction\(title, collection\)/);
   assert.match(app, /function createSavedCollectionRemoveAction\(title, collection\)/);
+  assert.match(app, /const memberTitle = memberTitleForViewer\(title\);/);
+  assert.match(app, /saveTitleCollection\(memberTitle, collection\)/);
   assert.match(app, /remove\.textContent = `Tirar de \$\{label\}`/);
-  assert.match(app, /openSavedTitleFromOrigin\(title, \{ source: activeSavedCollection/);
-  assert.match(app, /createSavedCollectionRemoveAction\(title, activeSavedCollection\)/);
+  const cardStart = app.indexOf('function createSavedCollectionCard');
+  const cardEnd = app.indexOf('function renderAccountSavedCollections', cardStart);
+  const savedCard = app.slice(cardStart, cardEnd);
+  assert.doesNotMatch(savedCard, /Inspecionar/);
 });
 
 test('saved title clicks update the local icon list without opening Minha conta when signed out', () => {

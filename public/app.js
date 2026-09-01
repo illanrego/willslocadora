@@ -429,15 +429,62 @@
     return openTitle(memberTitle, false);
   }
 
+  function refreshSavedTitleCard(title, { image, name, meta }) {
+    image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL;
+    name.textContent = title.name;
+    meta.textContent = `${title.year || '—'} · ${title.type}`;
+  }
+
+  function hydrateSavedTitleCard(title, item, { image, name, meta }) {
+    const cardLocale = state.locale;
+    const cardSessionVersion = memberSessionVersion;
+    loadTitleMetadata(title).then(() => {
+      if (!item.isConnected || cardLocale !== state.locale || cardSessionVersion !== memberSessionVersion) return;
+      refreshSavedTitleCard(title, { image, name, meta });
+    }).catch(() => {});
+  }
+
   function createSavedCollectionRemoveAction(title, collection) {
+    const memberTitle = memberTitleForViewer(title);
     const label = collection === 'favorite' ? 'Favoritos' : 'Assistir depois';
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'saved-remove-action';
     remove.textContent = `Tirar de ${label}`;
-    remove.setAttribute('aria-label', `Tirar ${title.name} de ${label}`);
-    remove.addEventListener('click', () => saveTitleCollection(title, collection));
+    remove.setAttribute('aria-label', `Tirar ${memberTitle.name} de ${label}`);
+    remove.addEventListener('click', () => saveTitleCollection(memberTitle, collection));
     return remove;
+  }
+
+  function createSavedCollectionBasketAction(title) {
+    const memberTitle = memberTitleForViewer(title);
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'saved-basket-action';
+    add.textContent = 'Botar na cesta';
+    add.setAttribute('aria-label', `Botar ${memberTitle.name} na cesta`);
+    add.addEventListener('click', () => toggleCounter(memberTitle));
+    return add;
+  }
+
+  function createSavedCollectionCard(savedTitle, collection, dialogId) {
+    const title = memberTitleForViewer(savedTitle);
+    const item = document.createElement('article'); item.className = 'counter-item saved-title-item';
+    const image = document.createElement('img'); image.alt = ''; image.className = 'saved-title-cover'; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
+    image.addEventListener('click', () => openSavedTitleFromOrigin(title, { source: collection, dialogId, mode: state.mode }));
+    const text = document.createElement('div');
+    const name = document.createElement('strong'); name.className = 'saved-title-name'; name.tabIndex = 0; name.textContent = title.name;
+    const openInspector = () => openSavedTitleFromOrigin(title, { source: collection, dialogId, mode: state.mode });
+    name.addEventListener('click', openInspector);
+    name.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openInspector(); } });
+    const meta = document.createElement('time'); meta.dateTime = title.addedAt || '';
+    text.append(name, meta);
+    refreshSavedTitleCard(title, { image, name, meta });
+    const actions = document.createElement('div'); actions.className = 'saved-title-actions';
+    actions.append(createSavedCollectionBasketAction(title), createSavedCollectionRemoveAction(title, collection));
+    item.append(image, text, actions);
+    hydrateSavedTitleCard(title, item, { image, name, meta });
+    return item;
   }
 
   function renderAccountSavedCollections() {
@@ -447,17 +494,7 @@
       const entries = savedCollectionEntries(collection);
       if (!entries.length) { list.textContent = `${label} está vazia.`; continue; }
       entries.forEach((savedTitle) => {
-        const title = memberTitleForViewer(savedTitle);
-        const item = document.createElement('article'); item.className = 'counter-item saved-title-item';
-        const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
-        const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('time'); meta.dateTime = title.addedAt || ''; meta.textContent = `${title.year || '—'} · ${title.type}`; text.append(name, meta);
-        const actions = document.createElement('div'); actions.className = 'saved-title-actions';
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `account-${collection}-inspect-${title.tmdbId || title.id}`; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', async () => {
-          inspect.disabled = true;
-          try { await openSavedTitleFromOrigin(title, { source: collection, dialogId: 'account-dialog', focusId: inspect.id }); }
-          finally { inspect.disabled = false; }
-        });
-        actions.append(createSavedCollectionRemoveAction(title, collection), inspect); item.append(image, text, actions); list.append(item);
+        list.append(createSavedCollectionCard(savedTitle, collection, 'account-dialog'));
       });
     }
   }
@@ -511,17 +548,8 @@
       ? `${entries.length} título(s) em ${label}. Esta lista fica salva neste navegador; entre para sincronizar.`
       : `${entries.length} título(s) em ${label}.`;
     if (!entries.length) { list.textContent = `${label} está vazia.`; return; }
-    entries.forEach((title) => {
-      const item = document.createElement('article'); item.className = 'counter-item saved-title-item';
-      const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
-      const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('time'); meta.dateTime = title.addedAt || ''; meta.textContent = `${title.year || '—'} · ${title.type}`; text.append(name, meta);
-      const actions = document.createElement('div'); actions.className = 'saved-title-actions';
-      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `${activeSavedCollection}-inspect-${title.tmdbId || title.id}`; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', async () => {
-        inspect.disabled = true;
-        try { await openSavedTitleFromOrigin(title, { source: activeSavedCollection, dialogId: 'watchlist-dialog', focusId: inspect.id }); }
-        finally { inspect.disabled = false; }
-      });
-      actions.append(createSavedCollectionRemoveAction(title, activeSavedCollection), inspect); item.append(image, text, actions); list.append(item);
+    entries.forEach((savedTitle) => {
+      list.append(createSavedCollectionCard(savedTitle, activeSavedCollection, 'watchlist-dialog'));
     });
   }
 
