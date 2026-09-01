@@ -21,3 +21,10 @@ test('reused VHS viewer resets to the new tape front without retaining its previ
   assert.match(viewer, /function resetToFront\(\) \{[\s\S]*group\.rotation\.y = 0;[\s\S]*\}/);
   assert.match(viewer, /update\(nextTitle, nextAtCounter, assets = \{\}\) \{\s*title = nextTitle;\s*resetToFront\(\);[\s\S]*logoImage = null;[\s\S]*redraw\(\);/);
 });
+
+test('VHS canvas changes to a pointer over clickable back-cover actions', () => {
+  const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
+  assert.match(viewer, /function isClickableHit\(hit\)/);
+  assert.match(viewer, /renderer\.domElement\.style\.cursor = isClickableHit\(pick\(event\)\) \? 'pointer' : 'grab'/);
+  assert.match(viewer, /ACTIONS\.letterboxd, ACTIONS\.imdb, ACTIONS\.counter, ACTIONS\.availability, ACTIONS\.watch/);
+});

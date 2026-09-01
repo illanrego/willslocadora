@@ -1263,7 +1263,7 @@
       onAction: openRentalDesk,
       onSearch: openCatalogSearch,
       onReturn: openReturnDesk,
-      actionLabel: state.locale === 'pt-BR' ? 'Abrir controles do balcão' : 'Open counter controls',
+      actionLabel: state.locale === 'pt-BR' ? 'Escolher / alugar fitas' : 'Choose / rent tapes',
       returnLabel: state.locale === 'pt-BR' ? 'Abrir devoluções' : 'Open returns',
     });
   }

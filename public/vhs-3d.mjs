@@ -495,18 +495,32 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     return raycaster.intersectObjects([front, back], false)[0] || null;
   }
 
+  function actionCoordinates(hit) {
+    if (!hit || hit.object.userData.surface !== 'back' || !hit.uv) return null;
+    return { x: hit.uv.x * TEXTURE_WIDTH, y: (1 - hit.uv.y) * TEXTURE_HEIGHT };
+  }
+
+  function isClickableHit(hit) {
+    const coordinates = actionCoordinates(hit);
+    return Boolean(coordinates && [ACTIONS.letterboxd, ACTIONS.imdb, ACTIONS.counter, ACTIONS.availability, ACTIONS.watch].some((rect) => inside(rect, coordinates.x, coordinates.y)));
+  }
+
   function pointerDown(event) {
     dragging = true;
     moved = 0;
     velocityY = 0;
     lastX = event.clientX;
     lastY = event.clientY;
+    renderer.domElement.style.cursor = 'grabbing';
     renderer.domElement.setPointerCapture(event.pointerId);
     renderer.domElement.classList.add('is-dragging');
   }
 
   function pointerMove(event) {
-    if (!dragging) return;
+    if (!dragging) {
+      renderer.domElement.style.cursor = isClickableHit(pick(event)) ? 'pointer' : 'grab';
+      return;
+    }
     const dx = event.clientX - lastX;
     const dy = event.clientY - lastY;
     moved += Math.abs(dx) + Math.abs(dy);
@@ -522,14 +536,16 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     dragging = false;
     renderer.domElement.classList.remove('is-dragging');
     if (moved >= 8) {
+      renderer.domElement.style.cursor = 'grab';
       targetY += velocityY * 2.5;
       return;
     }
     const hit = pick(event);
+    renderer.domElement.style.cursor = isClickableHit(hit) ? 'pointer' : 'grab';
     if (!hit) return onClose();
-    if (hit.object.userData.surface === 'back' && hit.uv) {
-      const x = hit.uv.x * TEXTURE_WIDTH;
-      const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
+    const coordinates = actionCoordinates(hit);
+    if (coordinates) {
+      const { x, y } = coordinates;
       if (inside(ACTIONS.letterboxd, x, y)) return onLetterboxd?.();
       if (inside(ACTIONS.imdb, x, y)) return onImdb?.();
       if (inside(ACTIONS.counter, x, y)) return onCounter();

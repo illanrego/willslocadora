@@ -110,14 +110,16 @@
         </div>
         <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" hidden>← Previous stand</button>
         <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
-        <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog" aria-label="Abrir Cesta" title="Abrir Cesta">
-          <svg class="basket-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M5 8h14l-1 12H6L5 8Zm3 0a4 4 0 0 1 8 0M9 12v4m6-4v4"/></svg>
-          <span class="immersive-basket-label">Cesta</span><span id="immersive-basket-count">0</span>
-        </button>
-        <button id="immersive-balcony-open" class="immersive-balcony-button" type="button" aria-label="Abrir Balcão de aluguel" title="Abrir Balcão de aluguel">
-          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M3 8h18M5 8v11h14V8M8 5h8l2 3H6l2-3Zm-1 14h10"/></svg>
-          <span>Balcão</span>
-        </button>
+        <div class="immersive-primary-actions" aria-label="Primary store actions">
+          <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog" aria-label="Abrir Cesta" title="Abrir Cesta">
+            <svg class="basket-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M5 8h14l-1 12H6L5 8Zm3 0a4 4 0 0 1 8 0M9 12v4m6-4v4"/></svg>
+            <span class="immersive-basket-label">Cesta</span><span id="immersive-basket-count">0</span>
+          </button>
+          <button id="immersive-balcony-open" class="immersive-balcony-button" type="button" aria-label="Abrir Balcão de aluguel" title="Abrir Balcão de aluguel">
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M3 8h18M5 8v11h14V8M8 5h8l2 3H6l2-3Zm-1 14h10"/></svg>
+            <span>Balcão</span>
+          </button>
+        </div>
         <button id="immersive-2d-open" class="immersive-2d-button" type="button" aria-label="Voltar ao modo 2D" title="Voltar ao modo 2D">2D</button>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
@@ -325,7 +327,7 @@
     <section id="balcony-rental-controls" aria-label="Aluguel no Balcão">
       <ol class="rental-flow" aria-label="Como alugar">
         <li><span>1</span><strong>Escolha</strong><small>fitas nas estantes</small></li>
-        <li class="is-current"><span>2</span><strong>Decida no balcão</strong><small id="rental-capacity">0 de 15 fitas</small></li>
+        <li class="is-current"><span>2</span><strong>Escolher / alugar fitas</strong><small id="rental-capacity">0 de 15 fitas</small></li>
         <li><span>3</span><strong>Alugue</strong><small>até 3 fitas ativas</small></li>
       </ol>
       <div id="balcony-counter-list" class="counter-list"></div>

@@ -858,3 +858,120 @@ dialog.panel-dialog {
   .immersive-2d-button { top: .75rem; left: .75rem; }
   .title-member-actions { top: auto; bottom: 1rem; left: .75rem; transform: none; }
 }
+
+/* One Locadora control language for immersive shelves, Balcão, and fallback UI. */
+.immersive-primary-actions {
+  position: absolute;
+  z-index: 6;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: stretch;
+  gap: .6rem;
+}
+.immersive-primary-actions > .immersive-basket-button,
+.immersive-primary-actions > .immersive-balcony-button { position: static; }
+.immersive-basket-button, .immersive-balcony-button, .immersive-2d-button,
+.immersive-room .immersive-zoom button, .immersive-room .immersive-stand-button,
+.immersive-room #immersive-hud-toggle, .immersive-room .immersive-hud-strip > button,
+.immersive-room .immersive-menu-actions button, .immersive-room .immersive-settings button,
+.immersive-room .immersive-format button, .title-member-actions button,
+.title-utility-actions button, .vhs-focus-controls button, .balcony-room .balcony-hud button,
+.balcony-room .balcony-member-actions button, .balcony-room .scene-inspection-controls button,
+.tape-fallback-action {
+  color: var(--blue-deep) !important;
+  background: var(--cream) !important;
+  border: 2px solid var(--red) !important;
+  border-radius: 4px;
+  box-shadow: 4px 5px 0 var(--blue-deep), 0 0 16px rgba(0,0,0,.2);
+  font-weight: 900;
+}
+.immersive-basket-button, .immersive-balcony-button { min-height: 52px; }
+.immersive-basket-button .immersive-basket-label { color: var(--blue-deep) !important; background: transparent !important; }
+.immersive-basket-button #immersive-basket-count { color: var(--cream) !important; background: var(--red) !important; }
+.immersive-room .immersive-zoom button { border-radius: 50%; }
+.immersive-room .immersive-format button.is-active,
+.immersive-room .immersive-hud button[aria-expanded="true"],
+.immersive-room .immersive-hud button[aria-pressed="true"] { color: var(--cream) !important; background: var(--red) !important; }
+.immersive-basket-button:hover, .immersive-basket-button:focus-visible,
+.immersive-balcony-button:hover, .immersive-balcony-button:focus-visible,
+.immersive-2d-button:hover, .immersive-2d-button:focus-visible,
+.immersive-room .immersive-zoom button:hover, .immersive-room .immersive-zoom button:focus-visible,
+.immersive-room .immersive-stand-button:hover, .immersive-room .immersive-stand-button:focus-visible,
+.immersive-room #immersive-hud-toggle:hover, .immersive-room #immersive-hud-toggle:focus-visible,
+.immersive-room .immersive-hud-strip > button:hover, .immersive-room .immersive-hud-strip > button:focus-visible,
+.immersive-room .immersive-menu-actions button:hover, .immersive-room .immersive-menu-actions button:focus-visible,
+.immersive-room .immersive-settings button:hover, .immersive-room .immersive-settings button:focus-visible,
+.immersive-room .immersive-format button:hover, .immersive-room .immersive-format button:focus-visible,
+.title-member-actions button:hover, .title-member-actions button:focus-visible,
+.title-utility-actions button:hover, .title-utility-actions button:focus-visible,
+.vhs-focus-controls button:hover, .vhs-focus-controls button:focus-visible,
+.balcony-room .balcony-hud button:hover, .balcony-room .balcony-hud button:focus-visible,
+.balcony-room .balcony-member-actions button:hover, .balcony-room .balcony-member-actions button:focus-visible,
+.balcony-room .scene-inspection-controls button:hover, .balcony-room .scene-inspection-controls button:focus-visible,
+.tape-fallback-action:hover, .tape-fallback-action:focus-visible {
+  color: var(--cream) !important;
+  background: var(--red) !important;
+  outline: 0;
+}
+.immersive-basket-button:hover .immersive-basket-label, .immersive-basket-button:focus-visible .immersive-basket-label { color: var(--cream) !important; }
+.title-utility-actions .title-review-teaser strong, .title-utility-actions .title-review-teaser span { color: var(--blue-deep) !important; }
+
+/* Balcão actions form one visible top rail instead of being tucked into corners. */
+.balcony-hud {
+  top: 1rem;
+  right: 50%;
+  bottom: auto;
+  left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  width: min(980px, calc(100% - 1.5rem));
+  max-width: calc(100% - 1.5rem);
+  padding: .6rem;
+  border: 2px solid var(--red);
+  border-radius: 6px;
+  background: rgba(16,24,39,.96);
+  box-shadow: 0 7px 0 var(--blue-deep), 0 18px 32px rgba(0,0,0,.42);
+  transform: translateX(50%);
+}
+.balcony-hud p { display: block !important; flex: 1 0 100%; order: -1; padding: .25rem .35rem .45rem; color: var(--cream); font: 900 .68rem/1.25 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; }
+.balcony-hud .balcony-zoom button { min-width: 42px; min-height: 42px; padding: 0; border-radius: 50%; font-size: 1.2rem; }
+.balcony-member-actions { top: 10.2rem; right: 50%; bottom: auto; transform: translateX(50%); }
+.balcony-room .scene-inspection-controls { top: 6.7rem; right: 50%; bottom: auto; left: auto; transform: translateX(50%); padding: .45rem; border: 2px solid var(--red); background: var(--blue-deep); }
+.balcony-room .balcony-member-actions button { min-height: 44px; padding: .6rem .85rem; }
+.tape-fallback-action { min-height: 44px; padding: .6rem .85rem; cursor: pointer; }
+@media (max-width: 560px) {
+  .immersive-primary-actions { right: .75rem; left: .75rem; gap: .45rem; }
+  .immersive-primary-actions > button { flex: 1; min-width: 0; }
+  .immersive-basket-button { min-width: 0; }
+  .immersive-balcony-button { min-width: 0; }
+  .immersive-2d-button { top: .75rem; left: .75rem; }
+  .balcony-hud { top: .75rem; width: calc(100% - 1rem); max-width: none; }
+  .balcony-hud > button { flex: 1; min-width: 0; }
+  .balcony-member-actions { top: 8.7rem; right: .75rem; left: .75rem; justify-content: stretch; transform: none; }
+  .balcony-room .scene-inspection-controls { top: 6.3rem; right: 50%; left: auto; transform: translateX(50%); }
+  .balcony-member-actions button { flex: 1; }
+}
+
+/* The 2D Balcão windows use the same high-contrast control family. */
+.balcony-dialog .balcony-rent-button, .returns-dialog .balcony-rent-button,
+.balcony-dialog .counter-search-button, .balcony-dialog .tip-jar-button,
+.returns-dialog .tip-jar-button, .balcony-dialog .return-choices button,
+.returns-dialog .return-choices button {
+  color: var(--blue-deep) !important;
+  background: var(--cream) !important;
+  border: 2px solid var(--red) !important;
+  border-radius: 4px;
+  box-shadow: 4px 5px 0 var(--blue-deep);
+}
+.balcony-dialog .balcony-rent-button:hover, .balcony-dialog .balcony-rent-button:focus-visible,
+.returns-dialog .balcony-rent-button:hover, .returns-dialog .balcony-rent-button:focus-visible,
+.balcony-dialog .counter-search-button:hover, .balcony-dialog .counter-search-button:focus-visible,
+.balcony-dialog .tip-jar-button:hover, .balcony-dialog .tip-jar-button:focus-visible,
+.returns-dialog .tip-jar-button:hover, .returns-dialog .tip-jar-button:focus-visible,
+.balcony-dialog .return-choices button:hover, .balcony-dialog .return-choices button:focus-visible,
+.returns-dialog .return-choices button:hover, .returns-dialog .return-choices button:focus-visible {
+  color: var(--cream) !important;
+  background: var(--red) !important;
+  outline: 0;
+}

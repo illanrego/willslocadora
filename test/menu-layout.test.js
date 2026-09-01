@@ -142,7 +142,7 @@ test('rental confirmation has one deliberate conclusion and cannot be dismissed 
 test('the rental desk explains the rental-store flow: choose basket, decide at counter, rent one pack', () => {
   assert.match(page, /class="rental-flow"/);
   assert.match(page, /<strong>Escolha<\/strong>/);
-  assert.match(page, /<strong>Decida no balcão<\/strong>/);
+  assert.match(page, /<strong>Escolher \/ alugar fitas<\/strong>/);
   assert.match(page, /<strong>Alugue<\/strong>/);
   assert.match(page, /id="rental-capacity"/);
   assert.match(page, /id="rent-counter"[^>]*>Alugar pacote<\/button>/);
