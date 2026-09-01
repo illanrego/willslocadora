@@ -413,6 +413,33 @@
     return entries;
   }
 
+  async function openSavedTitleFromOrigin(title, origin = {}) {
+    const memberTitle = memberTitleForViewer(title);
+    const dialog = origin.dialogId ? $(`#${origin.dialogId}`) : null;
+    inspectionOrigin = {
+      source: origin.source || 'saved',
+      dialogId: origin.dialogId || '',
+      focusId: origin.focusId || '',
+      scrollTop: dialog ? dialog.scrollTop : 0,
+      mode: origin.mode || state.mode,
+    };
+    if (dialog?.open) dialog.close();
+    try { await loadTitleMetadata(memberTitle); }
+    catch { /* A saved title still opens with its branded fallback when metadata is unavailable. */ }
+    return openTitle(memberTitle, false);
+  }
+
+  function createSavedCollectionRemoveAction(title, collection) {
+    const label = collection === 'favorite' ? 'Favoritos' : 'Assistir depois';
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'saved-remove-action';
+    remove.textContent = `Tirar de ${label}`;
+    remove.setAttribute('aria-label', `Tirar ${title.name} de ${label}`);
+    remove.addEventListener('click', () => saveTitleCollection(title, collection));
+    return remove;
+  }
+
   function renderAccountSavedCollections() {
     for (const [collection, listId, label] of [['watch_later', 'account-watch-later-list', 'Assistir depois'], ['favorite', 'account-favorites-list', 'Favoritos']]) {
       const list = $(`#${listId}`);
@@ -425,8 +452,12 @@
         const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
         const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('time'); meta.dateTime = title.addedAt || ''; meta.textContent = `${title.year || '—'} · ${title.type}`; text.append(name, meta);
         const actions = document.createElement('div'); actions.className = 'saved-title-actions';
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `account-${collection}-inspect-${title.tmdbId || title.id}`; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitleFromOrigin(title, { source: collection, dialogId: 'account-dialog', focusId: inspect.id }));
-        actions.append(createSavedActions(title), inspect); item.append(image, text, actions); list.append(item);
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `account-${collection}-inspect-${title.tmdbId || title.id}`; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', async () => {
+          inspect.disabled = true;
+          try { await openSavedTitleFromOrigin(title, { source: collection, dialogId: 'account-dialog', focusId: inspect.id }); }
+          finally { inspect.disabled = false; }
+        });
+        actions.append(createSavedCollectionRemoveAction(title, collection), inspect); item.append(image, text, actions); list.append(item);
       });
     }
   }
@@ -485,9 +516,12 @@
       const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
       const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('time'); meta.dateTime = title.addedAt || ''; meta.textContent = `${title.year || '—'} · ${title.type}`; text.append(name, meta);
       const actions = document.createElement('div'); actions.className = 'saved-title-actions';
-      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `${activeSavedCollection}-inspect-${title.tmdbId || title.id}`; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', () => openTitleFromOrigin(localRentalTitle(title), { source: activeSavedCollection, dialogId: 'watchlist-dialog', focusId: inspect.id }));
-      const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'saved-icon-action'; toggle.textContent = activeSavedCollection === 'favorite' ? '★' : '＋'; toggle.setAttribute('aria-label', `${activeSavedCollection === 'favorite' ? 'Remover dos favoritos' : 'Remover de Assistir depois'}: ${title.name}`); toggle.setAttribute('aria-pressed', 'true'); toggle.addEventListener('click', () => saveTitleCollection(title, activeSavedCollection));
-      actions.append(toggle, inspect); item.append(image, text, actions); list.append(item);
+      const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `${activeSavedCollection}-inspect-${title.tmdbId || title.id}`; inspect.textContent = 'Inspecionar'; inspect.addEventListener('click', async () => {
+        inspect.disabled = true;
+        try { await openSavedTitleFromOrigin(title, { source: activeSavedCollection, dialogId: 'watchlist-dialog', focusId: inspect.id }); }
+        finally { inspect.disabled = false; }
+      });
+      actions.append(createSavedCollectionRemoveAction(title, activeSavedCollection), inspect); item.append(image, text, actions); list.append(item);
     });
   }
 

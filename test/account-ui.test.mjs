@@ -202,7 +202,7 @@ test('title inspection records a source and restores that source after closing',
 });
 
 test('all list-origin title actions use the shared inspection entry point', () => {
-  assert.match(app, /openTitleFromOrigin\(localRentalTitle\(title\), \{ source: activeSavedCollection/);
+  assert.match(app, /openSavedTitleFromOrigin\(title, \{ source: activeSavedCollection/);
   assert.match(app, /activeSavedCollection = 'favorite'/);
   assert.match(app, /openTitleFromOrigin\(title, \{ source: 'cesta'/);
   assert.match(app, /openTitleFromOrigin\(title, \{ source: 'balcony'/);
@@ -223,6 +223,19 @@ test('saved title actions reconcile UUID-backed memberships with the canonical T
   assert.match(app, /const result = await window\.LocadoraAccount\.request\(path/);
   assert.match(app, /state\.member\.savedTitles = \[\.\.\.state\.member\.savedTitles, result\.membership\]/);
   assert.match(app, /syncTitleSavedActions\(\);/);
+});
+
+test('saved lists hydrate their canonical tape before inspection and expose an explicit per-list removal', () => {
+  const savedInspectionStart = app.indexOf('async function openSavedTitleFromOrigin');
+  const savedInspectionEnd = app.indexOf('function renderAccountSavedCollections', savedInspectionStart);
+  const savedInspection = app.slice(savedInspectionStart, savedInspectionEnd);
+  assert.match(savedInspection, /const memberTitle = memberTitleForViewer\(title\)/);
+  assert.match(savedInspection, /await loadTitleMetadata\(memberTitle\)/);
+  assert.match(savedInspection, /openTitle\(memberTitle, false\)/);
+  assert.match(app, /function createSavedCollectionRemoveAction\(title, collection\)/);
+  assert.match(app, /remove\.textContent = `Tirar de \$\{label\}`/);
+  assert.match(app, /openSavedTitleFromOrigin\(title, \{ source: activeSavedCollection/);
+  assert.match(app, /createSavedCollectionRemoveAction\(title, activeSavedCollection\)/);
 });
 
 test('saved title clicks update the local icon list without opening Minha conta when signed out', () => {

@@ -743,6 +743,8 @@ dialog.panel-dialog {
 .saved-title-item > div { min-width: 0; }
 .saved-title-item time { color: var(--muted); font-size: .7rem; }
 .saved-title-actions { display: flex; align-items: center; gap: .35rem; }
+.saved-remove-action { min-height: 34px; padding: .42rem .58rem; border: 1px solid #dac383; border-radius: 3px; color: #211914; background: #ead9ad; box-shadow: 2px 2px 0 #241712; cursor: pointer; font: 800 .62rem/1 "Courier New", monospace; text-transform: uppercase; }
+.saved-remove-action:hover, .saved-remove-action:focus-visible { color: var(--cream); background: var(--red); outline: 0; }
 .saved-row-actions { display: inline-flex; align-items: center; gap: .2rem; }
 .saved-row-actions .saved-icon-action { min-width: 32px; min-height: 32px; padding: .25rem; }
 .saved-icon-action {
