@@ -20,6 +20,33 @@
     { labelKey: 'genreFamily', theme: 'Family & Animation', genres: ['Family', 'Animation'] },
     { labelKey: 'genreDocumentary', theme: 'Documentary', genres: ['Documentary'] },
   ];
+
+  function loadLocalSavedTitles() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('locadora.savedTitles') || '[]');
+      if (!Array.isArray(saved)) return [];
+      return saved.filter((item) => ['watch_later', 'favorite'].includes(item?.collection) && ['movie', 'series'].includes(item?.type) && Number.isSafeInteger(Number(item?.tmdbId)) && Number(item.tmdbId) > 0 && String(item?.name || '').trim())
+        .map((item) => ({ id: `tmdb:${Number(item.tmdbId)}`, tmdbId: Number(item.tmdbId), type: item.type, name: String(item.name).trim(), year: item.year || null, collection: item.collection, addedAt: item.addedAt || null, localOnly: true }));
+    } catch { return []; }
+  }
+
+  function saveLocalSavedTitles() {
+    localStorage.setItem('locadora.savedTitles', JSON.stringify(state.member.localSavedTitles));
+  }
+
+  function toggleLocalSavedCollection(title, collection) {
+    const active = savedTitleCollections(title).has(collection);
+    const key = canonicalTitleKey(title);
+    const remote = serializeRentalTitle(title);
+    if (!remote) return;
+    state.member.localSavedTitles = active
+      ? state.member.localSavedTitles.filter((item) => canonicalTitleKey(item) !== key || item.collection !== collection)
+      : [...state.member.localSavedTitles, { ...remote, id: `tmdb:${remote.tmdbId}`, collection, addedAt: new Date().toISOString(), localOnly: true }];
+    saveLocalSavedTitles();
+    renderWatchlist();
+    syncTitleSavedActions();
+  }
+
   const initialRental = loadRentalState();
   const state = {
     locale: normalizeLocale(localStorage.getItem('locadora.locale') || 'pt-BR'),
@@ -34,7 +61,7 @@
     counter: initialRental.counter,
     // Anonymous browsing can stage titles at the counter, but rentals/history are server-owned after sign-in.
     rental: { rented: null, returned: [] },
-    member: { configured: false, signedIn: false, profile: null, watchlist: [], savedTitles: [], history: [], historyHasMore: false },
+    member: { configured: false, signedIn: false, profile: null, watchlist: [], savedTitles: [], localSavedTitles: loadLocalSavedTitles(), history: [], historyHasMore: false },
     request: null,
     stand: 0,
     metadata: new Map(),
@@ -354,10 +381,15 @@
     return title?.type && id && /^\d+$/.test(id) ? `${title.type}:${id}` : '';
   }
 
+  function savedTitlesForViewer() {
+    if (state.member.signedIn && state.member.profile) return state.member.savedTitles.length ? state.member.savedTitles : state.member.watchlist;
+    return state.member.localSavedTitles;
+  }
+
   function savedTitleCollections(title) {
     const key = canonicalTitleKey(title);
     const collections = new Set();
-    const saved = state.member.savedTitles.length ? state.member.savedTitles : state.member.watchlist.map((item) => ({ ...item, collection: 'watch_later' }));
+    const saved = savedTitlesForViewer();
     saved.forEach((item) => {
       if (canonicalTitleKey(item) !== key) return;
       if (Array.isArray(item.collections)) item.collections.forEach((collection) => collections.add(collection));
@@ -369,7 +401,7 @@
   function savedCollectionEntries(collection) {
     const entries = [];
     const seen = new Set();
-    const saved = state.member.savedTitles.length ? state.member.savedTitles : state.member.watchlist.map((item) => ({ ...item, collection: 'watch_later' }));
+    const saved = savedTitlesForViewer();
     saved.forEach((item) => {
       const memberships = Array.isArray(item.collections) ? item.collections : [item.collection || 'watch_later'];
       if (!memberships.includes(collection)) return;
@@ -441,13 +473,12 @@
     const list = $('#watchlist-list');
     list.replaceChildren();
     renderSavedTabs();
-    if (!state.member.signedIn) {
-      $('#watchlist-status').textContent = state.member.configured ? 'Entre para abrir suas prateleiras pessoais.' : 'As prateleiras pessoais serão ativadas quando as contas forem configuradas.';
-      return;
-    }
     const label = activeSavedCollection === 'favorite' ? 'Favoritos' : 'Assistir depois';
     const entries = savedCollectionEntries(activeSavedCollection);
-    $('#watchlist-status').textContent = state.member.profile ? `${entries.length} título(s) em ${label}.` : 'Escolha um nome público antes de guardar títulos.';
+    const localOnly = !state.member.signedIn || !state.member.profile;
+    $('#watchlist-status').textContent = localOnly
+      ? `${entries.length} título(s) em ${label}. Esta lista fica salva neste navegador; entre para sincronizar.`
+      : `${entries.length} título(s) em ${label}.`;
     if (!entries.length) { list.textContent = `${label} está vazia.`; return; }
     entries.forEach((title) => {
       const item = document.createElement('article'); item.className = 'counter-item saved-title-item';
@@ -471,10 +502,14 @@
   async function saveTitleCollection(title, collection) {
     if (!['watch_later', 'favorite'].includes(collection)) return;
     try {
-      requireMember();
       const remote = serializeRentalTitle(title);
       if (!remote) throw new Error('This title does not have a canonical TMDB record yet');
       const active = savedTitleCollections(title).has(collection);
+      if (!state.member.signedIn || !state.member.profile) {
+        toggleLocalSavedCollection(title, collection);
+        return;
+      }
+      requireMember();
       const path = active
         ? `/v1/collections/${collection}/${remote.type}/${remote.tmdbId}`
         : `/v1/collections/${collection}`;
@@ -494,7 +529,11 @@
       catch { $('#watchlist-status').textContent = 'Atualizado. A lista será sincronizada quando a conexão voltar.'; }
       renderWatchlist();
       syncTitleSavedActions();
-    } catch (error) { openAccount(error.message); }
+    } catch (error) {
+      if (!serializeRentalTitle(title)) { $('#watchlist-status').textContent = error.message; return; }
+      toggleLocalSavedCollection(title, collection);
+      $('#watchlist-status').textContent = `Salvo neste navegador. O servidor não respondeu (${error.message}).`;
+    }
   }
 
   function saveWatchlist(title) { return saveTitleCollection(title, 'watch_later'); }

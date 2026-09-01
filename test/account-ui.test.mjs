@@ -225,6 +225,15 @@ test('saved title actions reconcile UUID-backed memberships with the canonical T
   assert.match(app, /syncTitleSavedActions\(\);/);
 });
 
+test('saved title clicks update the local icon list without opening Minha conta when signed out', () => {
+  assert.match(app, /if \(!state\.member\.signedIn \|\| !state\.member\.profile\) \{/);
+  assert.match(app, /function toggleLocalSavedCollection\(title, collection\)/);
+  assert.match(app, /toggleLocalSavedCollection\(title, collection\);\s*return;/);
+  const saveHandler = app.slice(app.indexOf('async function saveTitleCollection'), app.indexOf('function saveWatchlist'));
+  assert.doesNotMatch(saveHandler, /catch \(error\) \{ openAccount\(error\.message\); \}/);
+  assert.doesNotMatch(app, /if \(!state\.member\.signedIn\) \{[\s\S]*return;/);
+});
+
 test('member username stays read-only until the edit control is activated and checks availability before saving', () => {
   assert.match(page, /id="account-edit-username"[^>]*aria-controls="username-form"/);
   assert.match(page, /id="username-form"[^>]*hidden/);
