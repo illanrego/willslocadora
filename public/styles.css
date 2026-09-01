@@ -580,6 +580,10 @@ dialog.panel-dialog {
 .basket-added-dialog .panel-header { justify-content: center; }
 .basket-added-actions { display: flex; justify-content: center; margin-top: 1rem; }
 .basket-added-actions .account-action { min-width: 128px; }
+.saved-added-dialog { width: min(390px, calc(100% - 1rem)) !important; text-align: center; }
+.saved-added-dialog .panel-header { justify-content: center; }
+.saved-added-actions { display: flex; justify-content: center; margin-top: 1rem; }
+.saved-added-actions .account-action { min-width: 128px; }
 @media (prefers-reduced-motion: reduce) { .counter-button.is-basket-added, .immersive-basket-button.is-basket-added { animation: none; } }
 .yellow-action { color: var(--black); background: var(--yellow); }
 

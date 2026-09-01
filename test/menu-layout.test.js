@@ -218,3 +218,15 @@ test('VHS inspection offers the basket as a floating action and labels its tape-
   const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
   assert.match(viewer, /atCounter \? copy\.returnTape : copy\.toBasket/);
 });
+
+test('VHS inspection saves star and plus actions to their matching list with confirmation', () => {
+  assert.match(page, /id="saved-added-dialog"[^>]*class="panel-dialog saved-added-dialog"/);
+  assert.match(page, /id="saved-added-message"[^>]*role="status"/);
+  assert.match(page, /id="saved-added-ok"[^>]*value="ok">OK<\/button>/);
+  assert.match(app, /async function saveTitleCollection\(title, collection, \{ confirm = false \} = \{\}\)/);
+  assert.match(app, /if \(!active && result\.membership && confirm\) showSavedCollectionAdded\(title, collection\)/);
+  assert.match(app, /saveTitleCollection\(activeViewerTitle, collection, \{ confirm: true \}\)/);
+  assert.match(app, /function showSavedCollectionAdded\(title, collection\)/);
+  assert.match(app, /const label = collection === 'favorite' \? 'Favoritos' : 'Assistir depois'/);
+  assert.match(app, /\$\('#saved-added-dialog'\)\.addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\)/);
+});

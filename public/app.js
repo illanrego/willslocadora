@@ -499,14 +499,15 @@
   }
   function openWatchlist(collection = activeSavedCollection) { activeSavedCollection = collection; renderWatchlist(); if (!$('#watchlist-dialog').open) $('#watchlist-dialog').showModal(); }
 
-  async function saveTitleCollection(title, collection) {
+  async function saveTitleCollection(title, collection, { confirm = false } = {}) {
     if (!['watch_later', 'favorite'].includes(collection)) return;
+    const active = savedTitleCollections(title).has(collection);
     try {
       const remote = serializeRentalTitle(title);
       if (!remote) throw new Error('This title does not have a canonical TMDB record yet');
-      const active = savedTitleCollections(title).has(collection);
       if (!state.member.signedIn || !state.member.profile) {
         toggleLocalSavedCollection(title, collection);
+        if (!active && confirm) showSavedCollectionAdded(title, collection);
         return;
       }
       requireMember();
@@ -525,6 +526,7 @@
       renderAccount();
       renderWatchlist();
       syncTitleSavedActions();
+      if (!active && result.membership && confirm) showSavedCollectionAdded(title, collection);
       try { await refreshMemberData(); }
       catch { $('#watchlist-status').textContent = 'Atualizado. A lista será sincronizada quando a conexão voltar.'; }
       renderWatchlist();
@@ -533,6 +535,7 @@
       if (!serializeRentalTitle(title)) { $('#watchlist-status').textContent = error.message; return; }
       toggleLocalSavedCollection(title, collection);
       $('#watchlist-status').textContent = `Salvo neste navegador. O servidor não respondeu (${error.message}).`;
+      if (!active && confirm) showSavedCollectionAdded(title, collection);
     }
   }
 
@@ -1122,6 +1125,14 @@
     $('#basket-added-dialog').showModal();
   }
 
+  function showSavedCollectionAdded(title, collection) {
+    if (!collection || !title) return;
+    const label = collection === 'favorite' ? 'Favoritos' : 'Assistir depois';
+    $('#saved-added-message').textContent = `“${title.name}” foi adicionada a ${label}.`;
+    const dialog = $('#saved-added-dialog');
+    if (!dialog.open) dialog.showModal();
+  }
+
   function toggleCounter(title) {
     const result = updateRentalBasket(state.counter, title, state.rental.rented);
     state.counter = result.titles;
@@ -1685,7 +1696,7 @@
       button.textContent = symbol;
       button.setAttribute('aria-label', `Adicionar a ${label}`);
       button.setAttribute('aria-pressed', 'false');
-      button.addEventListener('click', () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, collection); });
+      button.addEventListener('click', () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, collection, { confirm: true }); });
       savedActions.append(button);
     }
     const utilityActions = document.createElement('div');
@@ -1874,6 +1885,7 @@
     $('#rental-confirmation-dialog').addEventListener('close', () => setMode('normal'));
     $('#rental-confirmation-dialog').addEventListener('cancel', (event) => event.preventDefault());
     $('#basket-added-dialog').addEventListener('cancel', (event) => event.preventDefault());
+    $('#saved-added-dialog').addEventListener('cancel', (event) => event.preventDefault());
     $('#tip-jar').addEventListener('click', () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; });
     $('#return-tip-jar').addEventListener('click', () => { $('#return-panel-status').textContent = donationMessage(); });
     $('#basket-donation').addEventListener('click', showBasketDonationNotice);

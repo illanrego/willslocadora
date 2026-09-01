@@ -211,7 +211,7 @@ test('all list-origin title actions use the shared inspection entry point', () =
 test('saved collections expose independent Assistir depois and Favoritos controls', () => {
   assert.match(page, /id="saved-watch-later-tab"/);
   assert.match(page, /id="saved-favorites-tab"/);
-  assert.match(app, /function saveTitleCollection\(title, collection\)/);
+  assert.match(app, /function saveTitleCollection\(title, collection, \{ confirm = false \} = \{\}\)/);
   assert.match(app, /!\['watch_later', 'favorite'\]\.includes\(collection\)/);
   assert.match(app, /Object\.values\(data\.collections \|\| \{\}\)\.flat\(\)/);
   assert.match(app, /`\/v1\/collections\/\$\{collection\}`/);
@@ -228,7 +228,8 @@ test('saved title actions reconcile UUID-backed memberships with the canonical T
 test('saved title clicks update the local icon list without opening Minha conta when signed out', () => {
   assert.match(app, /if \(!state\.member\.signedIn \|\| !state\.member\.profile\) \{/);
   assert.match(app, /function toggleLocalSavedCollection\(title, collection\)/);
-  assert.match(app, /toggleLocalSavedCollection\(title, collection\);\s*return;/);
+  assert.match(app, /toggleLocalSavedCollection\(title, collection\);/);
+  assert.match(app, /if \(!active && confirm\) showSavedCollectionAdded\(title, collection\);/);
   const saveHandler = app.slice(app.indexOf('async function saveTitleCollection'), app.indexOf('function saveWatchlist'));
   assert.doesNotMatch(saveHandler, /catch \(error\) \{ openAccount\(error\.message\); \}/);
   assert.doesNotMatch(app, /if \(!state\.member\.signedIn\) \{[\s\S]*return;/);
