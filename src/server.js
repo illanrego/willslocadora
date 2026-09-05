@@ -58,8 +58,9 @@ function serveThree(requestPath, response) {
   });
 }
 
-function createServer({ catalogue, posterFetcher = safeFetchImage }) {
+function createServer({ catalogue, posterFetcher = safeFetchImage, watchFetcher = fetch }) {
   if (!catalogue) throw new Error('Catalogue service is required');
+  const watchService = import('../workers/locadora-api/src/watch-links.mjs').then((module) => ({ ...module, lookup: module.createWatchLinkService(watchFetcher) }));
   return http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
     try {
@@ -83,6 +84,11 @@ function createServer({ catalogue, posterFetcher = safeFetchImage }) {
       if (url.pathname === '/api/providers') {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
         return sendJson(response, 200, { providers: BRAZIL_PROVIDERS });
+      }
+      if (url.pathname === '/api/watch-links') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        const service = await watchService;
+        return sendJson(response, 200, await service.lookup(service.watchIdentity(url.searchParams.get('type'), url.searchParams.get('id'))));
       }
       if (url.pathname === '/api/featured') {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });

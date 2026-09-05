@@ -7,13 +7,14 @@ const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
 const css = readFileSync(require.resolve('../public/styles.css'), 'utf8');
 const balcony = readFileSync(require.resolve('../public/balcony.mjs'), 'utf8');
 
-test('normal browsing keeps compact select controls in the header and streaming filters behind a reveal', () => {
+test('normal browsing exposes subscription choices alongside the compact browse controls', () => {
   const header = page.match(/<header id="store-header"[\s\S]*?<\/header>/)?.[0] || '';
   assert.match(header, /id="year-form"/);
   assert.match(header, /id="year-go"/);
   assert.match(header, /id="genre-select"/);
   assert.match(header, /id="normal-filters-toggle"[^>]*aria-controls="normal-provider-filters"/);
-  assert.match(header, /id="normal-provider-filters"[^>]*hidden/);
+  assert.doesNotMatch(header, /id="normal-provider-filters"[^>]*hidden/);
+  assert.match(header, /data-i18n="streamingHint"/);
   assert.match(header, /class="format-switch"/);
   assert.match(header, /id="provider-checkboxes"/);
   assert.doesNotMatch(page, /<aside class="aisle-directory"/);
@@ -56,7 +57,7 @@ test('immersive navigation keeps Balcão and 2D as persistent floating destinati
   assert.match(app, /\$\('#immersive-balcony-open'\)\.addEventListener\('click', \(\) => setMode\('balcony'\)\)/);
   assert.match(app, /\$\('#immersive-2d-open'\)\.addEventListener\('click', \(\) => setMode\('normal'\)\)/);
   assert.match(page, /id="immersive-settings-toggle"[^>]*>\s*<span[^>]*>⚙<\/span>\s*<span[^>]*data-i18n="settings"/);
-  assert.match(page, /id="immersive-filters-toggle"[^>]*>\s*<span[^>]*>⌕<\/span>\s*<span[^>]*data-i18n="filters"/);
+  assert.match(page, /id="immersive-filters-toggle"[^>]*>\s*<span[^>]*>⌕<\/span>\s*<span[^>]*data-i18n="brazilStreaming"/);
 });
 
 test('Minha conta is a floating destination on the immersive shelf, not a HUD menu action', () => {
@@ -166,11 +167,14 @@ test('the rental desk explains the rental-store flow: choose basket, decide at c
   assert.match(app, /setMode\('normal'\)/);
 });
 
-test('rental confirmation uses the same 2D tape cards as the counter rather than a decorative 3D bag', () => {
+test('rental confirmation pairs accessible tape cards with session links and optional support', () => {
   assert.doesNotMatch(page, /rental-confirmation-bag/);
   assert.doesNotMatch(page, /rental-confirmation-bag-count/);
-  assert.match(app, /list\.replaceChildren\(\.\.\.titles\.map\(\(title\) => accountTitleItem\(title, 'na sacola', \{ source: 'rental_confirmation', dialogId: 'rental-confirmation-dialog' \}\)\)\)/);
-  assert.match(page, /id="rental-confirmation-home"[^>]*>Voltar para a página inicial<\/button>/);
+  assert.match(app, /accountTitleItem\(title, t\('sessionBag'\), \{ source: 'rental_confirmation', dialogId: 'rental-confirmation-dialog' \}\)/);
+  assert.match(app, /sessionSupport\.renderLinks\(links, title\)/);
+  assert.match(page, /id="rental-confirmation-home"[^>]*data-i18n="continueBrowsing"/);
+  assert.match(page, /data-i18n="sessionTitle"/);
+  assert.match(page, /class="session-support"/);
   assert.doesNotMatch(page, /Close rental confirmation/);
 });
 
@@ -193,13 +197,14 @@ test('repeat rentals remain available through the shared three-active-tape cap a
   assert.doesNotMatch(balcony, /rental\.rented/);
 });
 
-test('rental and return windows keep donations visible without activating payment', () => {
+test('rental and return windows open the shared optional support panel', () => {
   assert.match(page, /id="basket-donation"/);
   assert.match(page, /id="tip-jar"/);
   assert.match(page, /id="return-tip-jar"/);
   assert.doesNotMatch(page, /id="immersive-donation-open"/);
   assert.match(app, /\$\('#return-tip-jar'\)\.addEventListener/);
-  assert.match(app, /function donationMessage\(\)/);
+  assert.match(app, /\$\('#return-tip-jar'\)\.addEventListener\('click', sessionSupport\.openDonation\)/);
+  assert.match(page, /id="donation-dialog"/);
 });
 
 test('the member destination is a detailed Member Section rather than a generic account panel', () => {

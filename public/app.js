@@ -54,7 +54,7 @@
     genreIndex: Number(localStorage.getItem('locadora.genre')) || 0,
     type: localStorage.getItem('locadora.type') === 'series' ? 'series' : 'movie',
     providers: (() => { try { const saved = JSON.parse(localStorage.getItem('locadora.providers') || '[]'); return Array.isArray(saved) ? saved.filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort() : []; } catch { const legacy = localStorage.getItem('locadora.provider'); return ['netflix', 'prime-video'].includes(legacy) ? [legacy] : []; } })(),
-    ignoreStoreYear: localStorage.getItem('locadora.ignoreStoreYear') === 'true',
+    ignoreStoreYear: window.LocadoraSessionSupport.allYearsPreference(localStorage.getItem('locadora.ignoreStoreYear')),
     lighting: loadLighting(),
     providerRegistry: [],
     titles: [],
@@ -98,6 +98,7 @@
   let memberSessionVersion = 0;
   let memberRefreshVersion = 0;
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
+  const sessionSupport = window.LocadoraSessionSupport.install({ translate: (key) => t(key), api, selectedProviders: () => state.providers });
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
 
   function disposeVhsViewer() {
@@ -121,6 +122,7 @@
       select.querySelectorAll('option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
     }
     $('#shelf-title').textContent = genreLabel(genres[state.genreIndex]);
+    sessionSupport.refreshLocale();
     state.metadata.clear();
     if (refreshTitle && titleDialog.open) {
       const key = $('#title-detail').dataset.titleKey;
@@ -177,6 +179,13 @@
     localStorage.setItem('locadora.rental', JSON.stringify(rentalState()));
     $('#counter-count').textContent = state.counter.length;
     $('#immersive-basket-count').textContent = state.counter.length;
+    for (const selector of ['#counter-open', '#immersive-basket-open']) {
+      const control = $(selector);
+      control.setAttribute('aria-label', `${t('basket')} · ${state.counter.length} / ${MAX_CESTA_TITLES}`);
+      let spines = control.querySelector('.basket-spines');
+      if (!spines) { spines = document.createElement('span'); spines.className = 'basket-spines'; spines.setAttribute('aria-hidden', 'true'); control.prepend(spines); }
+      spines.replaceChildren(...state.counter.slice(0, 3).map(() => document.createElement('i')));
+    }
   }
 
   function localRentalTitle(item) {
@@ -286,6 +295,10 @@
       }
     });
     item.append(image, text, inspect);
+    if (origin.source === 'account_active') {
+      const services = sessionSupport.button(t('viewStreamings'), () => sessionSupport.openStreamings(memberTitle), 'account-streaming-action');
+      item.append(services);
+    }
     const cardLocale = state.locale;
     const cardSessionVersion = memberSessionVersion;
     loadTitleMetadata(memberTitle).then(() => {
@@ -688,14 +701,8 @@
     $('#catalog-search-input').focus();
   }
 
-  function donationMessage() {
-    return state.locale === 'pt-BR'
-      ? 'Doações serão opcionais e terão um fluxo próprio. Nenhum pagamento está ativo ainda.'
-      : 'Donations will stay optional and get their own flow. No payment is active yet.';
-  }
-
   function showBasketDonationNotice() {
-    $('#basket-status').textContent = donationMessage();
+    sessionSupport.openDonation();
   }
 
   async function searchCatalog() {
@@ -773,6 +780,7 @@
   function setProviders(values, reload = true) {
     state.providers = [...new Set(values)].filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort();
     localStorage.setItem('locadora.providers', JSON.stringify(state.providers));
+    state.ignoreStoreYear = window.LocadoraSessionSupport.allYearsPreference(localStorage.getItem('locadora.ignoreStoreYear'));
     syncProviderControls();
     if (reload) loadShelf();
   }
@@ -1044,6 +1052,7 @@
     $('#immersive-room').hidden = !immersive;
     $('#balcony-room').hidden = !isBalcony;
     document.body.classList.toggle('is-immersive', immersive || isBalcony);
+    document.body.dataset.storeMode = mode;
     setImmersiveSettings(false);
     $('#immersive-toggle').textContent = immersive ? t('return') : t('immersiveMode');
     $('#immersive-toggle').setAttribute('aria-pressed', String(immersive));
@@ -1051,7 +1060,8 @@
       balcony?.dispose();
       balcony = null;
       $('#balcony-stage').replaceChildren();
-      setImmersiveHudCollapsed(true);
+      setImmersiveHudCollapsed(false);
+      setImmersiveFilters(true);
       mountImmersive();
     }
     else if (isBalcony) {
@@ -1086,9 +1096,10 @@
     const aisle = String(state.genreIndex + 1).padStart(2, '0');
     const providerNames = { netflix: 'Netflix', 'prime-video': 'Prime Video', max: 'Max', 'disney-plus': 'Disney+', globoplay: 'Globoplay', 'paramount-plus': 'Paramount+', 'apple-tv-plus': 'Apple TV+', mubi: 'MUBI', crunchyroll: 'Crunchyroll' };
     const providerLabel = state.providers.map((id) => providerNames[id]).filter(Boolean).join(' + ');
-    const yearLabel = state.ignoreStoreYear ? 'all release years' : `${state.year - 19}–${state.year}`;
+    const yearLabel = state.ignoreStoreYear ? t('allYears') : `${state.year - 19}–${state.year}`;
     $('#shelf-title').textContent = genreLabel(genre);
-    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} in Brazil` : `${t('storeYearCaption')} ${state.year}`} · ${state.type === 'movie' ? t('movies') : t('series')}`;
+    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${t('storeYearCaption')} ${state.year}`} · ${state.type === 'movie' ? t('movies') : t('series')}`;
+    $('#immersive-provider-summary').textContent = `${providerLabel || t('allCatalogues')} · ${state.ignoreStoreYear ? t('allYears') : `${t('storeYearCaption')} ${state.year}`}`;
     $('#shelf-status').textContent = append ? t('openingStand') : t('openingBoxes');
     $('#immersive-status').textContent = append ? t('openingStand') : t('openingBoxes');
     $('#immersive-previous-stand').disabled = true;
@@ -1182,9 +1193,14 @@
     });
   }
 
+  let basketNoticeTimer;
   function showBasketAdded(title) {
-    $('#basket-added-message').textContent = `“${title.name}” foi adicionada à Cesta.`;
-    $('#basket-added-dialog').showModal();
+    const notice = $('#basket-added-message');
+    const dialogs = [...document.querySelectorAll('dialog[open]')];
+    (dialogs.at(-1) || document.body).append(notice);
+    notice.textContent = `“${title.name}” · ${t('basketAdded')}`;
+    clearTimeout(basketNoticeTimer);
+    basketNoticeTimer = setTimeout(() => { notice.textContent = ''; }, 3000);
   }
 
   function showSavedCollectionAdded(title, collection) {
@@ -1402,8 +1418,13 @@
     const dialog = $('#rental-confirmation-dialog');
     const list = $('#rental-confirmation-list');
     const titles = state.rental.rented?.titles || (rental?.rental?.items || []).map(localRentalTitle);
-    $('#rental-confirmation-status').textContent = `${titles.length} ${titles.length === 1 ? 'fita está' : 'fitas estão'} no seu pacote ativo. Boa sessão — você pode devolver tudo no Balcão depois.`;
-    list.replaceChildren(...titles.map((title) => accountTitleItem(title, 'na sacola', { source: 'rental_confirmation', dialogId: 'rental-confirmation-dialog' })));
+    $('#rental-confirmation-status').textContent = t('sessionCopy');
+    list.replaceChildren(...titles.map((title) => {
+      const item = accountTitleItem(title, t('sessionBag'), { source: 'rental_confirmation', dialogId: 'rental-confirmation-dialog' });
+      const links = document.createElement('div'); links.className = 'session-title-links'; item.append(links);
+      sessionSupport.renderLinks(links, title);
+      return item;
+    }));
     if ($('#balcony-dialog').open) $('#balcony-dialog').close();
     if ($('#returns-dialog').open) $('#returns-dialog').close();
     if (!dialog.open) dialog.showModal();
@@ -1442,7 +1463,7 @@
         onSearch: openCatalogSearch,
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
         onBagSelect: openReturnDesk,
-        onTip: () => { openRentalDesk(); $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; },
+        onTip: sessionSupport.openDonation,
         onCollectiveAwards: () => { openRentalDesk(); $('#balcony-panel-status').textContent = t('collectiveAwardsNotice'); },
       });
     } catch (error) {
@@ -1763,6 +1784,7 @@
     }
     const utilityActions = document.createElement('div');
     utilityActions.className = 'title-utility-actions';
+    utilityActions.append(sessionSupport.button(t('viewStreamings'), () => { if (activeViewerTitle) sessionSupport.openStreamings(activeViewerTitle); }, 'title-streaming-action'));
     const titleReview = document.createElement('button');
     titleReview.type = 'button'; titleReview.className = 'title-review-action'; titleReview.textContent = '★ Avaliações'; titleReview.setAttribute('aria-label', 'Ver avaliações desta fita');
     titleReview.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
@@ -1794,8 +1816,7 @@
           activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))));
         },
         onAvailability: () => {
-          const url = activeViewerTitle?.availabilityBR?.link;
-          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+          if (activeViewerTitle) sessionSupport.openStreamings(activeViewerTitle);
         },
         onWatch: () => { if (activeViewerTitle) window.location.href = createStremioUri(activeViewerTitle); },
         onLetterboxd: () => { if (activeViewerTitle) window.open(createLetterboxdUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
@@ -1929,9 +1950,10 @@
     $('#normal-filters-toggle').addEventListener('click', () => setNormalFilters($('#normal-provider-filters').hidden));
     $('#immersive-go').addEventListener('click', applyImmersiveFilters);
     $('#provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#provider-checkboxes'))));
+    $('#immersive-provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#immersive-provider-checkboxes'))));
     $('#ignore-store-year').addEventListener('change', (event) => setIgnoreStoreYear(event.currentTarget.checked));
     $('#immersive-ignore-store-year').addEventListener('change', (event) => {
-      $('#immersive-ignore-store-year').checked = event.currentTarget.checked;
+      setIgnoreStoreYear(event.currentTarget.checked);
     });
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#immersive-2d-open').addEventListener('click', () => setMode('normal'));
@@ -1946,10 +1968,9 @@
     $('#return-selected-rentals').addEventListener('click', returnSelectedRentals);
     $('#rental-confirmation-dialog').addEventListener('close', () => setMode('normal'));
     $('#rental-confirmation-dialog').addEventListener('cancel', (event) => event.preventDefault());
-    $('#basket-added-dialog').addEventListener('cancel', (event) => event.preventDefault());
     $('#saved-added-dialog').addEventListener('cancel', (event) => event.preventDefault());
-    $('#tip-jar').addEventListener('click', () => { $('#balcony-panel-status').textContent = state.locale === 'pt-BR' ? 'Obrigado por manter as luzes acesas. Apoio é sempre opcional.' : 'Thank you for keeping the lights on. Support is always optional.'; });
-    $('#return-tip-jar').addEventListener('click', () => { $('#return-panel-status').textContent = donationMessage(); });
+    $('#tip-jar').addEventListener('click', sessionSupport.openDonation);
+    $('#return-tip-jar').addEventListener('click', sessionSupport.openDonation);
     $('#basket-donation').addEventListener('click', showBasketDonationNotice);
     $('#immersive-hud-toggle').addEventListener('click', () => setImmersiveHudCollapsed(!$('#immersive-hud').classList.contains('is-collapsed')));
     $('#immersive-filters-toggle').addEventListener('click', () => {

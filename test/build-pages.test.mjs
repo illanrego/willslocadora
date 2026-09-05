@@ -14,10 +14,14 @@ test('Pages build emits static assets, vendor Three.js, and relative entry paths
   assert.equal(existsSync(`${dist}/vendor/three.module.mjs`), true);
   assert.equal(existsSync(`${dist}/vendor/three.core.js`), true);
   assert.equal(existsSync(`${dist}/api-config.js`), true);
+  assert.equal(existsSync(`${dist}/donation-config.js`), true);
+  assert.equal(existsSync(`${dist}/session-support.js`), true);
   const config = readFileSync(`${dist}/api-config.js`, 'utf8');
   assert.match(config, /locadora-api\.willstartpage\.workers\.dev\/v1/);
   const html = readFileSync(`${dist}/index.html`, 'utf8');
   assert.match(html, /src="\.\/api-config\.js"/);
   assert.match(html, /href="\.\/styles\.css"/);
   assert.match(html, /src="\.\/app\.js"/);
+  assert.match(html, /src="\.\/donation-config\.js"/);
+  assert.match(html, /src="\.\/session-support\.js"/);
 });

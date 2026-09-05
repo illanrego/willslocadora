@@ -4,6 +4,24 @@ const { once } = require('node:events');
 
 const { createServer } = require('../src/server.js');
 
+test('local watch-links endpoint shares validation and safe fallback with the Worker', async (t) => {
+  let calls = 0;
+  const server = createServer({ catalogue: {}, watchFetcher: async () => { calls++; throw new Error('offline'); } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}/api/watch-links`;
+  assert.equal((await fetch(`${base}?type=movie&id=bad`)).status, 400);
+  assert.equal(calls, 0);
+  const response = await fetch(`${base}?type=series&id=66732`);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.offers, []);
+  assert.equal(body.fallbackUrl, 'https://www.themoviedb.org/tv/66732/watch?locale=BR');
+  assert.equal((await fetch(`${base}?type=series&id=66732`, { method: 'POST' })).status, 405);
+  assert.equal(calls, 1);
+});
+
 test('server binds to loopback and serves health plus static app', async (t) => {
   const server = createServer({
     catalogue: { listSources: () => [{ id: 'cinemeta', name: 'Cinemeta', catalogs: [] }] },

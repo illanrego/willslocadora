@@ -19,7 +19,7 @@ test('username validation remains valid in modern HTML pattern mode and debounce
 });
 
 test('Cesta and Balcão keep review choices separate from the final three-rental request', () => {
-  assert.match(page, /id="basket-added-dialog"[^>]*class="panel-dialog basket-added-dialog"/);
+  assert.match(page, /id="basket-added-message"[^>]*role="status"/);
   assert.match(app, /const MAX_CESTA_TITLES = 15/);
   assert.match(app, /function availableRentalSlots\(\)/);
   assert.match(app, /Você ainda pode alugar/);
@@ -30,11 +30,14 @@ test('Cesta and Balcão keep review choices separate from the final three-rental
 });
 
 
-test('adding a tape confirms its title in an OK dialog and animates the basket controls', () => {
+test('adding a tape announces its title without interrupting browsing and animates the basket controls', () => {
   assert.match(page, /id="basket-added-message"[^>]*role="status"/);
-  assert.match(page, /id="basket-added-ok"[^>]*value="ok"[^>]*>OK<\/button>/);
+  assert.doesNotMatch(page, /id="basket-added-(ok|dialog)"/);
   assert.doesNotMatch(page, /id="basket-confirmation"/);
-  assert.match(app, /function showBasketAdded\(title\) \{[\s\S]*basket-added-message'\)\.textContent = `“\$\{title\.name\}” foi adicionada à Cesta\.`;[\s\S]*basket-added-dialog'\)\.showModal\(\)/);
+  const notice = app.slice(app.indexOf('function showBasketAdded(title)'), app.indexOf('function showSavedCollectionAdded'));
+  assert.match(notice, /title\.name/);
+  assert.match(notice, /t\('basketAdded'\)/);
+  assert.doesNotMatch(notice, /showModal|\.focus\(/);
   assert.match(app, /function animateBasketAdded\(\) \{[\s\S]*counter-open'[\s\S]*immersive-basket-open/);
   assert.match(app, /if \(result\.reason === 'added'\) \{\s*animateBasketAdded\(\);\s*showBasketAdded\(title\);\s*\}/);
   assert.match(styles, /@keyframes basket-added/);

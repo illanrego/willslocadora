@@ -28,28 +28,25 @@ function box(width, height, depth, material, x, y, z, group) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material); mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); return mesh;
 }
 
-function drawPixDemonstration(context) {
-  const { width, height } = context.canvas;
-  context.fillStyle = '#fff'; context.fillRect(0, 0, width, height);
-  context.strokeStyle = '#d8d8d8'; context.lineWidth = 6; context.strokeRect(3, 3, width - 6, height - 6);
-  context.fillStyle = '#157d75'; context.font = '900 42px Arial'; context.textAlign = 'center'; context.fillText('PIX', width / 2, 43);
-  const size = 21; const cell = 8; const left = (width - size * cell) / 2; const top = 62;
-  const finder = (x, y) => {
-    context.fillStyle = '#111'; context.fillRect(left + x * cell, top + y * cell, cell * 7, cell * 7);
-    context.fillStyle = '#fff'; context.fillRect(left + (x + 1) * cell, top + (y + 1) * cell, cell * 5, cell * 5);
-    context.fillStyle = '#111'; context.fillRect(left + (x + 2) * cell, top + (y + 2) * cell, cell * 3, cell * 3);
-  };
-  const inFinder = (x, y) => (x < 7 && y < 7) || (x >= 14 && y < 7) || (x < 7 && y >= 14);
-  finder(0, 0); finder(14, 0); finder(0, 14);
-  context.fillStyle = '#111';
-  for (let y = 0; y < size; y += 1) for (let x = 0; x < size; x += 1) if (!inFinder(x, y) && ((x * 17 + y * 31 + x * y * 7 + 11) % 5 < 2)) context.fillRect(left + x * cell, top + y * cell, cell, cell);
-  context.fillStyle = '#555'; context.font = '900 13px Arial'; context.fillText('DEMONSTRAÇÃO · NÃO PAGÁVEL', width / 2, height - 12);
-}
-
-function pixDemonstrationTexture() {
+function pixTexture() {
   const canvas = document.createElement('canvas'); canvas.width = 220; canvas.height = 260;
-  drawPixDemonstration(canvas.getContext('2d'));
-  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#fff'; context.fillRect(0, 0, 220, 260);
+  context.fillStyle = '#157d75'; context.font = '900 42px Arial'; context.textAlign = 'center'; context.fillText('PIX', 110, 145);
+  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+  const config = window.LocadoraSessionSupport.donationSettings(window.LocadoraDonationConfig);
+  if (config.qrImage) {
+    const image = new Image();
+    image.onload = () => {
+      context.fillStyle = '#fff'; context.fillRect(0, 0, 220, 260);
+      const scale = Math.min(200 / image.width, 240 / image.height);
+      context.drawImage(image, (220 - image.width * scale) / 2, (260 - image.height * scale) / 2, image.width * scale, image.height * scale);
+      texture.needsUpdate = true;
+    };
+    texture.addEventListener('dispose', () => { image.onload = null; });
+    image.src = config.qrImage;
+  }
+  return texture;
 }
 
 function inspectionControls(container) {
@@ -110,7 +107,8 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   const jar = new THREE.Group(); jar.position.set(2.25, COUNTER_TOP + .525, -.2); room.add(jar);
   jar.add(new THREE.Mesh(new THREE.CylinderGeometry(.46, .52, 1.05, 20, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xbde3e6, transparent: true, opacity: .45, roughness: .12, transmission: .2, side: THREE.DoubleSide })));
   const rim = new THREE.Mesh(new THREE.TorusGeometry(.47, .045, 8, 20), steel); rim.position.y = .525; rim.rotation.x = Math.PI / 2; jar.add(rim);
-  const pixSticker = new THREE.Mesh(new THREE.PlaneGeometry(.68, .8), new THREE.MeshBasicMaterial({ map: pixDemonstrationTexture() })); pixSticker.position.set(0, -.03, .526); jar.add(pixSticker); jar.userData.action = 'tip';
+  const pixSticker = new THREE.Mesh(new THREE.PlaneGeometry(.68, .8), new THREE.MeshBasicMaterial({ map: pixTexture() })); pixSticker.position.set(0, -.03, .526); jar.add(pixSticker); jar.userData.action = 'tip';
+  pixSticker.material.addEventListener('dispose', () => pixSticker.material.map.dispose());
   const donationPlaque = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .3), new THREE.MeshBasicMaterial({ map: labelTexture('DOAÇÕES', { width: 380, height: 90, background: '#31636b' }) })); donationPlaque.position.set(1.28, COUNTER_TOP + .42, .42); room.add(donationPlaque);
   const counterObject = new THREE.Group(); counterObject.position.copy(COUNTER_POSITION); room.add(counterObject);
   const interactive = [crt, keyboard, jar, awardsFrame, returns]; const clickableCues = [crt, keyboard, jar, returns]; const tapeRecords = [];

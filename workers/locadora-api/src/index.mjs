@@ -1,3 +1,5 @@
+import { watchIdentity, createWatchLinkService, WATCH_TTL, WATCH_FAILURE_TTL } from './watch-links.mjs';
+
 const TMDB_ROOT = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_HOST = 'image.tmdb.org';
 const MAX_TITLES = 40;
@@ -201,6 +203,7 @@ async function image(source, fetchImpl) {
 }
 
 export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
+  const watchLinks = createWatchLinkService(fetchImpl);
   return {
     async fetch(request, env, ctx) {
       const policy = cors(request, env);
@@ -210,6 +213,22 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
       const url = new URL(request.url);
       try {
         if (url.pathname === '/v1/health') return json({ ok: true, service: 'locadora-api' }, 200, policy.headers);
+        if (url.pathname === '/v1/watch-links') {
+          const identity = watchIdentity(url.searchParams.get('type'), url.searchParams.get('id'));
+          const key = new Request(`${url.origin}/v1/watch-links?${new URLSearchParams({ type: identity.type, id: identity.id })}`);
+          const edge = globalThis.caches?.default;
+          const cached = await edge?.match(key);
+          if (cached) {
+            const headers = new Headers(cached.headers);
+            for (const [name, value] of Object.entries(policy.headers)) headers.set(name, value);
+            return new Response(cached.body, { headers });
+          }
+          const result = await watchLinks(identity);
+          const response = json(result, 200, { 'cache-control': `public, max-age=${result.status === 'ok' ? WATCH_TTL : WATCH_FAILURE_TTL}` });
+          if (edge && ctx?.waitUntil) ctx.waitUntil(edge.put(key, response.clone()));
+          for (const [name, value] of Object.entries(policy.headers)) response.headers.set(name, value);
+          return response;
+        }
         if (url.pathname === '/v1/providers') return json({ providers: PROVIDERS }, 200, { ...policy.headers, 'cache-control': 'public, max-age=604800' });
         if (url.pathname === '/v1/featured') {
           const year = Number(url.searchParams.get('year'));

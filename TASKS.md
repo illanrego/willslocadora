@@ -22,6 +22,12 @@ The public-MVP authority is [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_
 
 ## Now — user playtest and public polish
 
+- [x] Streaming-first UX: visible optional service chooser, all-years defaults for new subscription browsing, persistent Cesta with tape/count cues, and nonblocking added-title feedback.
+- [x] “Boa sessão” rental handoff with independently loaded subscription destinations, shared title/account service panel, and explicit TMDB fallback. Public Worker extraction uses bounded reads, exact CORS, approved destinations and six-hour/one-minute caches.
+- [x] Deployed the read-only Worker and verified public movie/series watch links, existing title metadata, and exact CORS on 2026-09-05; static frontend changes await the Pages release.
+- [x] Shared anonymous Pix support panel across browsing, dialogs and 3D jar; copyable key and configurable QR image. [Pix setup](docs/donations.md) only needs the actual public key/image.
+- [ ] User playtests the revised service chooser, mobile floating controls, title/service dialogs, rental handoff and configured Pix QR. Publishing the static changes and checking the deployed frontend remain release steps.
+
 - [~] User playtests browse loop, shelf counts, next/previous stands, and genre visual identity on the live site.
 - [ ] Validate mobile/narrow-screen behavior and normal-mode accessibility after current visual direction is accepted.
 - [ ] Playtest title inspection, title-logo quality, Brazil availability copy, and Stremio external-app handoff in normal browsers.

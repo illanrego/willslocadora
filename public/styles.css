@@ -576,10 +576,6 @@ dialog.panel-dialog {
   70% { transform: rotate(1deg) translateY(1px) scale(.98); }
 }
 .counter-button.is-basket-added, .immersive-basket-button.is-basket-added { animation: basket-added .52s ease-out; }
-.basket-added-dialog { width: min(390px, calc(100% - 1rem)) !important; text-align: center; }
-.basket-added-dialog .panel-header { justify-content: center; }
-.basket-added-actions { display: flex; justify-content: center; margin-top: 1rem; }
-.basket-added-actions .account-action { min-width: 128px; }
 .saved-added-dialog { width: min(390px, calc(100% - 1rem)) !important; text-align: center; }
 .saved-added-dialog .panel-header { justify-content: center; }
 .saved-added-actions { display: flex; justify-content: center; margin-top: 1rem; }
@@ -1016,3 +1012,61 @@ dialog.panel-dialog {
 }
 @media (max-width: 560px) { .return-confirmation-item { grid-template-columns: 46px minmax(0, 1fr); } .return-confirmation-item .return-review-action { grid-column: 1 / -1; } }
 @media (prefers-reduced-motion: reduce) { .return-confirmation-item .return-review-action { animation: none; } }
+
+/* Streaming discovery and the small, persistent customer basket. */
+.brand { max-width: 100%; }
+.brand-tag { max-width: 54ch; text-transform: none; letter-spacing: .035em; line-height: 1.5; font-size: .8rem; }
+.rental-intro, .streaming-hint { color: var(--cream); font: 400 .85rem/1.55 Arial, sans-serif; }
+.rental-intro { margin: 0; padding: .9rem clamp(1rem, 3vw, 2rem); border-bottom: 1px solid #65533e; }
+.streaming-hint { margin: .55rem 0; }
+.is-immersive .rental-intro { display: none; }
+.provider-summary { margin: .35rem .5rem; color: var(--cream); font: 700 .72rem/1.4 Arial, sans-serif; }
+.immersive-hud.is-collapsed .provider-summary { display: none; }
+.immersive-filters { max-height: 42dvh; overflow-y: auto; }
+.immersive-provider-picker .streaming-hint { grid-column: 1 / -1; }
+.store-dock { position: fixed; z-index: 15; right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: .7rem; padding: .45rem .6rem; border: 1px solid #b49d79; border-radius: 7px; background: #182235; box-shadow: 0 4px 18px #0006; }
+.store-dock .counter-button { display: flex; align-items: center; gap: .55rem; min-height: 44px; margin: 0; padding: .45rem .7rem; color: var(--blue-deep); background: var(--cream); border: 1px solid var(--red); border-radius: 4px; cursor: pointer; }
+body[data-store-mode="immersive"] .store-dock #counter-open { display: none; }
+.support-link { border: 0; padding: .45rem .2rem; min-height: 44px; color: var(--cream); background: transparent; font: 700 .75rem/1.4 Arial, sans-serif; text-decoration: underline; text-underline-offset: .25em; cursor: pointer; }
+.support-link:hover { color: var(--yellow); }
+.dialog-support { display: block; margin: .75rem auto 0; }
+.title-dialog > .dialog-support { position: absolute; z-index: 7; right: max(.75rem, env(safe-area-inset-right)); bottom: max(.75rem, env(safe-area-inset-bottom)); margin: 0; padding: .5rem .7rem; border-radius: 4px; background: #182235; }
+.store-shell { padding-bottom: 90px; }
+.is-immersive .store-shell { padding-bottom: 0; }
+.is-immersive .store-dock { bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4.5rem)); }
+body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-area-inset-bottom) + 8rem)); }
+.basket-spines, .immersive-basket-button .basket-spines { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 29px; height: 27px; min-width: 29px; min-height: 27px; margin: 0; padding: 0 2px 4px; border: 2px solid currentColor; border-top: 0; border-radius: 0 0 4px 4px; color: var(--blue-deep); background: transparent; }
+.basket-spines i { display: block; width: 6px; height: 24px; background: var(--red); border: 1px solid var(--blue-deep); border-radius: 1px; }
+.basket-spines i:nth-child(2) { height: 27px; background: var(--yellow); }
+.basket-spines i:nth-child(3) { height: 22px; background: #73928d; }
+.immersive-basket-button .basket-icon { display: none; }
+.immersive-basket-button { grid-template-columns: 29px auto 24px; }
+.basket-notice { position: fixed; z-index: 30; bottom: max(5.5rem, calc(env(safe-area-inset-bottom) + 5rem)); right: 1rem; max-width: min(340px, calc(100vw - 2rem)); margin: 0; padding: .65rem .85rem; border: 1px solid var(--cream); border-radius: 4px; color: var(--cream); background: #182235; box-shadow: 0 4px 16px #0005; font: 700 .85rem/1.5 Arial, sans-serif; pointer-events: none; }
+.basket-notice:empty { display: none; }
+.donation-dialog, .streaming-dialog { width: min(560px, calc(100% - 1rem)); }
+.donation-qr { display: block; width: min(240px, 100%); height: auto; margin: 1.2rem auto; background: white; }
+.donation-qr[hidden], #donation-key-controls[hidden] { display: none; }
+#donation-key-controls { display: grid; gap: .75rem; }
+#donation-key { width: 100%; min-width: 0; padding: .75rem; color: var(--blue-deep); background: var(--cream); border: 1px solid #b49d79; cursor: copy; }
+.streaming-options { min-width: 0; font: 400 .85rem/1.5 Arial, sans-serif; color: var(--cream); }
+.streaming-options a { color: var(--yellow); text-underline-offset: .2em; }
+.streaming-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.streaming-actions a, .account-streaming-action { display: inline-flex; align-items: center; min-height: 44px; padding: .6rem .8rem; border: 1px solid var(--cream); border-radius: 4px; color: var(--blue-deep); background: var(--cream); text-decoration: none; font-weight: 700; cursor: pointer; }
+.streaming-actions a:hover, .account-streaming-action:hover { background: var(--yellow); }
+.streaming-group-label { margin: .65rem 0 .4rem; font-weight: 700; }
+.streaming-note { display: block; margin: .75rem 0 .35rem; color: #d0c2aa; line-height: 1.5; }
+.streaming-fallback { display: inline-block; margin-top: .7rem; }
+.session-title-links { grid-column: 1 / -1; padding-top: .65rem; border-top: 1px solid #65533e; }
+.account-streaming-action { grid-column: 2 / -1; justify-self: start; }
+.session-support { margin: 1.25rem 0; padding: .8rem 1rem; border: 1px dashed #b49d79; border-radius: 5px; color: var(--cream); font: 400 .9rem/1.5 Arial, sans-serif; }
+.session-support p { margin: 0; }
+.session-support .support-link { color: var(--yellow); }
+.basket-actions .tip-jar-button { min-height: 38px; border: 0; background: transparent; text-decoration: underline; font-size: .72rem; }
+@media (max-width: 600px) {
+  .store-dock { right: .6rem; bottom: max(.6rem, env(safe-area-inset-bottom)); gap: .4rem; }
+  .store-dock .support-link { max-width: 90px; font-size: .7rem; }
+  .is-immersive .store-dock { bottom: max(4.8rem, calc(env(safe-area-inset-bottom) + 4.5rem)); }
+  body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-area-inset-bottom) + 8rem)); }
+  .brand-tag { font-size: .75rem; }
+  .immersive-filters { max-height: 35dvh; }
+}

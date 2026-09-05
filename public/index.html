@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17120f">
-  <title>Will's Locadora — Pick a year. Find a tape.</title>
+  <title>Will's Locadora — A magia da locadora nos seus streamings</title>
+  <meta name="description" content="Escolha filmes e séries dos seus streamings com a magia de uma locadora. Passeie pelas fitas, alugue grátis e prepare a pipoca.">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="256x256" href="/favicon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -21,9 +22,6 @@
         </a>
         <nav class="header-actions" aria-label="Store actions">
           <button class="mode-button" id="immersive-toggle" type="button" aria-pressed="false" data-i18n="immersiveMode">Modo imersivo</button>
-          <button class="counter-button" id="counter-open" type="button" aria-controls="basket-dialog">
-            <span data-i18n="basket">Cesta</span> <span id="counter-count" aria-label="items in basket">0</span>
-          </button>
           <button class="utility-button" id="catalog-search-open" type="button" aria-controls="catalog-search-dialog">Pesquisar títulos</button>
           <button id="watchlist-open" class="utility-button header-icon-button" type="button" aria-label="Assistir depois e Favoritos" title="Assistir depois e Favoritos">
             <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
@@ -51,7 +49,7 @@
           <button class="is-active" data-type="movie" type="button" data-i18n="movies">Filmes</button>
           <button data-type="series" type="button" data-i18n="series">Séries</button>
         </div>
-        <button id="normal-filters-toggle" class="normal-filters-toggle" type="button" aria-controls="normal-provider-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="filters">Filtros</span></button>
+        <button id="normal-filters-toggle" class="normal-filters-toggle" type="button" aria-controls="normal-provider-filters" aria-expanded="true"><span aria-hidden="true">⌕</span><span data-i18n="brazilStreaming">Seus streamings</span></button>
         <form id="year-form" class="year-machine" aria-label="Store year">
           <label class="year-label" for="store-year-input" data-i18n="storeYear">Ano da loja</label>
           <button class="year-step" id="year-back" type="button" data-i18n-aria-label="previousYear" aria-label="Ano anterior">−</button>
@@ -59,7 +57,8 @@
           <button class="year-step" id="year-forward" type="button" data-i18n-aria-label="nextYear" aria-label="Próximo ano">+</button>
           <button id="year-go" type="submit" data-i18n="go">Ir</button>
         </form>
-        <div id="normal-provider-filters" class="normal-provider-filters" hidden>
+        <div id="normal-provider-filters" class="normal-provider-filters">
+          <p class="streaming-hint" data-i18n="streamingHint">Selecione os serviços que você assina ou explore tudo. Não precisa de conta para passear.</p>
           <fieldset class="provider-picker">
             <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
             <div id="provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
@@ -80,6 +79,7 @@
     </header>
 
     <main>
+      <p class="rental-intro" data-i18n="rentalIntro">Escolha suas fitas, alugue grátis e assista no seu streaming. Até 3 fitas ativas, sem prazo de devolução.</p>
       <section id="normal-mode" class="shop-floor" aria-label="Video store aisles">
         <div class="shelf-room">
           <div class="fluorescent" aria-hidden="true"></div>
@@ -143,14 +143,16 @@
               <button id="immersive-go" type="button" data-i18n="go">Ir</button>
             </div>
             <nav class="immersive-menu-actions" aria-label="Immersive actions">
-              <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="filters">Filtros</span></button>
+              <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="brazilStreaming">Seus streamings</span></button>
               <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false"><span aria-hidden="true">⚙</span><span data-i18n="settings">Ajustes</span></button>
               <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Ocultar menu">Ocultar</button>
             </nav>
           </div>
+          <p id="immersive-provider-summary" class="provider-summary"></p>
           <div id="immersive-filters" class="immersive-filters" hidden>
             <fieldset class="immersive-picker immersive-provider-picker">
               <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
+              <p class="streaming-hint" data-i18n="streamingHint">Selecione os serviços que você assina ou explore tudo. Não precisa de conta para passear.</p>
               <div id="immersive-provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
                 <label><input type="checkbox" data-provider-id="netflix"> Netflix</label>
                 <label><input type="checkbox" data-provider-id="prime-video"> Prime Video</label>
@@ -300,12 +302,28 @@
     <div id="watchlist-list" class="counter-list" role="tabpanel"></div>
   </dialog>
 
-  <dialog id="basket-added-dialog" class="panel-dialog basket-added-dialog" aria-labelledby="basket-added-heading">
-    <header class="panel-header">
-      <div><span class="eyebrow">CESTA DA LOCADORA</span><h2 id="basket-added-heading">Fita adicionada</h2></div>
-    </header>
-    <p id="basket-added-message" class="panel-copy" role="status" aria-live="polite" aria-atomic="true"></p>
-    <form method="dialog" class="basket-added-actions"><button id="basket-added-ok" class="account-action" value="ok">OK</button></form>
+  <div class="store-dock">
+    <button class="counter-button" id="counter-open" type="button" aria-controls="basket-dialog">
+      <span class="basket-spines" aria-hidden="true"></span><span data-i18n="basket">Cesta</span> <span id="counter-count">0</span>
+    </button>
+    <button class="support-link" type="button" data-support data-i18n="support">Apoiar a Locadora</button>
+  </div>
+  <p id="basket-added-message" class="basket-notice" role="status" aria-live="polite" aria-atomic="true"></p>
+  <dialog id="donation-dialog" class="panel-dialog donation-dialog" aria-labelledby="donation-heading">
+    <form method="dialog" class="panel-header"><h2 id="donation-heading" data-i18n="supportTitle">Mantenha as luzes acesas</h2><button class="dialog-close" data-i18n-aria-label="close" aria-label="Fechar">×</button></form>
+    <p class="panel-copy" data-i18n="supportCopy">A Locadora é grátis. Se quiser, deixe uma contribuição por Pix — qualquer valor ajuda a manter este cantinho aberto.</p>
+    <img id="donation-qr" class="donation-qr" hidden alt="QR Code Pix">
+    <div id="donation-key-controls" hidden>
+      <label for="donation-key" data-i18n="pixKey">Chave Pix</label>
+      <input id="donation-key" readonly aria-describedby="donation-status">
+      <button id="donation-copy" class="account-action" type="button" data-i18n="copyPix">Copiar chave Pix</button>
+    </div>
+    <p id="donation-status" class="panel-copy" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="streaming-dialog" class="panel-dialog streaming-dialog" aria-labelledby="streaming-heading">
+    <form method="dialog" class="panel-header"><h2 id="streaming-heading" data-i18n="viewStreamings">Ver streamings</h2><button class="dialog-close" data-i18n-aria-label="close" aria-label="Fechar">×</button></form>
+    <h3 id="streaming-title"></h3>
+    <div id="streaming-options"></div>
   </dialog>
   <dialog id="saved-added-dialog" class="panel-dialog saved-added-dialog" aria-labelledby="saved-added-heading">
     <header class="panel-header">
@@ -324,7 +342,7 @@
     <div class="basket-actions">
       <form method="dialog"><button class="basket-secondary-action" value="browse">Continuar escolhendo</button></form>
       <button id="take-basket-counter" class="balcony-rent-button" type="button">Levar ao Balcão</button>
-      <button id="basket-donation" class="tip-jar-button" type="button">Doações · manter as luzes acesas</button>
+      <button id="basket-donation" class="tip-jar-button" type="button" data-i18n="support">Apoiar a Locadora</button>
     </div>
   </dialog>
 
@@ -335,6 +353,7 @@
     </form>
     <p id="balcony-panel-status" class="panel-copy" role="status" aria-live="polite"></p>
     <section id="balcony-rental-controls" aria-label="Aluguel no Balcão">
+      <p class="panel-copy" data-i18n="rentalIntro">Escolha suas fitas, alugue grátis e assista no seu streaming. Até 3 fitas ativas, sem prazo de devolução.</p>
       <ol class="rental-flow" aria-label="Como alugar">
         <li><span>1</span><strong>Escolha</strong><small>fitas nas estantes</small></li>
         <li class="is-current"><span>2</span><strong>Escolher / alugar fitas</strong><small id="rental-capacity">0 de 15 fitas</small></li>
@@ -372,11 +391,12 @@
 
   <dialog id="rental-confirmation-dialog" class="panel-dialog rental-confirmation-dialog">
     <header class="panel-header">
-      <div><span class="eyebrow">SACOLA DA LOCADORA</span><h2>Pacote alugado</h2></div>
+      <div><span class="eyebrow" data-i18n="sessionBag">SUAS FITAS PARA HOJE</span><h2><span aria-hidden="true">🍿</span> <span data-i18n="sessionTitle">Boa sessão!</span></h2></div>
     </header>
     <p id="rental-confirmation-status" class="panel-copy" role="status" aria-live="polite"></p>
     <div id="rental-confirmation-list" class="counter-list"></div>
-    <form method="dialog"><button id="rental-confirmation-home" class="account-action" value="home">Voltar para a página inicial</button></form>
+    <aside class="session-support"><p data-i18n="supportNudge">Curtiu escolher suas fitas? Ajude a manter as luzes da Locadora acesas.</p><button type="button" class="support-link" data-support data-i18n="support">Apoiar a Locadora</button></aside>
+    <form method="dialog"><button id="rental-confirmation-home" class="account-action" value="home" data-i18n="continueBrowsing">Continuar passeando</button></form>
   </dialog>
 
   <dialog id="catalog-search-dialog" class="panel-dialog catalog-search-dialog">
@@ -427,6 +447,8 @@
   <script src="/immersive-preferences.js"></script>
   <script src="/stand-cache.js"></script>
   <script src="/store-ambience.js"></script>
+  <script src="/donation-config.js"></script>
+  <script src="/session-support.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

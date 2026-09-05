@@ -6,7 +6,7 @@
 
 ## One-line concept
 
-A Brazil-first online video rental store where people browse films as VHS, hold a small selection, return it as watched or unwatched, and gradually build a personal rental history and community taste signal.
+A Brazil-first discovery experience for films and series on the visitor's streaming subscriptions, presented as a joyful VHS rental store. Visitors choose their services, browse tapes, rent a small selection for free, and open titles on their own streaming services. Returns and rental history preserve the video-store ritual.
 
 ## Core product truth
 
@@ -47,6 +47,8 @@ The key distinction is that a rental is meaningful even when the film is not wat
 ## Public MVP experience
 
 ### Anonymous browsing
+
+“Seus streamings” is a visible optional chooser in normal and immersive browsing, with OR matching across selected subscriptions. New visitors selecting services default to all years; explicit saved year preferences are retained. Choosing no services explores the broader catalogue. A fixed Cesta with a count and up to three decorative tape spines keeps the current selection accessible; adding a tape announces success without requiring an OK dialog.
 
 Anyone can browse the public store without an account:
 
@@ -106,6 +108,8 @@ Choose titles over time
 ```
 
 There is no due date or payment in MVP. A visitor can keep an active title indefinitely, but may not hold more than three titles at once. The three-title limit is enforced server-side across all active rental items.
+
+Successful rental ends with “🍿 Boa sessão!”, selected-title cards and service destinations loaded independently of the rental write. “Ver streamings” is also available from public title inspection and active rentals in Minha conta. Subscription destinations are best-effort public TMDB watch-page extraction by the read-only Worker, with JustWatch attribution and a clearly labelled TMDB fallback. Paid rental/purchase offers are excluded, and add-on channels are never conflated with base subscriptions. Link loading or failures never change the confirmed rental.
 
 ## Core data model
 
@@ -327,6 +331,7 @@ public read-only endpoints:
 - GET /v1/shelf
 - GET /v1/title
 - GET /v1/providers
+- GET /v1/watch-links (validated title identity; public Brazil subscription destinations only)
 - GET /v1/image (only if a validated image proxy remains necessary)
 ```
 
@@ -393,7 +398,7 @@ The visitor’s operating system/browser passes it to their own installed Stremi
 
 ## Funding
 
-The project is free and open source. A voluntary, non-blocking 3D tip jar is part of the store ambience: “Keep the lights on at the Locadora.” It may lead to an external donation flow, but is never tied to rentals, accounts, or feature access.
+The project is free and open source. A voluntary 3D tip jar and quiet “Apoiar a Locadora” controls throughout browsing and modal flows open the same anonymous Pix support panel. Rental completion includes a warmer optional invitation beneath service links. Support is never tied to rentals, accounts, or feature access. The public key and QR-image path are configured in `public/donation-config.js`; empty configuration shows an honest unavailable state. See [Pix setup](docs/donations.md). There is no donation verification or payment backend.
 
 No feature, account, rental history, or recommendation is paywalled in MVP.
 

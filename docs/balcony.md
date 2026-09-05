@@ -3,6 +3,14 @@
 **Status:** implemented in the 2D and 3D experiences. The signed-in rental state is authoritative in the private `locadora-data` Worker; the anonymous basket remains local until confirmation.
 **Purpose:** make Locadora’s browse → Cesta → Balcão rental → return loop tangible, legible, and identical in normal and immersive modes.
 
+## Streaming-discovery UX update
+
+The rental metaphor supports choosing films and series from the visitor's subscriptions. “Seus streamings” is visible and optional; new subscription browsing defaults to all years while explicit saved preferences are respected. Cesta remains fixed on screen in normal and immersive navigation with an exact count and up to three decorative tape spines. Adding titles uses a transient live announcement, not a mandatory confirmation window.
+
+Rental success now opens “🍿 Boa sessão!” with the tape cards and independently loaded service destinations. The same “Ver streamings” panel is public from title details and reachable from active rentals. Failed link extraction leaves an explicit TMDB fallback and never changes rental state. Closing a support or service panel restores focus to its origin without closing the rental confirmation.
+
+All support controls, including the 3D jar, now open one optional anonymous Pix panel. Quiet entries remain available across browsing and modal flows; the rental ending gives a warmer invitation below service options. Configure the public Pix key and QR-image path using [the setup instructions](donations.md). The jar shows a simple Pix label until configured, never a demonstration QR. This update supersedes the prototype donation behavior below.
+
 ## Core rule
 
 There is no `Separados` / Picks shelf.
