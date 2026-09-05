@@ -17,7 +17,7 @@ function jsonRequest(path, { method = 'GET', token = 'valid-token', body } = {})
 function createRepository() {
   return {
     async getState(userId) {
-      assert.equal(userId, 'user_clerk_123');
+      assert.equal(userId, 'user_123');
       return {
         profile: { userId, username: 'will' },
         watchlist: [],
@@ -44,7 +44,7 @@ test('active rental state excludes tapes that have already been returned', () =>
 
 test('data Worker returns only the authenticated member state', async () => {
   const worker = createLocadoraDataWorker({
-    authenticate: async (request) => request.headers.get('authorization') === 'Bearer valid-token' ? 'user_clerk_123' : null,
+    authenticate: async (request) => request.headers.get('authorization') === 'Bearer valid-token' ? 'user_123' : null,
     createRepository: () => createRepository(),
   });
 
@@ -53,7 +53,7 @@ test('data Worker returns only the authenticated member state', async () => {
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('access-control-allow-origin'), 'https://www.sitedoillan.com.br');
   assert.deepEqual(await response.json(), {
-    profile: { userId: 'user_clerk_123', username: 'will' },
+    profile: { userId: 'user_123', username: 'will' },
     watchlist: [],
     collections: { watch_later: [], favorite: [] },
     activeRental: { id: 'rental-1', items: [] },
@@ -61,7 +61,17 @@ test('data Worker returns only the authenticated member state', async () => {
   });
 });
 
-test('data Worker serves public reviews for a canonical title without a Clerk token', async () => {
+test('data Worker mounts Better Auth routes with exact CORS headers', async () => {
+  const worker = createLocadoraDataWorker({
+    authFactory: () => ({ handler: async () => new Response(JSON.stringify({ user: { id: 'user_1' } }), { status: 200, headers: { 'content-type': 'application/json', 'set-auth-token': 'token_1' } }) }),
+  });
+  const response = await worker.fetch(new Request('https://data.example/api/auth/get-session', { headers: { origin: 'https://www.sitedoillan.com.br' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), 'https://www.sitedoillan.com.br');
+  assert.match(response.headers.get('access-control-expose-headers'), /set-auth-token/);
+});
+
+test('data Worker serves public reviews for a canonical title without a bearer token', async () => {
   let authenticationAttempts = 0;
   const calls = [];
   const worker = createLocadoraDataWorker({
@@ -85,7 +95,7 @@ test('data Worker serves public reviews for a canonical title without a Clerk to
 test('data Worker accepts half-star reviews only from the authenticated member', async () => {
   const calls = [];
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({
       async saveReview(userId, canonicalKey, review) {
         calls.push({ userId, canonicalKey, review });
@@ -97,27 +107,27 @@ test('data Worker accepts half-star reviews only from the authenticated member',
   const response = await worker.fetch(jsonRequest('/v1/titles/movie/603/review', { method: 'POST', body: { rating: 4.5, body: 'Muito bom.' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
 
   assert.equal(response.status, 201);
-  assert.deepEqual(calls, [{ userId: 'user_clerk_123', canonicalKey: 'movie:603', review: { rating: 4.5, body: 'Muito bom.' } }]);
+  assert.deepEqual(calls, [{ userId: 'user_123', canonicalKey: 'movie:603', review: { rating: 4.5, body: 'Muito bom.' } }]);
   assert.deepEqual(await response.json(), { review: { id: 'review-1', username: 'will', rating: 4.5, body: 'Muito bom.', createdAt: '2026-08-02T12:00:00Z', updatedAt: '2026-08-02T12:00:00Z' } });
 });
 
 test('data Worker checks review eligibility against authenticated watched history', async () => {
   const calls = [];
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({
       async canReviewTitle(userId, canonicalKey) { calls.push({ userId, canonicalKey }); return true; },
     }),
   });
   const response = await worker.fetch(jsonRequest('/v1/titles/series/1396/review-eligibility'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [{ userId: 'user_clerk_123', canonicalKey: 'series:1396' }]);
+  assert.deepEqual(calls, [{ userId: 'user_123', canonicalKey: 'series:1396' }]);
   assert.deepEqual(await response.json(), { eligible: true });
 });
 
 test('data Worker rejects non-half-star or blank review submissions before archive writes', async () => {
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({ saveReview: async () => assert.fail('must not write') }),
   });
 
@@ -127,7 +137,7 @@ test('data Worker rejects non-half-star or blank review submissions before archi
   assert.deepEqual(await response.json(), { error: 'A review needs a half-star rating and a short text' });
 });
 
-test('data Worker rejects requests without a valid Clerk token', async () => {
+test('data Worker rejects requests without a valid bearer session', async () => {
   const worker = createLocadoraDataWorker({
     authenticate: async () => null,
     createRepository: () => createRepository(),
@@ -139,10 +149,10 @@ test('data Worker rejects requests without a valid Clerk token', async () => {
   assert.deepEqual(await response.json(), { error: 'Authentication required' });
 });
 
-test('data Worker creates a public username for the authenticated Clerk member', async () => {
+test('data Worker creates a public username for the authenticated member', async () => {
   const calls = [];
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({
       async upsertProfile(userId, username) {
         calls.push({ userId, username });
@@ -154,13 +164,13 @@ test('data Worker creates a public username for the authenticated Clerk member',
   const response = await worker.fetch(jsonRequest('/v1/profile', { method: 'PUT', body: { username: 'Will_Rego' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
 
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [{ userId: 'user_clerk_123', username: 'will_rego' }]);
-  assert.deepEqual(await response.json(), { profile: { userId: 'user_clerk_123', username: 'will_rego', createdAt: '2026-07-30T12:00:00Z' } });
+  assert.deepEqual(calls, [{ userId: 'user_123', username: 'will_rego' }]);
+  assert.deepEqual(await response.json(), { profile: { userId: 'user_123', username: 'will_rego', createdAt: '2026-07-30T12:00:00Z' } });
 });
 
 test('data Worker rejects an invalid public username before touching the archive', async () => {
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({ upsertProfile: async () => assert.fail('must not write') }),
   });
 
@@ -173,7 +183,7 @@ test('data Worker rejects an invalid public username before touching the archive
 test('data Worker saves an authenticated member title to the watchlist with a canonical TMDB key', async () => {
   const calls = [];
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({
       async saveWatchlist(userId, title) {
         calls.push({ userId, title });
@@ -188,7 +198,7 @@ test('data Worker saves an authenticated member title to the watchlist with a ca
   }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
 
   assert.equal(response.status, 201);
-  assert.deepEqual(calls, [{ userId: 'user_clerk_123', title: {
+  assert.deepEqual(calls, [{ userId: 'user_123', title: {
     canonicalKey: 'movie:603', tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999, source: 'locadora', sourceNote: null,
   } }]);
   assert.deepEqual(await response.json(), { watchlistItem: {
@@ -198,7 +208,7 @@ test('data Worker saves an authenticated member title to the watchlist with a ca
 
 test('data Worker refuses malformed or unsupported watchlist titles', async () => {
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({ saveWatchlist: async () => assert.fail('must not write') }),
   });
 
@@ -214,7 +224,7 @@ test('data Worker refuses malformed or unsupported watchlist titles', async () =
 test('data Worker rents canonical titles through one server-side operation', async () => {
   const calls = [];
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({
       async rentTitles(userId, titles) {
         calls.push({ userId, titles });
@@ -231,7 +241,7 @@ test('data Worker rents canonical titles through one server-side operation', asy
   }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
 
   assert.equal(response.status, 201);
-  assert.deepEqual(calls, [{ userId: 'user_clerk_123', titles: [
+  assert.deepEqual(calls, [{ userId: 'user_123', titles: [
     { canonicalKey: 'movie:603', tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 },
     { canonicalKey: 'series:1396', tmdbId: 1396, type: 'series', name: 'Breaking Bad', year: 2008 },
   ] }]);
@@ -243,7 +253,7 @@ test('data Worker rents canonical titles through one server-side operation', asy
 
 test('data Worker refuses rental batches larger than the three active-title limit', async () => {
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({ rentTitles: async () => assert.fail('must not write') }),
   });
   const title = { tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 };
@@ -257,7 +267,7 @@ test('data Worker returns a member title and records the watched outcome', async
   const calls = [];
   const itemId = '11111111-1111-4111-8111-111111111111';
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({
       async returnRentalItem(userId, receivedItemId, watchedStatus) {
         calls.push({ userId, itemId: receivedItemId, watchedStatus });
@@ -268,7 +278,7 @@ test('data Worker returns a member title and records the watched outcome', async
   const response = await worker.fetch(jsonRequest(`/v1/rental-items/${itemId}/return`, { method: 'POST', body: { watchedStatus: 'watched' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
 
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [{ userId: 'user_clerk_123', itemId, watchedStatus: 'watched' }]);
+  assert.deepEqual(calls, [{ userId: 'user_123', itemId, watchedStatus: 'watched' }]);
   assert.deepEqual(await response.json(), { rentalItem: { id: itemId, returnedAt: '2026-07-30T13:00:00Z', watchedStatus: 'watched' } });
 });
 
@@ -281,7 +291,7 @@ test('database error mapping treats an inactive rental item as not found', () =>
 
 test('data Worker accepts only the three settled return outcomes', async () => {
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({ returnRentalItem: async () => assert.fail('must not write') }),
   });
   const response = await worker.fetch(jsonRequest('/v1/rental-items/not-a-uuid/return', { method: 'POST', body: { watchedStatus: 'maybe' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
@@ -293,7 +303,7 @@ test('data Worker accepts only the three settled return outcomes', async () => {
 test('data Worker exposes only the signed-in member history in pages', async () => {
   const calls = [];
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({
       async listHistory(userId, offset) {
         calls.push({ userId, offset });
@@ -304,14 +314,14 @@ test('data Worker exposes only the signed-in member history in pages', async () 
   const response = await worker.fetch(jsonRequest('/v1/history?offset=20'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
 
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [{ userId: 'user_clerk_123', offset: 20 }]);
+  assert.deepEqual(calls, [{ userId: 'user_123', offset: 20 }]);
   assert.deepEqual(await response.json(), { history: [{ id: 'item-1', name: 'The Matrix' }], hasMore: true });
 });
 
 test('data Worker checks public username availability for the authenticated member', async () => {
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
-    createRepository: () => ({ isUsernameAvailable: async (userId, username) => userId === 'user_clerk_123' && username === 'will_rego' }),
+    authenticate: async () => 'user_123',
+    createRepository: () => ({ isUsernameAvailable: async (userId, username) => userId === 'user_123' && username === 'will_rego' }),
   });
   const response = await worker.fetch(jsonRequest('/v1/usernames/will_rego'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
 
@@ -322,22 +332,22 @@ test('data Worker checks public username availability for the authenticated memb
 test('data Worker saves an independent favorite membership through the collection route', async () => {
   const calls = [];
   const worker = createLocadoraDataWorker({
-    authenticate: async () => 'user_clerk_123',
+    authenticate: async () => 'user_123',
     createRepository: () => ({
       async saveCollectionMembership(userId, collection, title) { calls.push({ userId, collection, title }); return { id: 'favorite-1', collection, ...title }; },
     }),
   });
   const response = await worker.fetch(jsonRequest('/v1/collections/favorite', { method: 'POST', body: { title: { tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 }, source: 'locadora' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
   assert.equal(response.status, 201);
-  assert.deepEqual(calls, [{ userId: 'user_clerk_123', collection: 'favorite', title: { canonicalKey: 'movie:603', tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999, source: 'locadora', sourceNote: null } }]);
+  assert.deepEqual(calls, [{ userId: 'user_123', collection: 'favorite', title: { canonicalKey: 'movie:603', tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999, source: 'locadora', sourceNote: null } }]);
   assert.deepEqual(await response.json(), { membership: { id: 'favorite-1', collection: 'favorite', canonicalKey: 'movie:603', tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999, source: 'locadora', sourceNote: null } });
 });
 
 test('data Worker removes only the requested private collection membership', async () => {
   const calls = [];
-  const worker = createLocadoraDataWorker({ authenticate: async () => 'user_clerk_123', createRepository: () => ({ async removeCollectionMembership(...args) { calls.push(args); return { removed: true }; } }) });
+  const worker = createLocadoraDataWorker({ authenticate: async () => 'user_123', createRepository: () => ({ async removeCollectionMembership(...args) { calls.push(args); return { removed: true }; } }) });
   const response = await worker.fetch(jsonRequest('/v1/collections/favorite/movie/603', { method: 'DELETE' }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [['user_clerk_123', 'favorite', 'movie:603']]);
+  assert.deepEqual(calls, [['user_123', 'favorite', 'movie:603']]);
   assert.deepEqual(await response.json(), { removed: true });
 });

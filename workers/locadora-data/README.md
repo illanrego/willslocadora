@@ -2,13 +2,14 @@
 
 Private authenticated data Worker for Will's Locadora.
 
-Clerk owns email/password authentication and browser sessions. This Worker verifies each Clerk bearer token, then is the only Locadora component that can use the Supabase service-role credential. The public `locadora-api` Worker must never receive these secrets.
+Better Auth owns email/password authentication and browser sessions. This Worker verifies Better Auth bearer sessions, then is the only Locadora component that can use the Supabase service-role credential. The public `locadora-api` Worker must never receive these secrets.
 
 ## Endpoints
 
-Browser CORS headers are emitted only for allowed origins. All mutation and member-specific routes require a valid Clerk bearer token; public title-review reads intentionally require no bearer token.
+Browser CORS headers are emitted only for allowed origins. All mutation and member-specific routes require a valid Better Auth bearer session; public title-review reads intentionally require no bearer token.
 
 - `GET /v1/titles/:type/:tmdbId/reviews` — public aggregate and the 20 most recent public reviews for one canonical movie or series.
+- `/api/auth/*` — Better Auth sign-up, email/username sign-in, session, and sign-out endpoints.
 - `GET /v1/titles/:type/:tmdbId/review-eligibility` — verifies the signed-in member has returned that exact title as `watched`.
 - `POST /v1/titles/:type/:tmdbId/review` — creates or replaces the signed-in member’s public written review and `0.5`–`5` half-star rating. The database independently enforces watched-history eligibility.
 - `GET /v1/state` — the member's profile, active Assistir depois/Favoritos collections, current rental, and recent return history.
@@ -22,14 +23,17 @@ Browser CORS headers are emitted only for allowed origins. All mutation and memb
 ## One-time setup
 
 1. Create the Locadora Supabase project. Apply `../../supabase/migrations/20260730_locadora_core.sql`, followed by every later migration in filename order, including `20260801_fix_return_rental_item.sql`, `20260802_add_title_reviews.sql`, and `20260803_saved_title_collections.sql`, with the Supabase SQL editor or Supabase CLI.
-2. Create a Clerk application configured for email + password. Configure the exact production and local origins as permitted origins/redirect URLs. Do not enable Locadora-managed verification or recovery email flows for this MVP.
+2. Configure a Better Auth database connection to the Supabase Postgres project. Apply `20260905_better_auth.sql` after the existing Locadora migrations.
 3. From this directory, authenticate the intended Cloudflare account, then set secrets interactively — never put values in files or source control:
 
    ```sh
-   npx wrangler secret put CLERK_SECRET_KEY
+   npx wrangler secret put BETTER_AUTH_SECRET
+   npx wrangler secret put DATABASE_URL
    npx wrangler secret put SUPABASE_URL
    npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
    ```
+
+   `DATABASE_URL` is the Supabase Postgres connection string. For Cloudflare production, prefer a Hyperdrive binding and let the Worker use its `connectionString`; the secret is useful for local development and migrations.
 
 4. Review `ALLOWED_ORIGINS` in `wrangler.toml`, then deploy:
 
@@ -37,6 +41,6 @@ Browser CORS headers are emitted only for allowed origins. All mutation and memb
    npx wrangler deploy
    ```
 
-5. Configure the static frontend's `auth-config.js` with the Clerk publishable key, Clerk Frontend API hostname, and this deployed Worker base URL. The first two values are browser-visible by design; the other three values are secrets and must remain Worker-only.
+5. Configure the static frontend's `auth-config.js` with this deployed Worker base URL. Better Auth secrets remain Worker-only.
 
 `git push` deploys only the static frontend. It does not apply the migration or deploy this Worker.

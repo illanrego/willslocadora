@@ -7,7 +7,9 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "@clerk/backend": "^3.14.0",
-    "@supabase/supabase-js": "^2.111.0"
+    "@supabase/supabase-js": "^2.115.0",
+    "better-auth": "^1.7.2",
+    "kysely": "^0.29.5",
+    "pg": "^8.23.0"
   }
 }

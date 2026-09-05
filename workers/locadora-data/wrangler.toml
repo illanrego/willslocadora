@@ -1,7 +1,9 @@
 name = "locadora-data"
 main = "src/index.mjs"
 compatibility_date = "2026-07-30"
+compatibility_flags = ["nodejs_compat"]
 
-# Exact browser origins permitted to send Clerk bearer tokens to this Worker.
+# Exact browser origins permitted to use Better Auth and private data routes.
 [vars]
 ALLOWED_ORIGINS = "https://illanrego.github.io,https://sitedoillan.com.br,https://www.sitedoillan.com.br,https://willslocadora.sitedoillan.com.br,http://127.0.0.1:4173"
+AUTH_BASE_URL = "https://locadora-data.willstartpage.workers.dev"

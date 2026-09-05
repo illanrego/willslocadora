@@ -15,7 +15,7 @@ The public browse experience is live:
 - normal shelves, immersive Three.js shelves, and a DOM tape-card fallback are available;
 - the Balcony currently simulates `available → counter → rented → returned` in browser-local state.
 
-The next product phase is durable account and rental data: Clerk authentication, a private data Worker backed by Supabase Postgres, profiles, rental history, and reviews. Recommendations are later. See [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md).
+The next product phase is durable account and rental data: Better Auth authentication, a private data Worker backed by Supabase Postgres, profiles, rental history, and reviews. Recommendations are later. See [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md).
 
 ## Product boundaries
 

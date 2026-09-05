@@ -4,9 +4,16 @@ import { readFileSync, existsSync } from 'node:fs';
 
 const migration = readFileSync(new URL('../supabase/migrations/20260730_locadora_core.sql', import.meta.url), 'utf8');
 
-test('Supabase schema keeps Clerk identities as opaque text IDs and never stores email or passwords', () => {
+test('Locadora domain schema keeps member IDs opaque and separate from auth credentials', () => {
   assert.match(migration, /create table public\.profiles \([\s\S]*user_id text primary key/i);
   assert.doesNotMatch(migration, /password_hash|email\s+(text|varchar)/i);
+});
+
+test('Better Auth schema stores credentials in protected auth tables', () => {
+  const authMigration = readFileSync(new URL('../supabase/migrations/20260905_better_auth.sql', import.meta.url), 'utf8');
+  assert.match(authMigration, /create table if not exists public\."user"/i);
+  assert.match(authMigration, /password text/i);
+  assert.match(authMigration, /enable row level security/i);
 });
 
 test('Supabase schema restricts active rental mutations to a transaction that locks the member profile', () => {

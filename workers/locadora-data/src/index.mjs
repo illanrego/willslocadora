@@ -1,5 +1,8 @@
-import { verifyToken } from '@clerk/backend';
 import { createClient } from '@supabase/supabase-js';
+import { betterAuth } from 'better-auth';
+import { bearer, username } from 'better-auth/plugins';
+import { Pool } from 'pg';
+import { PostgresDialect } from 'kysely';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const HISTORY_PAGE_SIZE = 20;
@@ -28,19 +31,27 @@ function required(value, label) {
   return value;
 }
 
-async function authenticateClerk(request, env) {
-  const authorization = request.headers.get('authorization') || '';
-  const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
-  if (!token) return null;
+let authPool;
+function createAuth(env) {
+  const connectionString = env.HYPERDRIVE?.connectionString || required(env.DATABASE_URL, 'DATABASE_URL');
+  if (!authPool) authPool = new Pool({ connectionString });
+  return betterAuth({
+    database: new PostgresDialect({ pool: authPool }),
+    baseURL: required(env.AUTH_BASE_URL, 'AUTH_BASE_URL'),
+    basePath: '/api/auth',
+    secret: required(env.BETTER_AUTH_SECRET, 'BETTER_AUTH_SECRET'),
+    trustedOrigins: [...allowedOrigins(env.ALLOWED_ORIGINS)],
+    emailAndPassword: { enabled: true, requireEmailVerification: false },
+    plugins: [username({ displayUsername: false, usernameValidator: (value) => /^[a-z0-9_-]{3,24}$/.test(value) }), bearer()],
+    advanced: { useSecureCookies: true },
+  });
+}
+
+async function authenticateBetterAuth(request, env) {
   try {
-    const payload = await verifyToken(token, {
-      secretKey: required(env.CLERK_SECRET_KEY, 'CLERK_SECRET_KEY'),
-      authorizedParties: [...allowedOrigins(env.ALLOWED_ORIGINS)],
-    });
-    return typeof payload.sub === 'string' && payload.sub ? payload.sub : null;
-  } catch {
-    return null;
-  }
+    const session = await createAuth(env).api.getSession({ headers: request.headers });
+    return session?.user?.id || null;
+  } catch { return null; }
 }
 
 class ApiError extends Error {
@@ -252,11 +263,25 @@ export function createSupabaseRepository(env) {
   };
 }
 
-export function createLocadoraDataWorker({ authenticate = authenticateClerk, createRepository = createSupabaseRepository } = {}) {
+export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth, createRepository = createSupabaseRepository, authFactory = createAuth } = {}) {
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+      if (url.pathname.startsWith('/api/auth')) {
+        try {
+          const authResponse = await authFactory(env).handler(request);
+          const headers = new Headers(authResponse.headers);
+          Object.entries(corsHeaders(request, env)).forEach(([key, value]) => headers.set(key, value));
+          headers.set('access-control-allow-credentials', 'true');
+          const exposed = headers.get('access-control-expose-headers') || '';
+          headers.set('access-control-expose-headers', [...new Set([...exposed.split(',').map((item) => item.trim()).filter(Boolean), 'set-auth-token'])].join(', '));
+          return new Response(authResponse.body, { status: authResponse.status, headers });
+        } catch (error) {
+          console.error('auth request failed', error);
+          return response(request, env, { error: 'Authentication service unavailable' }, 503);
+        }
+      }
       const isStateRequest = request.method === 'GET' && url.pathname === '/v1/state';
       const isHistoryRequest = request.method === 'GET' && url.pathname === '/v1/history';
       const usernameMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/usernames\/([a-z0-9_-]{3,24})$/) : null;

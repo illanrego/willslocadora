@@ -1,4 +1,4 @@
--- Locadora application data. Clerk owns authentication; this database stores no email or password material.
+-- Locadora application data. Better Auth owns authentication; this database stores no credential material.
 create extension if not exists pgcrypto;
 
 create table public.profiles (

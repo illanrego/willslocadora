@@ -69,14 +69,14 @@ Require an account only for actions that need durable personal data:
 - rating/reviewing;
 - viewing personal rental history.
 
-The initial sign-in is Clerk-managed email + password. Account setup also requires a unique public username, used as the visible byline on the member's public reviews. Clerk owns the browser session; Locadora does not implement password handling, email verification, password-recovery emails, or its own session cookies in MVP.
+The initial sign-in is Better Auth-managed email or username + password. Account setup requires a unique public username, used as the visible byline on the member's public reviews. Better Auth owns password hashing and browser sessions; email verification and password-recovery email are deferred.
 
 ### Minimal personal data
 
 Required:
 
-- email address and password credential in Clerk;
-- Clerk user ID.
+- email address and password credential in Better Auth;
+- Better Auth user ID.
 - unique public username.
 
 Not collected for MVP:
@@ -90,7 +90,7 @@ Not collected for MVP:
 - Stremio details;
 - playback or device tracking.
 
-Email is private Clerk-held authentication/contact data and is never displayed on reviews or public pages. The Locadora database stores the Clerk user ID and unique public username, not a password credential. The required username is the public review byline and may later also appear on a membership card; it is not a full public profile.
+Email is private authentication/contact data and is never displayed on reviews or public pages. Better Auth stores credentials; the Locadora database stores the Better Auth user ID and unique public username. The required username is the public review byline and may later also appear on a membership card; it is not a full public profile.
 
 ## Rental loop
 
@@ -116,12 +116,12 @@ Successful rental ends with “🍿 Boa sessão!”, selected-title cards and se
 ### Authentication and profile
 
 ```text
-Clerk user
+Better Auth user
 - id
-- email (held by Clerk)
+- email (held by Better Auth)
 
 profile
-- user_id (PK; Clerk user ID)
+- user_id (PK; Better Auth user ID)
 - username (unique; required; public review byline)
 - created_at
 ```
@@ -286,7 +286,7 @@ After the public Locadora watchlist exists, a narrow server-to-server integratio
 ```text
 GitHub Pages (public static portfolio deployment)
   ├─ public Locadora UI
-  ├─ Clerk (email + password authentication and session)
+  ├─ Better Auth (email/username + password authentication and session)
   └─ dedicated locadora-api Cloudflare Worker
        ├─ TMDB_API_KEY secret
        ├─ public catalogue manifests / metadata fetches
@@ -294,7 +294,7 @@ GitHub Pages (public static portfolio deployment)
        ├─ strict cache policy
        └─ exact CORS allowlist for the GitHub Pages origin
   └─ dedicated private locadora-data Cloudflare Worker
-       ├─ verifies Clerk user tokens
+       ├─ verifies Better Auth bearer sessions
        ├─ holds the Supabase service-role secret
        └─ reads/writes Supabase Postgres for Locadora data
 ```
@@ -303,7 +303,7 @@ GitHub Pages stays the public frontend for portfolio reasons.
 
 ## Supabase responsibilities
 
-Use hosted Supabase Postgres for MVP. Clerk, not Supabase Auth, owns email/password authentication and sessions. Supabase is open source and can be self-hosted later if needed.
+Use hosted Supabase Postgres for MVP. Better Auth, not Supabase Auth, owns email/password authentication and sessions. Supabase is open source and can be self-hosted later if needed.
 
 The browser has no Supabase credential. Only the private `locadora-data` Worker receives the Supabase service-role secret; the public `locadora-api` Worker never receives it.
 
@@ -315,7 +315,7 @@ The private data Worker must enforce:
 - moderator/admin actions use a separate controlled role/server path;
 - rental/history queries never expose another user’s personal history.
 
-Configure Clerk for email + password sign-in without Locadora-operated email delivery, verification, or password recovery in MVP.
+Configure Better Auth for email/username + password sign-in without Locadora-operated email delivery, verification, or password recovery in MVP.
 
 ## Cloudflare Worker responsibilities
 
@@ -411,7 +411,7 @@ The Balcony is the next frontend-first, non-free-roam counter experiment. It use
 Ship when a person can:
 
 1. browse the public GitHub Pages store;
-2. sign in with Clerk email + password and choose a unique public username when they choose to rent, save a title to Assistir depois or Favoritos, or review;
+2. sign in with Better Auth email or username + password and choose a unique public username when they choose to rent, save a title to Assistir depois or Favoritos, or review;
 3. rent and retain up to three active titles without a due date;
 4. return each item as watched, not watched, or unknown;
 5. view their rental history;

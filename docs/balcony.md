@@ -38,7 +38,7 @@ CESTA LOCAL (0–15 títulos distintos)
   ▼
 BALCÃO — revisar, remover fitas que não vão sair hoje, então "Alugar pacote"
   │
-  ├─ sem sessão ─► Seção do membro ─► Clerk ─┐
+  ├─ sem sessão ─► Seção do membro ─► Better Auth ─┐
   ├─ sem perfil ─► escolher nome público ────┤
   └─ membro pronto ──────────────────────────┘
                                               │ retoma a confirmação já iniciada

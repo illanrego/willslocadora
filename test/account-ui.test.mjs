@@ -110,7 +110,7 @@ test('account dialog has a member overview with active rentals and expandable hi
   assert.match(app, /function loadMoreAccountHistory\(\)/);
 });
 
-test('account sign-in closes the Locadora dialog before opening Clerk', () => {
+test('account sign-in closes the Locadora dialog before opening the auth form', () => {
   assert.match(app, /#account-sign-in'\)\.addEventListener\('click', async \(\) => \{\s*\$\('#account-dialog'\)\.close\(\);\s*try \{ await window\.LocadoraAccount\.signIn\(\);/);
 });
 
