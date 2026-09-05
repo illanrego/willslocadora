@@ -179,13 +179,12 @@
     localStorage.setItem('locadora.rental', JSON.stringify(rentalState()));
     $('#counter-count').textContent = state.counter.length;
     $('#immersive-basket-count').textContent = state.counter.length;
-    for (const selector of ['#counter-open', '#immersive-basket-open']) {
-      const control = $(selector);
-      control.setAttribute('aria-label', `${t('basket')} · ${state.counter.length} / ${MAX_CESTA_TITLES}`);
-      let spines = control.querySelector('.basket-spines');
-      if (!spines) { spines = document.createElement('span'); spines.className = 'basket-spines'; spines.setAttribute('aria-hidden', 'true'); control.prepend(spines); }
-      spines.replaceChildren(...state.counter.slice(0, 3).map(() => document.createElement('i')));
-    }
+    const control = $('#counter-open');
+    control.setAttribute('aria-label', `${t('basket')} · ${state.counter.length} / ${MAX_CESTA_TITLES}`);
+    const spines = control.querySelector('.basket-spines');
+    if (spines) spines.replaceChildren(...state.counter.slice(0, 3).map(() => document.createElement('i')));
+    const immersiveControl = $('#immersive-basket-open');
+    immersiveControl.setAttribute('aria-label', `${t('basket')} · ${state.counter.length} / ${MAX_CESTA_TITLES}`);
   }
 
   function localRentalTitle(item) {
@@ -265,6 +264,16 @@
     image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL;
   }
 
+  function makeTitleClickable(element, label, open) {
+    element.tabIndex = 0;
+    element.setAttribute('role', 'button');
+    element.setAttribute('aria-label', label);
+    element.addEventListener('click', open);
+    element.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+    });
+  }
+
   function accountTitleItem(title, meta, origin = { source: 'account_active', dialogId: 'account-dialog' }) {
     const memberTitle = memberTitleForViewer(title);
     const item = document.createElement('article'); item.className = 'counter-item account-title-item';
@@ -277,7 +286,7 @@
     refreshAccountTitleCard(memberTitle, meta, { image, name, detail });
     const inspect = document.createElement('button');
     inspect.className = 'account-title-inspect'; inspect.id = `${origin.source}-inspect-${title.tmdbId || title.id}`; inspect.type = 'button'; inspect.textContent = 'Inspecionar';
-    inspect.addEventListener('click', async () => {
+    const inspectTitle = async () => {
       inspectionOrigin = {
         source: origin.source,
         dialogId: origin.dialogId || '',
@@ -293,7 +302,10 @@
         inspect.disabled = false;
         openTitle(memberTitle, false);
       }
-    });
+    };
+    inspect.addEventListener('click', inspectTitle);
+    makeTitleClickable(image, `Inspecionar ${memberTitle.name}`, inspectTitle);
+    makeTitleClickable(name, `Inspecionar ${memberTitle.name}`, inspectTitle);
     item.append(image, text, inspect);
     if (origin.source === 'account_active') {
       const services = sessionSupport.button(t('viewStreamings'), () => sessionSupport.openStreamings(memberTitle), 'account-streaming-action');
@@ -721,7 +733,11 @@
         const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
         const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.type === 'series' ? t('series') : t('movies')} · ${title.year || '—'}`; text.append(name, meta);
         const actions = document.createElement('div'); actions.className = 'return-choices';
-        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `search-inspect-${title.type}-${title.id}`; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape'; inspect.addEventListener('click', () => { returnToCatalogSearch = true; openTitleFromOrigin(title, { source: 'search', dialogId: 'catalog-search-dialog', focusId: inspect.id }, true, posterTextureUrl(title.poster || posterFallback(title))); });
+        const inspect = document.createElement('button'); inspect.type = 'button'; inspect.id = `search-inspect-${title.type}-${title.id}`; inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape';
+        const inspectSearchTitle = () => { returnToCatalogSearch = true; openTitleFromOrigin(title, { source: 'search', dialogId: 'catalog-search-dialog', focusId: inspect.id }, true, posterTextureUrl(title.poster || posterFallback(title))); };
+        inspect.addEventListener('click', inspectSearchTitle);
+        makeTitleClickable(image, `${state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'} ${title.name}`, inspectSearchTitle);
+        makeTitleClickable(name, `${state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'} ${title.name}`, inspectSearchTitle);
         const add = document.createElement('button'); add.type = 'button'; add.className = 'primary-inline-action'; add.dataset.titleKey = `${title.type}:${title.id}`; add.textContent = isAtCounter(title) ? 'Tirar da cesta' : 'Botar na cesta'; add.disabled = !isAtCounter(title) && state.counter.length >= MAX_CESTA_TITLES; add.addEventListener('click', () => {
           const result = toggleCounter(title);
           const selectedKeys = new Set(state.counter.map((item) => `${item.type}:${item.id}`));
@@ -1518,7 +1534,11 @@
       const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
       const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · ${title.type === 'series' ? 'Série' : 'Filme'}`; text.append(name, meta);
       const actions = document.createElement('div'); actions.className = 'return-choices';
-      const inspect = document.createElement('button'); inspect.id = `balcony-inspect-${title.type}-${title.id}`; inspect.type = 'button'; inspect.textContent = 'Ver fita'; inspect.addEventListener('click', () => openTitleFromOrigin(title, { source: 'balcony', dialogId: 'balcony-dialog', focusId: inspect.id }));
+      const inspect = document.createElement('button'); inspect.id = `balcony-inspect-${title.type}-${title.id}`; inspect.type = 'button'; inspect.textContent = 'Ver fita';
+      const inspectBalconyTitle = () => openTitleFromOrigin(title, { source: 'balcony', dialogId: 'balcony-dialog', focusId: inspect.id });
+      inspect.addEventListener('click', inspectBalconyTitle);
+      makeTitleClickable(image, `Inspecionar ${title.name}`, inspectBalconyTitle);
+      makeTitleClickable(name, `Inspecionar ${title.name}`, inspectBalconyTitle);
       const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Não levar'; remove.addEventListener('click', () => removeFromCounterDecision(title));
       actions.append(inspect, remove, createSavedActions(title)); item.append(image, text, actions); counterList.append(item);
     });
@@ -1868,7 +1888,10 @@
       inspect.id = `basket-inspect-${title.type}-${title.id}`;
       inspect.type = 'button';
       inspect.textContent = 'Ver fita';
-      inspect.addEventListener('click', () => openTitleFromOrigin(title, { source: 'cesta', dialogId: 'basket-dialog', focusId: inspect.id }));
+      const inspectBasketTitle = () => openTitleFromOrigin(title, { source: 'cesta', dialogId: 'basket-dialog', focusId: inspect.id });
+      inspect.addEventListener('click', inspectBasketTitle);
+      makeTitleClickable(image, `Inspecionar ${title.name}`, inspectBasketTitle);
+      makeTitleClickable(name, `Inspecionar ${title.name}`, inspectBasketTitle);
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.textContent = 'Tirar';

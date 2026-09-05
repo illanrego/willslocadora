@@ -31,6 +31,8 @@ test('the physical return basket opens the dedicated return window', () => {
   assert.match(balcony, /const interactive = \[crt, keyboard, jar, awardsFrame, returns\]/);
   assert.match(balcony, /target\?\.userData\.action === 'bag'\) onBagSelect/);
   assert.match(page, /id="returns-dialog"/);
+  assert.match(balcony, /MAX_RETURN_DISPLAY = 7/);
+  assert.match(balcony, /returned \|\| \[\]\)\.slice\(-MAX_RETURN_DISPLAY\)/);
 });
 
 test('VHS title viewing has an explicit close control', () => {

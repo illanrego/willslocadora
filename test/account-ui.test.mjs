@@ -210,6 +210,19 @@ test('all list-origin title actions use the shared inspection entry point', () =
   assert.match(app, /activeSavedCollection = 'favorite'/);
   assert.match(app, /openTitleFromOrigin\(title, \{ source: 'cesta'/);
   assert.match(app, /openTitleFromOrigin\(title, \{ source: 'balcony'/);
+  assert.match(app, /makeTitleClickable\(image, `Inspecionar \$\{title\.name\}`, inspectBalconyTitle\)/);
+  assert.match(app, /makeTitleClickable\(name, `Inspecionar \$\{title\.name\}`, inspectBasketTitle\)/);
+  assert.match(app, /const immersiveControl = \$\('#immersive-basket-open'\)/);
+  assert.doesNotMatch(app, /for \(const selector of \['#counter-open', '#immersive-basket-open'\]/);
+});
+
+test('search results make the cover and title itself clickable alongside Ver fita', () => {
+  const start = app.indexOf('async function searchCatalog()');
+  const end = app.indexOf('function setYear', start);
+  const search = app.slice(start, end);
+  assert.match(search, /makeTitleClickable\(image,.*inspectSearchTitle/);
+  assert.match(search, /makeTitleClickable\(name,.*inspectSearchTitle/);
+  assert.match(search, /inspectSearchTitle = \(\) =>/);
 });
 
 test('saved collections expose independent Assistir depois and Favoritos controls', () => {

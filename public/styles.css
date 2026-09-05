@@ -442,6 +442,9 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .account-title-item { grid-template-columns: 54px minmax(0, 1fr) auto; }
 .account-title-item > div { min-width: 0; }
 .account-title-item strong { overflow-wrap: anywhere; }
+.account-title-item img, .saved-title-cover, #catalog-search-results img, .basket-item img, #basket-list img { cursor: pointer; }
+.account-title-item strong, #catalog-search-results strong, .basket-item strong, #basket-list strong { cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: .2em; }
+.account-title-item strong:hover, .account-title-item strong:focus-visible, #catalog-search-results strong:hover, #catalog-search-results strong:focus-visible, .basket-item strong:hover, .basket-item strong:focus-visible, #basket-list strong:hover, #basket-list strong:focus-visible { text-decoration-color: currentColor; }
 .account-title-inspect { align-self: center; justify-self: end; min-width: 96px; }
 .watchlist-item time { color: var(--muted); font-size: .7rem; }
 @media (max-width: 560px) { .balcony-member-actions { right: .75rem; bottom: .75rem; } }
@@ -1025,7 +1028,8 @@ dialog.panel-dialog {
 .immersive-filters { max-height: 42dvh; overflow-y: auto; }
 .immersive-provider-picker .streaming-hint { grid-column: 1 / -1; }
 .store-dock { position: fixed; z-index: 15; right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: .7rem; padding: .45rem .6rem; border: 1px solid #b49d79; border-radius: 7px; background: #182235; box-shadow: 0 4px 18px #0006; }
-.store-dock .counter-button { display: flex; align-items: center; gap: .55rem; min-height: 44px; margin: 0; padding: .45rem .7rem; color: var(--blue-deep); background: var(--cream); border: 1px solid var(--red); border-radius: 4px; cursor: pointer; }
+.store-dock .counter-button { display: flex; align-items: center; gap: .55rem; min-height: 44px; margin: 0; padding: .45rem .7rem; color: var(--blue-deep); background: var(--cream); border: 1px solid var(--red); border-radius: 4px; cursor: pointer; transform: none; box-shadow: 3px 3px 0 #7d5e00; }
+.store-dock .counter-button > span.basket-spines { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 29px; height: 27px; min-width: 29px; min-height: 27px; margin: 0; padding: 0 2px 4px; border: 2px solid var(--blue-deep); border-top: 0; border-radius: 0 0 4px 4px; color: var(--blue-deep); background: transparent; }
 body[data-store-mode="immersive"] .store-dock #counter-open { display: none; }
 .support-link { border: 0; padding: .45rem .2rem; min-height: 44px; color: var(--cream); background: transparent; font: 700 .75rem/1.4 Arial, sans-serif; text-decoration: underline; text-underline-offset: .25em; cursor: pointer; }
 .support-link:hover { color: var(--yellow); }
@@ -1035,12 +1039,10 @@ body[data-store-mode="immersive"] .store-dock #counter-open { display: none; }
 .is-immersive .store-shell { padding-bottom: 0; }
 .is-immersive .store-dock { bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4.5rem)); }
 body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-area-inset-bottom) + 8rem)); }
-.basket-spines, .immersive-basket-button .basket-spines { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 29px; height: 27px; min-width: 29px; min-height: 27px; margin: 0; padding: 0 2px 4px; border: 2px solid currentColor; border-top: 0; border-radius: 0 0 4px 4px; color: var(--blue-deep); background: transparent; }
+.basket-spines { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 29px; height: 27px; min-width: 29px; min-height: 27px; margin: 0; padding: 0 2px 4px; border: 2px solid currentColor; border-top: 0; border-radius: 0 0 4px 4px; color: var(--blue-deep); background: transparent; }
 .basket-spines i { display: block; width: 6px; height: 24px; background: var(--red); border: 1px solid var(--blue-deep); border-radius: 1px; }
 .basket-spines i:nth-child(2) { height: 27px; background: var(--yellow); }
 .basket-spines i:nth-child(3) { height: 22px; background: #73928d; }
-.immersive-basket-button .basket-icon { display: none; }
-.immersive-basket-button { grid-template-columns: 29px auto 24px; }
 .basket-notice { position: fixed; z-index: 30; bottom: max(5.5rem, calc(env(safe-area-inset-bottom) + 5rem)); right: 1rem; max-width: min(340px, calc(100vw - 2rem)); margin: 0; padding: .65rem .85rem; border: 1px solid var(--cream); border-radius: 4px; color: var(--cream); background: #182235; box-shadow: 0 4px 16px #0005; font: 700 .85rem/1.5 Arial, sans-serif; pointer-events: none; }
 .basket-notice:empty { display: none; }
 .donation-dialog, .streaming-dialog { width: min(560px, calc(100% - 1rem)); }

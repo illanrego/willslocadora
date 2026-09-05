@@ -3,6 +3,7 @@ import { loadFeaturedTitles } from './featured-titles.mjs';
 import { createVhsCase } from './vhs-case.mjs';
 
 const TAPE_COLUMNS = 5;
+const MAX_RETURN_DISPLAY = 7;
 const COUNTER_TOP = 1.75;
 const COUNTER_POSITION = new THREE.Vector3(0, COUNTER_TOP, -.25);
 
@@ -103,7 +104,8 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   const returns = new THREE.Group(); returns.position.set(-5.15, COUNTER_TOP + .525, -.55); returns.userData.action = 'bag'; room.add(returns);
   const basket = new THREE.Mesh(new THREE.BoxGeometry(2.25, 1.05, 1.3), new THREE.MeshStandardMaterial({ color: 0x8c9aa0, metalness: .72, roughness: .3, wireframe: true })); returns.add(basket);
   const returnLabel = new THREE.Mesh(new THREE.PlaneGeometry(1.9, .38), new THREE.MeshBasicMaterial({ map: labelTexture('DEVOLUÇÕES', { width: 500, height: 110, background: '#9b342a' }) })); returnLabel.position.set(0, .72, .68); returns.add(returnLabel);
-  (rental.returned || []).slice(-7).forEach((entry, index) => { const tape = box(.78, .22, .48, dark, -.65 + (index % 3) * .62, -.18 + Math.floor(index / 3) * .21, .05, returns); tape.rotation.y = index * .2; });
+  // Returned history is durable; the physical basket only shows the latest seven.
+  (rental.returned || []).slice(-MAX_RETURN_DISPLAY).forEach((entry, index) => { const tape = box(.78, .22, .48, dark, -.65 + (index % 3) * .62, -.18 + Math.floor(index / 3) * .21, .05, returns); tape.rotation.y = index * .2; });
   const jar = new THREE.Group(); jar.position.set(2.25, COUNTER_TOP + .525, -.2); room.add(jar);
   jar.add(new THREE.Mesh(new THREE.CylinderGeometry(.46, .52, 1.05, 20, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xbde3e6, transparent: true, opacity: .45, roughness: .12, transmission: .2, side: THREE.DoubleSide })));
   const rim = new THREE.Mesh(new THREE.TorusGeometry(.47, .045, 8, 20), steel); rim.position.y = .525; rim.rotation.x = Math.PI / 2; jar.add(rim);

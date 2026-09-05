@@ -113,6 +113,8 @@ test('immersive mode exposes a basket independently from the Balcony', () => {
   assert.match(css, /\.immersive-genre-picker select/);
   assert.match(css, /\.immersive-hud \{[^}]*position: absolute;/);
   assert.match(css, /\.immersive-basket-button/);
+  assert.match(css, /\.store-dock \.counter-button > span\.basket-spines/);
+  assert.doesNotMatch(css, /\.immersive-basket-button \.basket-icon \{ display: none/);
   assert.match(page, /id="immersive-balcony-open"[^>]*aria-label="Abrir Balcão de aluguel"/);
   assert.match(app, /\$\('#immersive-balcony-open'\)\.addEventListener\('click', \(\) => setMode\('balcony'\)\)/);
   assert.match(css, /Floating navigation uses cream panels and dark ink/);
