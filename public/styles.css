@@ -217,6 +217,14 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .source-form div { display: flex; gap: .5rem; }
 .source-form input { min-width: 0; flex: 1; min-height: 46px; padding: .7rem; border: 1px solid #6a5547; background: #120e0c; color: var(--ink); }
 .source-form button { min-height: 46px; border: 0; padding: .7rem 1rem; background: var(--yellow); color: #18110d; cursor: pointer; font-weight: 900; }
+.auth-feedback { margin: 1rem 0; padding: .8rem .9rem; border: 2px solid #b78636; color: #fff4d1; background: #35231e; box-shadow: 3px 4px 0 rgba(0,0,0,.28); font: 700 .78rem/1.45 Arial, sans-serif; }
+.auth-feedback[data-tone="success"] { border-color: #77b78a; background: #183326; }
+.auth-field-hint { margin: .35rem 0 .8rem; color: #c6b89f; font: .72rem/1.4 Arial, sans-serif; }
+.source-form input[aria-invalid="true"] { border-color: #ec746d; outline: 2px solid rgba(236,116,109,.3); }
+.auth-form-actions { display: flex; flex-wrap: wrap; gap: .55rem; }
+.auth-form-actions .account-action { flex: 1 1 150px; }
+.account-secondary-action { color: var(--cream) !important; background: #25384d !important; border-color: #6f8eaa !important; }
+.account-action:disabled { cursor: wait; opacity: .62; transform: none !important; filter: none !important; }
 #source-message { min-height: 1.2em; color: var(--cyan); }
 
 @media (max-width: 900px) {

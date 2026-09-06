@@ -114,6 +114,17 @@ test('account sign-in closes the Locadora dialog before opening the auth form', 
   assert.match(app, /#account-sign-in'\)\.addEventListener\('click', async \(\) => \{\s*\$\('#account-dialog'\)\.close\(\);\s*try \{ await window\.LocadoraAccount\.signIn\(\);/);
 });
 
+test('auth form gives accessible visual feedback for validation, loading, and recovery errors', () => {
+  const account = readFileSync(new URL('../public/account.js', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(account, /role="alert" aria-live="assertive"/);
+  assert.match(account, /INVALID_USERNAME_OR_PASSWORD/);
+  assert.match(account, /setBusy\(true\)/);
+  assert.match(account, /aria-invalid/);
+  assert.match(styles, /\.auth-feedback/);
+  assert.match(styles, /\.source-form input\[aria-invalid="true"\]/);
+});
+
 test('a rent confirmation interrupted by identity setup resumes the same basket', () => {
   assert.match(app, /pendingRental = true/);
   assert.match(app, /async function resumePendingRental\(\)/);
