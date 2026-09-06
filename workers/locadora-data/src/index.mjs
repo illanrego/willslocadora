@@ -34,7 +34,12 @@ function required(value, label) {
 let authPool;
 function createAuth(env) {
   const connectionString = env.HYPERDRIVE?.connectionString || required(env.DATABASE_URL, 'DATABASE_URL');
-  if (!authPool) authPool = new Pool({ connectionString });
+  if (!authPool) {
+    authPool = new Pool({ connectionString, max: 2, idleTimeoutMillis: 10000, connectionTimeoutMillis: 8000, allowExitOnIdle: true });
+    // pg emits connection failures asynchronously; without a listener, an unreachable
+    // Supabase endpoint can terminate a Worker invocation before our route catch runs.
+    authPool.on('error', (error) => console.error('Better Auth database pool error', error?.message || 'unknown database error'));
+  }
   return betterAuth({
     database: new PostgresDialect({ pool: authPool }),
     baseURL: required(env.AUTH_BASE_URL, 'AUTH_BASE_URL'),
