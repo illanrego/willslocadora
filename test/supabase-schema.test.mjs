@@ -12,8 +12,28 @@ test('Locadora domain schema keeps member IDs opaque and separate from auth cred
 test('Better Auth schema stores credentials in protected auth tables', () => {
   const authMigration = readFileSync(new URL('../supabase/migrations/20260905_better_auth.sql', import.meta.url), 'utf8');
   assert.match(authMigration, /create table if not exists public\."user"/i);
+  assert.match(authMigration, /issuer text not null/i);
   assert.match(authMigration, /password text/i);
   assert.match(authMigration, /enable row level security/i);
+});
+
+test('Better Auth forward migration repairs the required account issuer', () => {
+  const repair = readFileSync(new URL('../supabase/migrations/20260906_fix_better_auth_account_schema.sql', import.meta.url), 'utf8');
+  assert.match(repair, /add column if not exists issuer text/i);
+  assert.match(repair, /set issuer = "providerId"/i);
+  assert.match(repair, /alter column issuer set not null/i);
+  assert.match(repair, /drop constraint if exists "account_providerId_accountId_key"/i);
+  assert.match(repair, /constraint account_issuer_account_id_key unique \(issuer, "accountId"\)/i);
+});
+
+test('Better Auth profile reconciliation removes legacy identities and enforces one synchronized member profile', () => {
+  const reconciliation = readFileSync(new URL('../supabase/migrations/20260906_fix_better_auth_account_schema.sql', import.meta.url), 'utf8');
+  assert.match(reconciliation, /delete from public\."user"[\s\S]*username = 'willl'/i);
+  assert.match(reconciliation, /delete from public\.profiles[\s\S]*username = 'will'[\s\S]*username = 'diegoasr'/i);
+  assert.match(reconciliation, /foreign key \(user_id\) references public\."user"\(id\) on delete cascade/i);
+  assert.match(reconciliation, /create trigger sync_better_auth_profile[\s\S]*after insert or update of username/i);
+  assert.match(reconciliation, /create or replace function public\.set_member_username/i);
+  assert.match(reconciliation, /update public\."user"[\s\S]*set username = p_username/i);
 });
 
 test('Supabase schema restricts active rental mutations to a transaction that locks the member profile', () => {

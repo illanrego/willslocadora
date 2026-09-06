@@ -24,6 +24,7 @@ create index if not exists session_user_id_idx on public.session ("userId");
 
 create table if not exists public.account (
   id text primary key,
+  issuer text not null,
   "accountId" text not null,
   "providerId" text not null,
   "userId" text not null references public."user"(id) on delete cascade,
@@ -36,7 +37,7 @@ create table if not exists public.account (
   password text,
   "createdAt" timestamptz not null default now(),
   "updatedAt" timestamptz not null default now(),
-  unique ("providerId", "accountId")
+  constraint account_issuer_account_id_key unique (issuer, "accountId")
 );
 create index if not exists account_user_id_idx on public.account ("userId");
 

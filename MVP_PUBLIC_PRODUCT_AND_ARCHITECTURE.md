@@ -119,12 +119,15 @@ Successful rental ends with “🍿 Boa sessão!”, selected-title cards and se
 Better Auth user
 - id
 - email (held by Better Auth)
+- username (canonical sign-in handle)
 
 profile
 - user_id (PK; Better Auth user ID)
-- username (unique; required; public review byline)
+- username (synchronized Locadora projection; public review byline)
 - created_at
 ```
+
+The Better Auth username is canonical. A database trigger creates the matching Locadora profile and keeps its public username projection synchronized in the same transaction. Domain tables reference `profile`; credentials and sessions remain isolated in Better Auth's tables.
 
 ### Rental history
 

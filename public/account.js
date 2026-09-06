@@ -125,7 +125,6 @@
             ? await authRequest('/sign-in/email', { method: 'POST', body: JSON.stringify({ email: identifier, password }) })
             : await authRequest('/sign-in/username', { method: 'POST', body: JSON.stringify({ username: identifier, password }) }));
         state = Object.freeze({ configured: true, signedIn: true, user: body?.user ? { id: body.user.id, username: body.user.username || null } : null });
-        if (signup) await request('/v1/profile', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: usernameValue }) });
         emit();
         dialog.close();
       } catch (error) {

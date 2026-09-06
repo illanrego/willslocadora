@@ -148,10 +148,10 @@ export function createSupabaseRepository(env) {
 
   return {
     async upsertProfile(userId, username) {
-      const result = await database.from('profiles')
-        .upsert({ user_id: userId, username }, { onConflict: 'user_id' })
-        .select('user_id, username, created_at')
-        .single();
+      const result = await database.rpc('set_member_username', {
+        p_user_id: userId,
+        p_username: username,
+      }).single();
       databaseError(result.error);
       return { userId: result.data.user_id, username: result.data.username, createdAt: result.data.created_at };
     },
@@ -232,9 +232,9 @@ export function createSupabaseRepository(env) {
       return Boolean(result.data);
     },
     async isUsernameAvailable(userId, username) {
-      const result = await database.from('profiles').select('user_id').eq('username', username).maybeSingle();
+      const result = await database.from('user').select('id').eq('username', username).maybeSingle();
       databaseError(result.error);
-      return !result.data || result.data.user_id === userId;
+      return !result.data || result.data.id === userId;
     },
     async listHistory(userId, offset) {
       const result = await database.from('rental_items')
@@ -288,6 +288,10 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
           headers.set('access-control-allow-credentials', 'true');
           const exposed = headers.get('access-control-expose-headers') || '';
           headers.set('access-control-expose-headers', [...new Set([...exposed.split(',').map((item) => item.trim()).filter(Boolean), 'set-auth-token'])].join(', '));
+          if (authResponse.status >= 500) {
+            headers.set('content-type', 'application/json; charset=utf-8');
+            return new Response(JSON.stringify({ message: 'Authentication service temporarily unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' }), { status: 503, headers });
+          }
           return new Response(authResponse.body, { status: authResponse.status, headers });
         } catch (error) {
           console.error('auth request failed', error);

@@ -71,6 +71,16 @@ test('data Worker mounts Better Auth routes with exact CORS headers', async () =
   assert.match(response.headers.get('access-control-expose-headers'), /set-auth-token/);
 });
 
+test('data Worker converts internal auth failures into safe JSON with CORS', async () => {
+  const worker = createLocadoraDataWorker({
+    authFactory: () => ({ handler: async () => new Response(null, { status: 500 }) }),
+  });
+  const response = await worker.fetch(new Request('https://data.example/api/auth/sign-in/username', { method: 'POST', headers: { origin: 'https://www.sitedoillan.com.br' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('access-control-allow-origin'), 'https://www.sitedoillan.com.br');
+  assert.deepEqual(await response.json(), { message: 'Authentication service temporarily unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' });
+});
+
 test('Better Auth preflight permits credentialed browser requests', async () => {
   const worker = createLocadoraDataWorker();
   const response = await worker.fetch(new Request('https://data.example/api/auth/sign-in/username', {

@@ -4,12 +4,18 @@ import test from 'node:test';
 
 const page = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+const account = readFileSync(new URL('../public/account.js', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../workers/locadora-data/src/index.mjs', import.meta.url), 'utf8');
 
 test('account setup calls the handle a username rather than a public name', () => {
   assert.match(page, /<label for="username-input">Nome de usuário<\/label>/);
   assert.doesNotMatch(page, /Nome público/);
+});
+
+test('Better Auth signup relies on atomic database profile provisioning', () => {
+  assert.match(account, /authRequest\('\/sign-up\/email'/);
+  assert.doesNotMatch(account, /if \(signup\) await request\('\/v1\/profile'/);
 });
 
 test('username validation remains valid in modern HTML pattern mode and debounce captures the value synchronously', () => {

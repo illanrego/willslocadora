@@ -2088,7 +2088,7 @@
         state.member.profile = profile;
         usernameEditing = false;
         usernameAvailabilityState = 'idle';
-        $('#username-availability').textContent = 'Nome público salvo.';
+        $('#username-availability').textContent = 'Nome de usuário salvo. Use o novo nome no próximo login.';
         renderAccount();
         await refreshMemberData();
         await resumePendingRental();
