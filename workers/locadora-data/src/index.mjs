@@ -267,7 +267,14 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
-      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+      if (request.method === 'OPTIONS') {
+        const headers = corsHeaders(request, env);
+        if (url.pathname.startsWith('/api/auth')) {
+          headers['access-control-allow-credentials'] = 'true';
+          headers['access-control-expose-headers'] = 'set-auth-token';
+        }
+        return new Response(null, { status: 204, headers });
+      }
       if (url.pathname.startsWith('/api/auth')) {
         try {
           const authResponse = await authFactory(env).handler(request);

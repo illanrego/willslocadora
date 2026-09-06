@@ -71,6 +71,20 @@ test('data Worker mounts Better Auth routes with exact CORS headers', async () =
   assert.match(response.headers.get('access-control-expose-headers'), /set-auth-token/);
 });
 
+test('Better Auth preflight permits credentialed browser requests', async () => {
+  const worker = createLocadoraDataWorker();
+  const response = await worker.fetch(new Request('https://data.example/api/auth/sign-in/username', {
+    method: 'OPTIONS',
+    headers: {
+      origin: 'https://www.sitedoillan.com.br',
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type, authorization',
+    },
+  }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
+});
+
 test('data Worker serves public reviews for a canonical title without a bearer token', async () => {
   let authenticationAttempts = 0;
   const calls = [];
