@@ -40,6 +40,16 @@ test('public worker rejects unknown origins and invalid shelf requests before ca
   assert.equal(upstreamCalls, 0);
 });
 
+test('public worker rate limits catalogue routes without blocking health checks', async () => {
+  const worker = createLocadoraWorker({ fetchImpl: async () => assert.fail('must not call TMDB') });
+  const limitedEnv = { ...env, CATALOG_RATE_LIMITER: { async limit() { return { success: false }; } } };
+  const limited = await worker.fetch(new Request('https://api.example/v1/search?q=matrix', { headers: { origin: 'https://will.github.io', 'cf-connecting-ip': '203.0.113.1' } }), limitedEnv, context());
+  const health = await worker.fetch(new Request('https://api.example/v1/health', { headers: { origin: 'https://will.github.io', 'cf-connecting-ip': '203.0.113.1' } }), limitedEnv, context());
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get('retry-after'), '60');
+  assert.equal(health.status, 200);
+});
+
 test('public worker normalizes title metadata without exposing its TMDB key', async () => {
   const worker = createLocadoraWorker({
     fetchImpl: async (input) => {
@@ -75,6 +85,30 @@ test('public worker normalizes title metadata without exposing its TMDB key', as
   assert.equal(meta.logo, 'https://image.tmdb.org/t/p/w500/matrix-logo.png');
   assert.deepEqual(meta.availabilityBR.providers, ['Netflix']);
   assert.equal(JSON.stringify(meta).includes('test-key'), false);
+});
+
+test('public worker edge-caches stable title metadata and reapplies exact CORS', async (t) => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'caches');
+  const stored = new Map();
+  Object.defineProperty(globalThis, 'caches', { configurable: true, value: { default: {
+    async match(request) { return stored.get(request.url)?.clone(); },
+    async put(request, response) { stored.set(request.url, response.clone()); },
+  } } });
+  t.after(() => { if (original) Object.defineProperty(globalThis, 'caches', original); else delete globalThis.caches; });
+  let upstreamCalls = 0;
+  const pending = [];
+  const worker = createLocadoraWorker({ fetchImpl: async () => {
+    upstreamCalls += 1;
+    return Response.json({ title: 'The Matrix', release_date: '1999-03-31', genres: [] });
+  } });
+  const cacheEnv = { ...env, ALLOWED_ORIGINS: `${env.ALLOWED_ORIGINS},https://other.example` };
+  const first = await worker.fetch(new Request('https://api.example/v1/title?type=movie&id=tmdb%3A603&locale=pt-BR', { headers: { origin: 'https://will.github.io' } }), cacheEnv, { waitUntil(promise) { pending.push(promise); } });
+  await Promise.all(pending);
+  const second = await worker.fetch(new Request('https://api.example/v1/title?locale=pt-BR&id=tmdb%3A603&type=movie&ignored=1', { headers: { origin: 'https://other.example' } }), cacheEnv, context());
+  assert.equal(first.headers.get('x-locadora-cache'), 'MISS');
+  assert.equal(second.headers.get('x-locadora-cache'), 'HIT');
+  assert.equal(second.headers.get('access-control-allow-origin'), 'https://other.example');
+  assert.equal(upstreamCalls, 1);
 });
 
 test('public worker returns three featured titles for a selected store year', async () => {

@@ -7,3 +7,15 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ALLOWED_ORIGINS = "https://illanrego.github.io,https://sitedoillan.com.br,https://www.sitedoillan.com.br,https://willslocadora.sitedoillan.com.br,http://127.0.0.1:4173"
 AUTH_BASE_URL = "https://locadora-data.willstartpage.workers.dev"
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "e505f45c414a4fff8171530f30a64158"
+
+[[ratelimits]]
+name = "AUTH_RATE_LIMITER"
+namespace_id = "24002"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60

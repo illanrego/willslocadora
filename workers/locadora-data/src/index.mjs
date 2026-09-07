@@ -31,17 +31,14 @@ function required(value, label) {
   return value;
 }
 
-let authPool;
 function createAuth(env) {
   const connectionString = env.HYPERDRIVE?.connectionString || required(env.DATABASE_URL, 'DATABASE_URL');
-  if (!authPool) {
-    authPool = new Pool({ connectionString, max: 2, idleTimeoutMillis: 10000, connectionTimeoutMillis: 8000, allowExitOnIdle: true });
-    // pg emits connection failures asynchronously; without a listener, an unreachable
-    // Supabase endpoint can terminate a Worker invocation before our route catch runs.
-    authPool.on('error', (error) => console.error('Better Auth database pool error', error?.message || 'unknown database error'));
-  }
-  return betterAuth({
-    database: new PostgresDialect({ pool: authPool }),
+  // Hyperdrive owns the reusable origin pool. A request-scoped pg pool prevents
+  // unrelated Worker requests from queuing behind stale or slow client sockets.
+  const pool = new Pool({ connectionString, max: 1, idleTimeoutMillis: 5000, connectionTimeoutMillis: 5000, allowExitOnIdle: true });
+  pool.on('error', (error) => console.error('Better Auth database pool error', error?.message || 'unknown database error'));
+  const auth = betterAuth({
+    database: new PostgresDialect({ pool }),
     baseURL: required(env.AUTH_BASE_URL, 'AUTH_BASE_URL'),
     basePath: '/api/auth',
     secret: required(env.BETTER_AUTH_SECRET, 'BETTER_AUTH_SECRET'),
@@ -50,13 +47,23 @@ function createAuth(env) {
     plugins: [username({ displayUsername: false, usernameValidator: (value) => /^[a-z0-9_-]{3,24}$/.test(value) }), bearer()],
     advanced: { useSecureCookies: true },
   });
+  return {
+    auth,
+    async close() {
+      try { await pool.end(); }
+      catch (error) { console.error('Better Auth database pool close failed', error?.message || 'unknown database error'); }
+    },
+  };
 }
 
 async function authenticateBetterAuth(request, env) {
+  const runtime = createAuth(env);
   try {
-    const session = await createAuth(env).api.getSession({ headers: request.headers });
+    const session = await runtime.auth.api.getSession({ headers: request.headers });
     return session?.user?.id || null;
-  } catch { return null; }
+  } finally {
+    await runtime.close();
+  }
 }
 
 class ApiError extends Error {
@@ -281,8 +288,18 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
         return new Response(null, { status: 204, headers });
       }
       if (url.pathname.startsWith('/api/auth')) {
+        if (env.AUTH_RATE_LIMITER) {
+          const client = request.headers.get('cf-connecting-ip') || 'unknown-client';
+          const allowed = await env.AUTH_RATE_LIMITER.limit({ key: `${client}:${url.pathname}` });
+          if (!allowed.success) return new Response(JSON.stringify({ message: 'Too many authentication attempts; try again shortly', code: 'RATE_LIMITED' }), {
+            status: 429,
+            headers: { ...JSON_HEADERS, ...corsHeaders(request, env), 'access-control-allow-credentials': 'true', 'retry-after': '60' },
+          });
+        }
+        const runtime = authFactory(env);
+        const auth = runtime.auth || runtime;
         try {
-          const authResponse = await authFactory(env).handler(request);
+          const authResponse = await auth.handler(request);
           const headers = new Headers(authResponse.headers);
           Object.entries(corsHeaders(request, env)).forEach(([key, value]) => headers.set(key, value));
           headers.set('access-control-allow-credentials', 'true');
@@ -296,6 +313,8 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
         } catch (error) {
           console.error('auth request failed', error);
           return response(request, env, { error: 'Authentication service unavailable' }, 503);
+        } finally {
+          await runtime.close?.();
         }
       }
       const isStateRequest = request.method === 'GET' && url.pathname === '/v1/state';

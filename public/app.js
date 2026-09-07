@@ -697,11 +697,23 @@
     immersiveShelf?.setVisuals(immersiveVisuals());
   }
 
-  async function api(path, options) {
-    const response = await fetch(window.locadoraApiUrl(path), options);
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
-    return body;
+  const pendingPublicRequests = new Map();
+
+  async function api(path, options = {}) {
+    const url = window.locadoraApiUrl(path);
+    const method = String(options.method || 'GET').toUpperCase();
+    const deduplicate = method === 'GET' && !options.signal;
+    if (deduplicate && pendingPublicRequests.has(url)) return pendingPublicRequests.get(url);
+    const request = (async () => {
+      const response = await fetch(url, options);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+      return body;
+    })();
+    if (!deduplicate) return request;
+    pendingPublicRequests.set(url, request);
+    try { return await request; }
+    finally { pendingPublicRequests.delete(url); }
   }
 
   function openCatalogSearch(preserve = false) {

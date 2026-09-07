@@ -44,7 +44,12 @@ The public frontend uses this Worker outside local hosts through `public/api-con
 - Shelf results are bounded and expose `hasNextStand` separately from the number of usable IMDb-linked titles.
 - Title metadata includes credits, Brazilian classification/provider information, poster/background, and an optional TMDB title logo.
 - Brazil availability is informational `flatrate` metadata, never a playback promise.
-- Cache lifetimes are intentionally short for shelves/availability and longer for stable title metadata/provider registry.
+- Cloudflare Cache API stores canonical responses without CORS headers; the exact allowed origin is reapplied on every hit.
+- Browser/edge lifetimes are: search 15 minutes/1 hour, shelf 1 hour/1 day, featured and title metadata 1 day/7 days, images 7/30 days, and the provider registry 30/30 days. Search and shelf responses may be served stale when TMDB is temporarily unavailable.
+- Ignored query parameters do not create extra cache entries, and identical simultaneous frontend reads are coalesced into one request.
+- `CATALOG_RATE_LIMITER` allows 120 requests per minute for each client and route; health checks are exempt. It is deliberately generous and can be tuned in `wrangler.toml` from observed traffic.
+
+Edge hits reduce TMDB traffic and Worker CPU, but still count as incoming Worker requests. Browser caching is what avoids the Worker request entirely.
 
 ## Direct subscription links
 

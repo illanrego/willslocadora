@@ -17,6 +17,15 @@ test('Better Auth schema stores credentials in protected auth tables', () => {
   assert.match(authMigration, /enable row level security/i);
 });
 
+test('production Better Auth uses uncached Hyperdrive with request-scoped pg connections', () => {
+  const worker = readFileSync(new URL('../workers/locadora-data/src/index.mjs', import.meta.url), 'utf8');
+  const wrangler = readFileSync(new URL('../workers/locadora-data/wrangler.toml', import.meta.url), 'utf8');
+  assert.match(wrangler, /\[\[hyperdrive\]\][\s\S]*binding = "HYPERDRIVE"[\s\S]*id = "e505f45c414a4fff8171530f30a64158"/i);
+  assert.doesNotMatch(worker, /let authPool/);
+  assert.match(worker, /new Pool\(\{ connectionString, max: 1/);
+  assert.match(worker, /finally \{\s*await runtime\.close\(\);/);
+});
+
 test('Better Auth forward migration repairs the required account issuer', () => {
   const repair = readFileSync(new URL('../supabase/migrations/20260906_fix_better_auth_account_schema.sql', import.meta.url), 'utf8');
   assert.match(repair, /add column if not exists issuer text/i);

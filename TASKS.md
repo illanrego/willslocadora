@@ -26,6 +26,7 @@ The public-MVP authority is [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_
 - [x] “Boa sessão” rental handoff with independently loaded subscription destinations, shared title/account service panel, and explicit TMDB fallback. Public Worker extraction uses bounded reads, exact CORS, approved destinations and six-hour/one-minute caches.
 - [x] Deployed the read-only Worker and verified public movie/series watch links, existing title metadata, and exact CORS on 2026-09-05; static frontend changes await the Pages release.
 - [x] Shared anonymous Pix support panel across browsing, dialogs and 3D jar; copyable key and configurable QR image. [Pix setup](docs/donations.md) only needs the actual public key/image.
+- [x] Free-tier delivery hardening: canonical edge caches, longer browser caches, duplicate public-request coalescing, stale-on-error catalogue responses, per-route catalogue/auth limits, Hyperdrive connection reuse, and third-party data notices.
 - [ ] User playtests the revised service chooser, mobile floating controls, title/service dialogs, rental handoff and configured Pix QR. Publishing the static changes and checking the deployed frontend remain release steps.
 
 - [~] User playtests browse loop, shelf counts, next/previous stands, and genre visual identity on the live site.

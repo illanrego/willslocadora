@@ -33,7 +33,9 @@ Browser CORS headers are emitted only for allowed origins. All mutation and memb
    npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
    ```
 
-   `DATABASE_URL` is the Supabase Postgres connection string. For Cloudflare production, prefer a Hyperdrive binding and let the Worker use its `connectionString`; the secret is useful for local development and migrations.
+   `DATABASE_URL` is the Supabase Postgres connection string used as a local fallback. Production uses the `HYPERDRIVE` binding configured in `wrangler.toml`; its SQL response cache must remain disabled because Better Auth session and credential reads cannot be stale.
+
+   `AUTH_RATE_LIMITER` permits 30 authentication attempts per minute for each client and auth route. It runs before a database connection is opened and returns a CORS-readable `429` response when exceeded.
 
 4. Review `ALLOWED_ORIGINS` in `wrangler.toml`, then deploy:
 

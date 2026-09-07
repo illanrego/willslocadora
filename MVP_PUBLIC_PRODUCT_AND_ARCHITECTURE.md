@@ -364,16 +364,20 @@ Allow only the deliberate GitHub Pages production origin and explicit developmen
 
 ### Caching
 
-Start with Cloudflare Cache API, then add KV only if measurements require it.
-
-Suggested lifetimes:
+Use Cloudflare Cache API before adding KV. Cache entries use canonical accepted parameters, omit CORS headers at rest, and receive the exact allowed origin on every response. Current browser/edge lifetimes are:
 
 ```text
-shelf result: 15–60 minutes
-stable title metadata/credits: 1–7 days
-provider registry: 7–30 days
-Brazil availability: short-lived and visibly informational
+search result: 15 minutes / 1 hour
+shelf result: 1 hour / 1 day
+featured and stable title metadata/credits: 1 day / 7 days
+proxied title images: 7 days / 30 days
+provider registry: 30 days / 30 days
+direct subscription destinations: 6 hours when available / 1 minute when unavailable
 ```
+
+Search and shelf responses advertise bounded stale-on-error windows so a temporary TMDB failure does not immediately empty the catalogue. The frontend coalesces identical simultaneous reads. Edge cache hits still count toward incoming Worker requests, while browser hits avoid the Worker entirely.
+
+The public catalogue Worker limits each client and route to 120 requests/minute, excluding health checks. The private data Worker limits each client and Better Auth route to 30 requests/minute before opening a database connection. These code-configured Cloudflare bindings are intentionally generous; monitor `429` responses before tightening them.
 
 ### Current Workers Free-plan constraints checked on 2026-07-21
 
@@ -388,6 +392,8 @@ Brazil availability: short-lived and visibly informational
 The existing provider-filtered shelf behaviour can reach roughly 42 TMDB subrequests (two discovery pages plus up to 40 external-ID lookups). This fits under 50 but leaves little headroom: do not add per-title enrichment to that same request. Cache aggressively and retain a bounded request design.
 
 Workers in the same account share the daily request quota. Separating `locadora-api` is nevertheless required for security, deployment isolation, and a minimal-secret boundary.
+
+The private data Worker reaches Supabase through Hyperdrive with one request-scoped database client. Hyperdrive SQL response caching stays disabled because authentication and session reads must be current; connection reuse, not stale query results, is the benefit here.
 
 ## Stremio integration boundary
 

@@ -32,6 +32,35 @@ function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'x-content-type-options': 'nosniff', ...headers } });
 }
 
+function cacheKey(url, parameters = []) {
+  const key = new URL(url.pathname, url.origin);
+  for (const name of parameters) {
+    for (const value of url.searchParams.getAll(name).sort()) key.searchParams.append(name, value);
+  }
+  return new Request(key, { method: 'GET' });
+}
+
+function browserAndEdgeCache(browserSeconds, edgeSeconds, staleSeconds = edgeSeconds) {
+  return `public, max-age=${browserSeconds}, s-maxage=${edgeSeconds}, stale-if-error=${staleSeconds}`;
+}
+
+function applyPublicHeaders(response, policy, cacheStatus) {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(policy.headers)) headers.set(name, value);
+  if (cacheStatus) headers.set('x-locadora-cache', cacheStatus);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+async function edgeCached(url, parameters, policy, ctx, load) {
+  const edge = globalThis.caches?.default;
+  const key = cacheKey(url, parameters);
+  const cached = await edge?.match(key);
+  if (cached) return applyPublicHeaders(cached, policy, 'HIT');
+  const fresh = await load();
+  if (fresh.ok && edge && ctx?.waitUntil) ctx.waitUntil(edge.put(key, fresh.clone()));
+  return applyPublicHeaders(fresh, policy, edge ? 'MISS' : null);
+}
+
 function allowedOrigins(env) {
   return new Set(String(env.ALLOWED_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean));
 }
@@ -211,6 +240,11 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...policy.headers, 'access-control-allow-methods': 'GET, OPTIONS', 'access-control-allow-headers': 'content-type', 'access-control-max-age': '86400' } });
       if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405, policy.headers);
       const url = new URL(request.url);
+      if (url.pathname !== '/v1/health' && env.CATALOG_RATE_LIMITER) {
+        const client = request.headers.get('cf-connecting-ip') || 'unknown-client';
+        const allowed = await env.CATALOG_RATE_LIMITER.limit({ key: `${client}:${url.pathname}` });
+        if (!allowed.success) return json({ error: 'Too many catalogue requests; try again shortly' }, 429, { ...policy.headers, 'cache-control': 'no-store', 'retry-after': '60' });
+      }
       try {
         if (url.pathname === '/v1/health') return json({ ok: true, service: 'locadora-api' }, 200, policy.headers);
         if (url.pathname === '/v1/watch-links') {
@@ -229,29 +263,39 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
           for (const [name, value] of Object.entries(policy.headers)) response.headers.set(name, value);
           return response;
         }
-        if (url.pathname === '/v1/providers') return json({ providers: PROVIDERS }, 200, { ...policy.headers, 'cache-control': 'public, max-age=604800' });
+        if (url.pathname === '/v1/providers') return json({ providers: PROVIDERS }, 200, { ...policy.headers, 'cache-control': browserAndEdgeCache(2592000, 2592000) });
         if (url.pathname === '/v1/featured') {
-          const year = Number(url.searchParams.get('year'));
-          const titles = await featured(year, env, fetchImpl);
-          return json({ titles, year }, 200, { ...policy.headers, 'cache-control': 'public, max-age=86400, s-maxage=604800' });
+          return await edgeCached(url, ['year'], policy, ctx, async () => {
+            const year = Number(url.searchParams.get('year'));
+            const titles = await featured(year, env, fetchImpl);
+            return json({ titles, year }, 200, { 'cache-control': browserAndEdgeCache(86400, 604800) });
+          });
         }
         if (url.pathname === '/v1/image') {
-          const result = await image(url.searchParams.get('url') || '', fetchImpl);
-          return new Response(result.body, { status: 200, headers: { ...policy.headers, 'content-type': result.contentType, 'cache-control': 'public, max-age=86400, s-maxage=604800', 'x-content-type-options': 'nosniff' } });
+          return await edgeCached(url, ['url'], policy, ctx, async () => {
+            const result = await image(url.searchParams.get('url') || '', fetchImpl);
+            return new Response(result.body, { status: 200, headers: { 'content-type': result.contentType, 'cache-control': browserAndEdgeCache(604800, 2592000), 'x-content-type-options': 'nosniff' } });
+          });
         }
         if (url.pathname === '/v1/search') {
-          const result = await searchCatalogue({ query: url.searchParams.get('q') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl);
-          return json(result, 200, { ...policy.headers, 'cache-control': 'public, max-age=300, s-maxage=900' });
+          return await edgeCached(url, ['q', 'locale'], policy, ctx, async () => {
+            const result = await searchCatalogue({ query: url.searchParams.get('q') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl);
+            return json(result, 200, { 'cache-control': browserAndEdgeCache(900, 3600, 86400) });
+          });
         }
         if (url.pathname === '/v1/title') {
-          const meta = await titleMeta({ type: url.searchParams.get('type'), id: url.searchParams.get('id') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl);
-          return json({ meta }, 200, { ...policy.headers, 'cache-control': 'public, max-age=86400, s-maxage=604800' });
+          return await edgeCached(url, ['type', 'id', 'locale'], policy, ctx, async () => {
+            const meta = await titleMeta({ type: url.searchParams.get('type'), id: url.searchParams.get('id') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl);
+            return json({ meta }, 200, { 'cache-control': browserAndEdgeCache(86400, 604800) });
+          });
         }
         if (url.pathname === '/v1/shelf') {
           const filters = validShelf(url);
           if (!filters) return json({ error: 'Invalid shelf filters' }, 400, policy.headers);
-          const shelfPage = await shelf(filters, env, fetchImpl);
-          return json({ titles: shelfPage.titles, hasNextStand: shelfPage.hasNextStand, year: filters.year, genre: filters.genre, type: filters.type, stand: filters.stand, providers: filters.providers, ignoreStoreYear: filters.ignoreStoreYear }, 200, { ...policy.headers, 'cache-control': 'public, max-age=900, s-maxage=3600' });
+          return await edgeCached(url, ['genre', 'year', 'type', 'stand', 'providers', 'ignoreStoreYear'], policy, ctx, async () => {
+            const shelfPage = await shelf(filters, env, fetchImpl);
+            return json({ titles: shelfPage.titles, hasNextStand: shelfPage.hasNextStand, year: filters.year, genre: filters.genre, type: filters.type, stand: filters.stand, providers: filters.providers, ignoreStoreYear: filters.ignoreStoreYear }, 200, { 'cache-control': browserAndEdgeCache(3600, 86400, 604800) });
+          });
         }
         return json({ error: 'Not found' }, 404, policy.headers);
       } catch (error) {

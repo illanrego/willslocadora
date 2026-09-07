@@ -20,6 +20,7 @@ The next product phase is durable account and rental data: Better Auth authentic
 ## Product boundaries
 
 - TMDB supplies metadata and Brazil provider information. Provider listings are informational and never a playback guarantee.
+- Third-party catalogue data, images, and service marks are excluded from the project code license; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - Stremio owns visitors’ accounts, add-ons, streams, subtitles, casting, and playback. Locadora only opens a known `stremio:` title route.
 - Locadora never reads Stremio configuration, tokens, local files, or playback history.
 - The Worker is public and read-only. It has no Supabase credentials or user data.

@@ -62,23 +62,33 @@ test('data Worker returns only the authenticated member state', async () => {
 });
 
 test('data Worker mounts Better Auth routes with exact CORS headers', async () => {
+  let closed = 0;
   const worker = createLocadoraDataWorker({
-    authFactory: () => ({ handler: async () => new Response(JSON.stringify({ user: { id: 'user_1' } }), { status: 200, headers: { 'content-type': 'application/json', 'set-auth-token': 'token_1' } }) }),
+    authFactory: () => ({
+      auth: { handler: async () => new Response(JSON.stringify({ user: { id: 'user_1' } }), { status: 200, headers: { 'content-type': 'application/json', 'set-auth-token': 'token_1' } }) },
+      close: async () => { closed += 1; },
+    }),
   });
   const response = await worker.fetch(new Request('https://data.example/api/auth/get-session', { headers: { origin: 'https://www.sitedoillan.com.br' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('access-control-allow-origin'), 'https://www.sitedoillan.com.br');
   assert.match(response.headers.get('access-control-expose-headers'), /set-auth-token/);
+  assert.equal(closed, 1);
 });
 
 test('data Worker converts internal auth failures into safe JSON with CORS', async () => {
+  let closed = 0;
   const worker = createLocadoraDataWorker({
-    authFactory: () => ({ handler: async () => new Response(null, { status: 500 }) }),
+    authFactory: () => ({
+      auth: { handler: async () => new Response(null, { status: 500 }) },
+      close: async () => { closed += 1; },
+    }),
   });
   const response = await worker.fetch(new Request('https://data.example/api/auth/sign-in/username', { method: 'POST', headers: { origin: 'https://www.sitedoillan.com.br' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
   assert.equal(response.status, 503);
   assert.equal(response.headers.get('access-control-allow-origin'), 'https://www.sitedoillan.com.br');
   assert.deepEqual(await response.json(), { message: 'Authentication service temporarily unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' });
+  assert.equal(closed, 1);
 });
 
 test('Better Auth preflight permits credentialed browser requests', async () => {
@@ -93,6 +103,18 @@ test('Better Auth preflight permits credentialed browser requests', async () => 
   }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
   assert.equal(response.status, 204);
   assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
+});
+
+test('data Worker rate limits auth attempts before opening a database connection', async () => {
+  const worker = createLocadoraDataWorker({ authFactory: () => assert.fail('must not create auth runtime') });
+  const response = await worker.fetch(new Request('https://data.example/api/auth/sign-in/username', {
+    method: 'POST',
+    headers: { origin: 'https://www.sitedoillan.com.br', 'cf-connecting-ip': '203.0.113.1' },
+  }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br', AUTH_RATE_LIMITER: { async limit() { return { success: false }; } } });
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
+  assert.equal(response.headers.get('retry-after'), '60');
+  assert.deepEqual(await response.json(), { message: 'Too many authentication attempts; try again shortly', code: 'RATE_LIMITED' });
 });
 
 test('data Worker serves public reviews for a canonical title without a bearer token', async () => {

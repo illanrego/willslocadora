@@ -24,6 +24,13 @@ test('username validation remains valid in modern HTML pattern mode and debounce
   assert.doesNotMatch(app, /setTimeout\([^\n]*event\.currentTarget/);
 });
 
+test('identical public GET requests share one in-flight browser request', () => {
+  assert.match(app, /const pendingPublicRequests = new Map\(\)/);
+  assert.match(app, /pendingPublicRequests\.has\(url\)/);
+  assert.match(app, /pendingPublicRequests\.set\(url, request\)/);
+  assert.match(app, /finally \{ pendingPublicRequests\.delete\(url\); \}/);
+});
+
 test('Cesta and Balcão keep review choices separate from the final three-rental request', () => {
   assert.match(page, /id="basket-added-message"[^>]*role="status"/);
   assert.match(app, /const MAX_CESTA_TITLES = 15/);
