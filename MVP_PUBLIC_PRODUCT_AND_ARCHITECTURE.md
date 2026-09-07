@@ -318,7 +318,7 @@ The private data Worker must enforce:
 - moderator/admin actions use a separate controlled role/server path;
 - rental/history queries never expose another user’s personal history.
 
-Configure Better Auth for email/username + password sign-in without Locadora-operated email delivery, verification, or password recovery in MVP.
+Configure Better Auth for email/username + password sign-in with Resend-backed verification and password-reset delivery. Email verification remains optional until the delivery flow is playtested. The private `/admin/` surface is authorized only by the configured owner email, never by a username, and exposes user activity counts plus session revocation without credential access.
 
 ## Cloudflare Worker responsibilities
 

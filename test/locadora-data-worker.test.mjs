@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLocadoraDataWorker, databaseError, mapActiveRentalRow, sendResendEmail } from '../workers/locadora-data/src/index.mjs';
+import { createLocadoraDataWorker, databaseError, isReservedWillUsername, mapActiveRentalRow, sendResendEmail } from '../workers/locadora-data/src/index.mjs';
 
 function jsonRequest(path, { method = 'GET', token = 'valid-token', body } = {}) {
   return new Request(`https://data.example${path}`, {
@@ -40,6 +40,38 @@ test('active rental state excludes tapes that have already been returned', () =>
   });
 
   assert.deepEqual(active.items.map((item) => item.id), ['item-active']);
+});
+
+test('Will-like ASCII username variants are recognized before profile changes', () => {
+  assert.equal(isReservedWillUsername('will'), true);
+  assert.equal(isReservedWillUsername('w1ll'), true);
+  assert.equal(isReservedWillUsername('wi11'), true);
+  assert.equal(isReservedWillUsername('w_i-l_l'), true);
+  assert.equal(isReservedWillUsername('willy'), false);
+});
+
+test('admin user directory and session revocation are protected by the admin authenticator', async () => {
+  const calls = [];
+  const worker = createLocadoraDataWorker({
+    adminAuthenticate: async () => ({ id: 'admin-1', email: 'emaildoillan@protonmail.com' }),
+    createRepository: () => ({
+      async listAdminUsers() { return [{ id: 'user-1', email: 'person@example.com', username: 'person', rentalCount: 1, activeRentalCount: 0, reviewCount: 1, watchedCount: 1 }]; },
+      async revokeUserSessions(userId) { calls.push(userId); return { revoked: 2 }; },
+    }),
+  });
+  const users = await worker.fetch(jsonRequest('/v1/admin/users'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(users.status, 200);
+  assert.equal((await users.json()).users[0].username, 'person');
+  const revoke = await worker.fetch(jsonRequest('/v1/admin/users/user-1/revoke-sessions', { method: 'POST', body: {} }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.deepEqual(await revoke.json(), { revoked: 2 });
+  assert.deepEqual(calls, ['user-1']);
+});
+
+test('admin routes reject a non-admin session before touching the repository', async () => {
+  const worker = createLocadoraDataWorker({ adminAuthenticate: async () => null, createRepository: () => assert.fail('must not create repository') });
+  const response = await worker.fetch(jsonRequest('/v1/admin/users'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(response.status, 403);
+  assert.deepEqual(await response.json(), { error: 'Admin access required' });
 });
 
 test('Resend email adapter sends only through the Worker-side API with a sending key', async () => {

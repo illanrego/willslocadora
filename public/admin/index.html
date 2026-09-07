@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin · Will's Locadora</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./admin.css">
+</head>
+<body class="admin-page">
+  <main class="admin-shell">
+    <header class="admin-header">
+      <div>
+        <span class="eyebrow">WILL'S LOCADORA · ADMIN</span>
+        <h1>Configurações</h1>
+        <p>Área privada da locadora. Senhas nunca aparecem aqui.</p>
+      </div>
+      <a class="admin-back" href="../">Voltar à Locadora</a>
+    </header>
+    <section class="admin-panel" aria-labelledby="users-heading">
+      <div class="admin-panel-heading">
+        <div><span class="eyebrow">CARTEIRINHAS</span><h2 id="users-heading">Usuários</h2></div>
+        <button id="refresh-users" class="account-action" type="button">Atualizar</button>
+      </div>
+      <p id="admin-status" class="admin-status" role="status" aria-live="polite">Verificando acesso…</p>
+      <label class="admin-search" for="user-search">Buscar por email ou nome de usuário<input id="user-search" type="search" autocomplete="off"></label>
+      <div class="admin-table-wrap">
+        <table>
+          <thead><tr><th>Email</th><th>Usuário</th><th>Cadastro</th><th>Locações</th><th>Avaliações</th><th>Ações</th></tr></thead>
+          <tbody id="users-body"></tbody>
+        </table>
+      </div>
+    </section>
+    <p class="admin-note">Ações destrutivas e visualização de senhas não fazem parte deste painel. Revogar sessões desconecta o usuário dos navegadores ativos.</p>
+  </main>
+  <script src="../auth-config.js"></script>
+  <script src="../account.js"></script>
+  <script src="./admin.js"></script>
+</body>
+</html>

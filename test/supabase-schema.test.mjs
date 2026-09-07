@@ -33,7 +33,7 @@ test('Better Auth queues Resend verification and password-reset mail from the pr
   assert.match(worker, /emailVerification:[\s\S]*sendVerificationEmail/);
   assert.match(worker, /emailAndPassword:[\s\S]*sendResetPassword/);
   assert.match(worker, /ctx\.waitUntil\(task\)/);
-  assert.match(wrangler, /RESEND_FROM_EMAIL = "Locadora <contato@mail\.sitedoillan\.com\.br>"/);
+  assert.match(wrangler, /RESEND_FROM_EMAIL = "Will's Locadora <contato@mail\.sitedoillan\.com\.br>"/);
 });
 
 test('Better Auth forward migration repairs the required account issuer', () => {
@@ -53,6 +53,14 @@ test('Better Auth profile reconciliation removes legacy identities and enforces 
   assert.match(reconciliation, /create trigger sync_better_auth_profile[\s\S]*after insert or update of username/i);
   assert.match(reconciliation, /create or replace function public\.set_member_username/i);
   assert.match(reconciliation, /update public\."user"[\s\S]*set username = p_username/i);
+});
+
+test('Will-like usernames are reserved for the owner email at the database boundary', () => {
+  const protection = readFileSync(new URL('../supabase/migrations/20260907_protect_will_identity.sql', import.meta.url), 'utf8');
+  assert.match(protection, /create or replace function public\.is_reserved_will_username/i);
+  assert.match(protection, /regexp_replace\([\s\S]*\[il1\]/i);
+  assert.match(protection, /lower\(email\) = 'emaildoillan@protonmail\.com'/i);
+  assert.match(protection, /user_username_reserved_will/i);
 });
 
 test('Supabase schema restricts active rental mutations to a transaction that locks the member profile', () => {

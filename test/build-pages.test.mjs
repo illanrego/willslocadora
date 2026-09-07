@@ -16,6 +16,8 @@ test('Pages build emits static assets, vendor Three.js, and relative entry paths
   assert.equal(existsSync(`${dist}/api-config.js`), true);
   assert.equal(existsSync(`${dist}/donation-config.js`), true);
   assert.equal(existsSync(`${dist}/session-support.js`), true);
+  assert.equal(existsSync(`${dist}/admin/index.html`), true);
+  assert.equal(existsSync(`${dist}/admin/admin.js`), true);
   const config = readFileSync(`${dist}/api-config.js`, 'utf8');
   assert.match(config, /locadora-api\.willstartpage\.workers\.dev\/v1/);
   const html = readFileSync(`${dist}/index.html`, 'utf8');

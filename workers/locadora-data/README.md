@@ -19,11 +19,13 @@ Browser CORS headers are emitted only for allowed origins. All mutation and memb
 - `DELETE /v1/collections/:collection/:type/:tmdbId` — removes only the requested saved collection membership.
 - `POST /v1/rentals` — atomically rents one to three distinct titles; the database enforces the three-active-title cap.
 - `POST /v1/rental-items/:id/return` — records `watched`, `not_watched`, or `unknown`. Only `watched` completes the active Assistir depois membership.
+- `GET /v1/admin/users` — exact-admin-only user directory with account, rental, watched, and review counts.
+- `POST /v1/admin/users/:id/revoke-sessions` — exact-admin-only session revocation for one user.
 
 ## One-time setup
 
 1. Create the Locadora Supabase project. Apply `../../supabase/migrations/20260730_locadora_core.sql`, followed by every later migration in filename order, including `20260801_fix_return_rental_item.sql`, `20260802_add_title_reviews.sql`, and `20260803_saved_title_collections.sql`, with the Supabase SQL editor or Supabase CLI.
-2. Configure a Better Auth database connection to the Supabase Postgres project. Apply `20260905_better_auth.sql` after the existing Locadora migrations.
+2. Configure a Better Auth database connection to the Supabase Postgres project. Apply `20260905_better_auth.sql` and `20260907_protect_will_identity.sql` after the existing Locadora migrations.
 3. From this directory, authenticate the intended Cloudflare account, then set secrets interactively — never put values in files or source control:
 
    ```sh
@@ -37,6 +39,8 @@ Browser CORS headers are emitted only for allowed origins. All mutation and memb
    `DATABASE_URL` is the Supabase Postgres connection string used as a local fallback. Production uses the `HYPERDRIVE` binding configured in `wrangler.toml`; its SQL response cache must remain disabled because Better Auth session and credential reads cannot be stale.
 
    `AUTH_RATE_LIMITER` permits 30 authentication attempts per minute for each client and auth route. It runs before a database connection is opened and returns a CORS-readable `429` response when exceeded.
+
+   `ADMIN_EMAIL` is the exact email allowed to use `/admin/` and the admin API. Authorization never trusts a username.
 
    `RESEND_API_KEY` is used only by Better Auth's verification and password-reset callbacks. `RESEND_FROM_EMAIL` is a non-secret Wrangler variable and must use an address on the verified Resend domain. Email delivery is queued with the Worker execution context so auth responses do not wait on Resend. Email verification is sent after signup, but `requireEmailVerification` remains disabled until delivery is playtested.
 

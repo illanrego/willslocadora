@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
-import { betterAuth } from 'better-auth';
+import { APIError, betterAuth } from 'better-auth';
 import { bearer, username } from 'better-auth/plugins';
 import { Pool } from 'pg';
 import { PostgresDialect } from 'kysely';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const HISTORY_PAGE_SIZE = 20;
-const DEFAULT_RESEND_FROM = 'Locadora <contato@mail.sitedoillan.com.br>';
+const DEFAULT_RESEND_FROM = "Will's Locadora <contato@mail.sitedoillan.com.br>";
+const DEFAULT_ADMIN_EMAIL = 'emaildoillan@protonmail.com';
 
 function allowedOrigins(value) {
   return new Set(String(value || '').split(',').map((origin) => origin.trim()).filter(Boolean));
@@ -30,6 +31,15 @@ function response(request, env, body, status = 200) {
 function required(value, label) {
   if (!value) throw new Error(`${label} is not configured`);
   return value;
+}
+
+function adminEmail(env) {
+  return String(env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim().toLowerCase();
+}
+
+export function isReservedWillUsername(value) {
+  const compact = String(value || '').trim().toLowerCase().replace(/[_-]/g, '');
+  return compact.replace(/[il1]/g, 'l') === 'wlll';
 }
 
 function escapeHtml(value) {
@@ -102,6 +112,24 @@ function createAuth(env, ctx) {
         });
       },
     },
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user) => {
+            if (isReservedWillUsername(user.username) && String(user.email || '').trim().toLowerCase() !== adminEmail(env)) {
+              throw new APIError('CONFLICT', { message: 'That username is reserved' });
+            }
+          },
+        },
+        update: {
+          before: async (user) => {
+            if (user.username !== undefined && isReservedWillUsername(user.username)) {
+              throw new APIError('CONFLICT', { message: 'That username is reserved' });
+            }
+          },
+        },
+      },
+    },
     plugins: [username({ displayUsername: false, usernameValidator: (value) => /^[a-z0-9_-]{3,24}$/.test(value) }), bearer()],
     advanced: { useSecureCookies: true },
   });
@@ -119,6 +147,17 @@ async function authenticateBetterAuth(request, env) {
   try {
     const session = await runtime.auth.api.getSession({ headers: request.headers });
     return session?.user?.id || null;
+  } finally {
+    await runtime.close();
+  }
+}
+
+async function authenticateAdmin(request, env, ctx) {
+  const runtime = createAuth(env, ctx);
+  try {
+    const session = await runtime.auth.api.getSession({ headers: request.headers });
+    const user = session?.user;
+    return user && String(user.email || '').trim().toLowerCase() === adminEmail(env) ? user : null;
   } finally {
     await runtime.close();
   }
@@ -297,9 +336,48 @@ export function createSupabaseRepository(env) {
       return Boolean(result.data);
     },
     async isUsernameAvailable(userId, username) {
-      const result = await database.from('user').select('id').eq('username', username).maybeSingle();
+      const result = await database.from('user').select('id, email').eq('username', username).maybeSingle();
       databaseError(result.error);
+      if (isReservedWillUsername(username) && (!result.data || result.data.id !== userId || String(result.data.email || '').trim().toLowerCase() !== adminEmail(env))) return false;
       return !result.data || result.data.id === userId;
+    },
+    async listAdminUsers() {
+      const [usersResult, rentalsResult, reviewsResult] = await Promise.all([
+        database.from('user').select('id, email, username, emailVerified, createdAt, updatedAt').order('createdAt', { ascending: false }),
+        database.from('rental_items').select('user_id, returned_at, watched_status'),
+        database.from('reviews').select('user_id, deleted_at'),
+      ]);
+      [usersResult, rentalsResult, reviewsResult].forEach(({ error }) => databaseError(error));
+      const rentals = new Map();
+      (rentalsResult.data || []).forEach((row) => {
+        const current = rentals.get(row.user_id) || { rentals: 0, activeRentals: 0, watched: 0 };
+        current.rentals += 1;
+        if (!row.returned_at) current.activeRentals += 1;
+        if (row.watched_status === 'watched') current.watched += 1;
+        rentals.set(row.user_id, current);
+      });
+      const reviews = new Map();
+      (reviewsResult.data || []).forEach((row) => {
+        if (row.deleted_at) return;
+        reviews.set(row.user_id, (reviews.get(row.user_id) || 0) + 1);
+      });
+      return (usersResult.data || []).map((user) => ({
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        emailVerified: Boolean(user.emailVerified),
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        rentalCount: rentals.get(user.id)?.rentals || 0,
+        activeRentalCount: rentals.get(user.id)?.activeRentals || 0,
+        watchedCount: rentals.get(user.id)?.watched || 0,
+        reviewCount: reviews.get(user.id) || 0,
+      }));
+    },
+    async revokeUserSessions(userId) {
+      const result = await database.from('session').delete({ count: 'exact' }).eq('userId', userId);
+      databaseError(result.error);
+      return { revoked: result.count || 0 };
     },
     async listHistory(userId, offset) {
       const result = await database.from('rental_items')
@@ -333,7 +411,7 @@ export function createSupabaseRepository(env) {
   };
 }
 
-export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth, createRepository = createSupabaseRepository, authFactory = createAuth } = {}) {
+export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth, adminAuthenticate = authenticateAdmin, createRepository = createSupabaseRepository, authFactory = createAuth } = {}) {
   return {
     async fetch(request, env, ctx) {
       const url = new URL(request.url);
@@ -373,6 +451,32 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
           return response(request, env, { error: 'Authentication service unavailable' }, 503);
         } finally {
           await runtime.close?.();
+        }
+      }
+      const isAdminUsersRequest = request.method === 'GET' && url.pathname === '/v1/admin/users';
+      const adminRevokeMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/admin\/users\/([^/]+)\/revoke-sessions$/) : null;
+      if (isAdminUsersRequest || adminRevokeMatch) {
+        if (env.AUTH_RATE_LIMITER) {
+          const client = request.headers.get('cf-connecting-ip') || 'unknown-client';
+          const allowed = await env.AUTH_RATE_LIMITER.limit({ key: `${client}:/v1/admin` });
+          if (!allowed.success) return response(request, env, { error: 'Too many admin requests; try again shortly', code: 'RATE_LIMITED' }, 429);
+        }
+        let adminUser;
+        try { adminUser = await adminAuthenticate(request, env, ctx); }
+        catch (error) {
+          console.error('admin authentication failed', error?.message || 'unknown auth error');
+          return response(request, env, { error: 'Authentication service unavailable' }, 503);
+        }
+        if (!adminUser) return response(request, env, { error: 'Admin access required' }, 403);
+        try {
+          const repository = createRepository(env);
+          if (isAdminUsersRequest) return response(request, env, { users: await repository.listAdminUsers() });
+          const userId = decodeURIComponent(adminRevokeMatch[1]);
+          if (!userId || userId.length > 128) return response(request, env, { error: 'Invalid user ID' }, 400);
+          return response(request, env, await repository.revokeUserSessions(userId));
+        } catch (error) {
+          console.error('admin request failed', error);
+          return response(request, env, { error: error.message || 'The Locadora archive is unavailable' }, error.status || 503);
         }
       }
       const isStateRequest = request.method === 'GET' && url.pathname === '/v1/state';

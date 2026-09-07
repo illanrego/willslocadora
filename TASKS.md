@@ -39,6 +39,8 @@ The public-MVP authority is [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_
 
 - [~] Supabase migrations cover Better Auth users plus Locadora profiles, watchlists, rentals, and reviews; provisioning the actual Supabase project remains an operator step.
 - [x] Private `locadora-data` Worker serves Better Auth username/email password sessions and is the only component designed to receive the Supabase service-role secret; the existing `locadora-api` Worker remains public/read-only.
+- [x] Owner-only `/admin/` user directory with rental/review counts, session revocation, exact-email authorization, and database-level protection for Will-like usernames.
+- [x] Resend verification/password-reset delivery is wired in the private Worker; verification remains optional until the live inbox flow is playtested.
 - [x] Static Better Auth sign-in, public-username signup, and configuration-gated account controls are wired for rental/watchlist actions; the final Assistir depois/Favoritos split remains pending.
 - [x] Worker unit tests cover own-data routing, username validation, canonical watchlist writes, rental request validation, and the three return outcomes. Live Better Auth/Supabase boundary testing waits for provisioned credentials.
 - [x] Local-only rental history is cleared on boot; signed-in members currently use the authenticated watchlist, up-to-three active rentals, open-ended returns, watched status, and watched-return watchlist completion.
