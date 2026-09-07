@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLocadoraDataWorker, databaseError, mapActiveRentalRow } from '../workers/locadora-data/src/index.mjs';
+import { createLocadoraDataWorker, databaseError, mapActiveRentalRow, sendResendEmail } from '../workers/locadora-data/src/index.mjs';
 
 function jsonRequest(path, { method = 'GET', token = 'valid-token', body } = {}) {
   return new Request(`https://data.example${path}`, {
@@ -40,6 +40,27 @@ test('active rental state excludes tapes that have already been returned', () =>
   });
 
   assert.deepEqual(active.items.map((item) => item.id), ['item-active']);
+});
+
+test('Resend email adapter sends only through the Worker-side API with a sending key', async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, init });
+    return new Response(JSON.stringify({ id: 'email-1' }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    await sendResendEmail({ RESEND_API_KEY: 're_test_key', RESEND_FROM_EMAIL: 'Locadora <contato@mail.sitedoillan.com.br>' }, {
+      to: 'person@example.com', subject: 'Teste', text: 'Texto', html: '<p>Texto</p>',
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].input, 'https://api.resend.com/emails');
+  assert.equal(calls[0].init.headers.authorization, 'Bearer re_test_key');
+  assert.equal(calls[0].init.headers['user-agent'], 'locadora-data-worker');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { from: 'Locadora <contato@mail.sitedoillan.com.br>', to: ['person@example.com'], subject: 'Teste', text: 'Texto', html: '<p>Texto</p>' });
 });
 
 test('data Worker returns only the authenticated member state', async () => {

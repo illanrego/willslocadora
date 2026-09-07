@@ -26,6 +26,16 @@ test('production Better Auth uses uncached Hyperdrive with request-scoped pg con
   assert.match(worker, /finally \{\s*await runtime\.close\(\);/);
 });
 
+test('Better Auth queues Resend verification and password-reset mail from the private Worker', () => {
+  const worker = readFileSync(new URL('../workers/locadora-data/src/index.mjs', import.meta.url), 'utf8');
+  const wrangler = readFileSync(new URL('../workers/locadora-data/wrangler.toml', import.meta.url), 'utf8');
+  assert.match(worker, /https:\/\/api\.resend\.com\/emails/);
+  assert.match(worker, /emailVerification:[\s\S]*sendVerificationEmail/);
+  assert.match(worker, /emailAndPassword:[\s\S]*sendResetPassword/);
+  assert.match(worker, /ctx\.waitUntil\(task\)/);
+  assert.match(wrangler, /RESEND_FROM_EMAIL = "Locadora <contato@mail\.sitedoillan\.com\.br>"/);
+});
+
 test('Better Auth forward migration repairs the required account issuer', () => {
   const repair = readFileSync(new URL('../supabase/migrations/20260906_fix_better_auth_account_schema.sql', import.meta.url), 'utf8');
   assert.match(repair, /add column if not exists issuer text/i);

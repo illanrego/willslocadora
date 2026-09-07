@@ -224,6 +224,8 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .auth-form-actions { display: flex; flex-wrap: wrap; gap: .55rem; }
 .auth-form-actions .account-action { flex: 1 1 150px; }
 .account-secondary-action { color: var(--cream) !important; background: #25384d !important; border-color: #6f8eaa !important; }
+.auth-text-action { margin-top: .7rem; padding: .2rem 0; color: var(--yellow); background: transparent; border: 0; text-decoration: underline; cursor: pointer; }
+.auth-text-action:disabled { opacity: .6; cursor: wait; }
 .account-action:disabled { cursor: wait; opacity: .62; transform: none !important; filter: none !important; }
 #source-message { min-height: 1.2em; color: var(--cyan); }
 

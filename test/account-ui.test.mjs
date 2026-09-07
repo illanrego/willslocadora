@@ -18,6 +18,14 @@ test('Better Auth signup relies on atomic database profile provisioning', () => 
   assert.doesNotMatch(account, /if \(signup\) await request\('\/v1\/profile'/);
 });
 
+test('account recovery sends a generic reset request and accepts the Better Auth token link', () => {
+  assert.match(account, /authRequest\('\/request-password-reset'/);
+  assert.match(account, /Se existir uma conta com esse email/);
+  assert.match(account, /authRequest\('\/reset-password'/);
+  assert.match(account, /resetToken/);
+  assert.match(account, /callbackURL: `\$\{window\.location\.origin\}/);
+});
+
 test('username validation remains valid in modern HTML pattern mode and debounce captures the value synchronously', () => {
   assert.ok(page.includes('pattern="[A-Za-z0-9_\\-]+"'));
   assert.match(app, /const username = event\.currentTarget\.value;\s*usernameAvailabilityTimer = window\.setTimeout\(\(\) => checkUsernameAvailability\(username\), 250\)/);

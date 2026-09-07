@@ -6,6 +6,7 @@ import { PostgresDialect } from 'kysely';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const HISTORY_PAGE_SIZE = 20;
+const DEFAULT_RESEND_FROM = 'Locadora <contato@mail.sitedoillan.com.br>';
 
 function allowedOrigins(value) {
   return new Set(String(value || '').split(',').map((origin) => origin.trim()).filter(Boolean));
@@ -31,7 +32,40 @@ function required(value, label) {
   return value;
 }
 
-function createAuth(env) {
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+}
+
+function queueTransactionalEmail(env, ctx, message) {
+  const task = sendResendEmail(env, message).catch((error) => {
+    console.error('transactional email failed', error?.message || 'unknown email error');
+  });
+  if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(task);
+  else void task;
+}
+
+export async function sendResendEmail(env, { to, subject, text, html }) {
+  const apiKey = String(env.RESEND_API_KEY || '').trim();
+  if (!apiKey) {
+    console.warn('RESEND_API_KEY is not configured; transactional email skipped');
+    return { skipped: true };
+  }
+  const from = String(env.RESEND_FROM_EMAIL || DEFAULT_RESEND_FROM).trim();
+  if (!from) throw new Error('RESEND_FROM_EMAIL is not configured');
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      'content-type': 'application/json',
+      'user-agent': 'locadora-data-worker',
+    },
+    body: JSON.stringify({ from, to: [to], subject, text, html }),
+  });
+  if (!response.ok) throw new Error(`Resend rejected transactional email (${response.status})`);
+  return response.json().catch(() => ({}));
+}
+
+function createAuth(env, ctx) {
   const connectionString = env.HYPERDRIVE?.connectionString || required(env.DATABASE_URL, 'DATABASE_URL');
   // Hyperdrive owns the reusable origin pool. A request-scoped pg pool prevents
   // unrelated Worker requests from queuing behind stale or slow client sockets.
@@ -43,7 +77,31 @@ function createAuth(env) {
     basePath: '/api/auth',
     secret: required(env.BETTER_AUTH_SECRET, 'BETTER_AUTH_SECRET'),
     trustedOrigins: [...allowedOrigins(env.ALLOWED_ORIGINS)],
-    emailAndPassword: { enabled: true, requireEmailVerification: false },
+    emailVerification: {
+      sendOnSignUp: true,
+      sendVerificationEmail: async ({ user, url }) => {
+        const safeUrl = escapeHtml(url);
+        queueTransactionalEmail(env, ctx, {
+          to: user.email,
+          subject: 'Confirme seu email na Locadora',
+          text: `Confirme seu email para a Locadora abrindo este link:\n\n${url}\n\nO link expira em uma hora.`,
+          html: `<p>Confirme seu email para a Locadora:</p><p><a href="${safeUrl}">Confirmar email</a></p><p>O link expira em uma hora.</p>`,
+        });
+      },
+    },
+    emailAndPassword: {
+      enabled: true,
+      requireEmailVerification: false,
+      sendResetPassword: async ({ user, url }) => {
+        const safeUrl = escapeHtml(url);
+        queueTransactionalEmail(env, ctx, {
+          to: user.email,
+          subject: 'Redefina sua senha da Locadora',
+          text: `Para escolher uma nova senha, abra este link:\n\n${url}\n\nO link expira em uma hora.`,
+          html: `<p>Para escolher uma nova senha da Locadora:</p><p><a href="${safeUrl}">Redefinir senha</a></p><p>O link expira em uma hora.</p>`,
+        });
+      },
+    },
     plugins: [username({ displayUsername: false, usernameValidator: (value) => /^[a-z0-9_-]{3,24}$/.test(value) }), bearer()],
     advanced: { useSecureCookies: true },
   });
@@ -277,7 +335,7 @@ export function createSupabaseRepository(env) {
 
 export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth, createRepository = createSupabaseRepository, authFactory = createAuth } = {}) {
   return {
-    async fetch(request, env) {
+    async fetch(request, env, ctx) {
       const url = new URL(request.url);
       if (request.method === 'OPTIONS') {
         const headers = corsHeaders(request, env);
@@ -296,7 +354,7 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
             headers: { ...JSON_HEADERS, ...corsHeaders(request, env), 'access-control-allow-credentials': 'true', 'retry-after': '60' },
           });
         }
-        const runtime = authFactory(env);
+        const runtime = authFactory(env, ctx);
         const auth = runtime.auth || runtime;
         try {
           const authResponse = await auth.handler(request);

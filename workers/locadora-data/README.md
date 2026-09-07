@@ -31,11 +31,14 @@ Browser CORS headers are emitted only for allowed origins. All mutation and memb
    npx wrangler secret put DATABASE_URL
    npx wrangler secret put SUPABASE_URL
    npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+   npx wrangler secret put RESEND_API_KEY
    ```
 
    `DATABASE_URL` is the Supabase Postgres connection string used as a local fallback. Production uses the `HYPERDRIVE` binding configured in `wrangler.toml`; its SQL response cache must remain disabled because Better Auth session and credential reads cannot be stale.
 
    `AUTH_RATE_LIMITER` permits 30 authentication attempts per minute for each client and auth route. It runs before a database connection is opened and returns a CORS-readable `429` response when exceeded.
+
+   `RESEND_API_KEY` is used only by Better Auth's verification and password-reset callbacks. `RESEND_FROM_EMAIL` is a non-secret Wrangler variable and must use an address on the verified Resend domain. Email delivery is queued with the Worker execution context so auth responses do not wait on Resend. Email verification is sent after signup, but `requireEmailVerification` remains disabled until delivery is playtested.
 
 4. Review `ALLOWED_ORIGINS` in `wrangler.toml`, then deploy:
 

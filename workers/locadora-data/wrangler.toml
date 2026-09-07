@@ -7,6 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ALLOWED_ORIGINS = "https://illanrego.github.io,https://sitedoillan.com.br,https://www.sitedoillan.com.br,https://willslocadora.sitedoillan.com.br,http://127.0.0.1:4173"
 AUTH_BASE_URL = "https://locadora-data.willstartpage.workers.dev"
+RESEND_FROM_EMAIL = "Locadora <contato@mail.sitedoillan.com.br>"
 
 [[hyperdrive]]
 binding = "HYPERDRIVE"
