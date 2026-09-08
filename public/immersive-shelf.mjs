@@ -229,7 +229,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   }
 
   function fitLamps(compact, dropY = 0, plaqueHalf = 0) {
-    const half = compact ? Math.max(compactRackWidth / 2 + 0.05, plaqueHalf + 0.25) : 3.2;
+    const half = compact ? Math.max(compactRackWidth / 2 + 0.05, plaqueHalf + 0.1) : 3.2;
     const y = 6.05 - dropY;
     lampFixtures.forEach((fixture, index) => { fixture.position.set((index === 0 ? -1 : 1) * half, y, 0.62); });
     lamps.forEach((lamp, index) => {
@@ -346,7 +346,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     if (compact) {
       const sw = (compactRackWidth + 2.0) / 7.9;
       sign.scale.set(sw, sw, sw);
-      const dropY = 1.58 * sw;
+      const dropY = 1.58 * sw * 0.6;
       sign.position.y = 6.05 - dropY;
       fitLamps(true, dropY, (sw * 7.9) / 2);
     } else {
