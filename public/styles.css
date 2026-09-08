@@ -1074,6 +1074,7 @@ dialog.panel-dialog {
 .store-dock .counter-button { display: flex; align-items: center; gap: .55rem; min-height: 44px; margin: 0; padding: .45rem .7rem; color: var(--blue-deep); background: var(--cream); border: 1px solid var(--red); border-radius: 4px; cursor: pointer; transform: none; box-shadow: 3px 3px 0 #7d5e00; }
 .store-dock .counter-button > span.basket-spines { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 29px; height: 27px; min-width: 29px; min-height: 27px; margin: 0; padding: 0 2px 4px; border: 2px solid var(--blue-deep); border-top: 0; border-radius: 0 0 4px 4px; color: var(--blue-deep); background: transparent; }
 body[data-store-mode="immersive"] .store-dock #counter-open { display: none; }
+body[data-store-mode="immersive"] .store-dock { display: none; }
 .support-link { border: 0; padding: .45rem .2rem; min-height: 44px; color: var(--cream); background: transparent; font: 700 .75rem/1.4 Arial, sans-serif; text-decoration: underline; text-underline-offset: .25em; cursor: pointer; }
 .support-link:hover { color: var(--yellow); }
 .dialog-support { display: block; margin: .75rem auto 0; }
