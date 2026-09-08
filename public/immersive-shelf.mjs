@@ -586,6 +586,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       applyVisuals(nextVisuals);
       updateSign(genre, year, type, false, activeStand);
     },
+    setLogo(titleId, logoUrl) {
+      const record = tapeRecords.find((entry) => entry.title && String(entry.title.id) === String(titleId));
+      if (record && typeof record.vhs?.setLogo === 'function') record.vhs.setLogo(logoUrl);
+    },
     update(nextTitles, nextGenre, nextYear, nextType, nextStand, nextVisuals) {
       applyVisuals(nextVisuals);
       standTransition = null;

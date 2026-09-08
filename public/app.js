@@ -887,10 +887,20 @@
       const node = template.content.cloneNode(true);
       const article = node.querySelector('.vhs-item');
       const button = node.querySelector('button');
-      const image = node.querySelector('img');
+      const image = node.querySelector('.case-cover');
       image.src = title.poster || posterFallback(title);
       image.alt = `${title.name} cover`;
       image.addEventListener('error', () => { image.src = posterFallback(title); }, { once: true });
+      const logo = node.querySelector('.case-logo');
+      if (title.logo) {
+        const logoUrl = posterTextureUrl(title.logo);
+        logo.src = logoUrl;
+        button.classList.add('has-logo');
+        logo.addEventListener('load', () => {
+          const landscape = (logo.naturalWidth || 0) > (logo.naturalHeight || 0);
+          logo.classList.toggle('is-landscape', landscape);
+        }, { once: true });
+      }
       node.querySelector('.case-year').textContent = title.year || '—';
       node.querySelector('.case-label strong').textContent = title.name;
       node.querySelector('.case-label small').textContent = `${title.year || 'Year unknown'} · ${title.type}`;
@@ -914,6 +924,39 @@
   function posterTextureUrl(source) {
     if (!source || source.startsWith('data:') || source.startsWith(location.origin)) return source;
     return window.locadoraPosterUrl(source);
+  }
+
+  // Lazy background logo enrichment: fetch metadata for each shelf title so its logo
+  // (styled wordmark) can replace the plain spine/tile label. Cached per session.
+  let logoHydrationToken = 0;
+  function hydrateTapeLogos() {
+    const titles = (state.titles || []).slice(0, 40);
+    if (!titles.length) return;
+    const token = ++logoHydrationToken;
+    let cursor = 0;
+    const CONCURRENCY = 4;
+    const worker = async () => {
+      while (cursor < titles.length && token === logoHydrationToken) {
+        const title = titles[cursor++];
+        try {
+          await loadTitleMetadata(title);
+          if (!title.logo) continue;
+          const logoUrl = posterTextureUrl(title.logo);
+          immersiveShelf?.setLogo?.(title.id, logoUrl);
+          const tile = shelf?.querySelector(`.vhs-item[data-title-id="${CSS.escape(title.id)}"]`);
+          const vhs = tile?.querySelector('.vhs-case');
+          const logoImg = tile?.querySelector('.case-logo');
+          if (vhs && logoImg) {
+            vhs.classList.add('has-logo');
+            logoImg.src = logoUrl;
+            logoImg.addEventListener('load', () => {
+              logoImg.classList.toggle('is-landscape', (logoImg.naturalWidth || 0) > (logoImg.naturalHeight || 0));
+            }, { once: true });
+          }
+        } catch { /* logo stays optional; tile keeps its text label */ }
+      }
+    };
+    for (let i = 0; i < CONCURRENCY; i++) worker();
   }
 
   function vhsAssets(title, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
@@ -952,6 +995,7 @@
     state.hasNextStand = cached.hasNextStand;
     refreshImmersive(direction);
     syncImmersiveStandControls();
+    hydrateTapeLogos();
     return true;
   }
 
@@ -1172,6 +1216,7 @@
       $('#shelf-status').textContent = append ? `${state.titles.length} ${t('moreTapes')}` : `${state.titles.length} ${t('tapesFound')}`;
       $('#load-more-shelf').hidden = !hasAnotherSourcePage;
       syncImmersiveStandControls();
+      hydrateTapeLogos();
     } catch (error) {
       if (error.name === 'AbortError') return;
       if (!append) state.titles = [];
