@@ -532,7 +532,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     if (activePointers.size >= 2) {
       const [a, b] = [...activePointers.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinchPrevDist > 0) adjustZoom(((dist - pinchPrevDist) / pinchPrevDist) * 0.6);
+      if (pinchPrevDist > 0) adjustZoom(((dist - pinchPrevDist) / pinchPrevDist) * 0.75);
       pinchPrevDist = dist;
       return;
     }

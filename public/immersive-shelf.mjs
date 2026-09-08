@@ -531,7 +531,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     if (activePointers.size === 2) {
       const [a, b] = [...activePointers.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinchPrevDist > 0) adjustZoom(((dist - pinchPrevDist) / pinchPrevDist) * 0.35);
+      if (pinchPrevDist > 0) adjustZoom(((dist - pinchPrevDist) / pinchPrevDist) * 0.9);
       pinchPrevDist = dist;
       dragOffsetTarget = room.position.x; // freeze the rack while pinching
       dragOffsetTargetY = room.position.y;
@@ -614,7 +614,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const compact = layoutKey() !== 'desktop';
     const fitHeight = (compact ? 5.2 : 6.05) / verticalTangent;
     const fitWidth = (compact ? 3.9 : 6.45) / (verticalTangent * camera.aspect);
-    baseCameraDistance = Math.max(fitHeight, fitWidth) * 1.18;
+    baseCameraDistance = Math.max(fitHeight, fitWidth) * (compact ? 1.06 : 1.18);
     const nextLayoutKey = layoutKey();
     if (activeLayoutKey && nextLayoutKey !== activeLayoutKey && activeTitles.length) renderTapes(activeTitles);
     else applyLayoutDecorations(nextLayoutKey !== 'desktop');
