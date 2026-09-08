@@ -1130,7 +1130,10 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     width: calc(var(--mobile-spine-height) - 30px);
     max-width: none;
     max-height: calc(var(--mobile-spine-width) - 12px);
-    transform: rotate(90deg);
+    top: 50%;
+    left: 50%;
+    margin: 0;
+    transform: translate(-50%, -50%) rotate(90deg);
   }
   .vhs-case.has-logo .case-label { visibility: hidden; }
   .case-spine {
