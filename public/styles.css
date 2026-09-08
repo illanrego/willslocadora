@@ -1083,7 +1083,7 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .immersive-filters { max-height: 35dvh; }
 }
 
-/* Phones browse a short, book-like rail: a thick tape spine followed by its title. */
+/* Phones browse a bounded rack of spine-facing tapes, never a horizontal carousel. */
 @media (max-width: 760px), (max-width: 900px) and (pointer: coarse) {
   .shelf-room { padding: 1.6rem .7rem 3rem; }
   .shelf-heading { margin-bottom: 1rem; }
@@ -1092,21 +1092,19 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .shelf-stand { min-width: 0; }
   .stand-number { margin-left: .1rem; }
   .shelf {
-    display: flex;
-    align-items: stretch;
-    gap: .75rem;
-    overflow-x: auto;
-    padding: .8rem .55rem 1.35rem;
-    border-width: 6px;
-    scroll-snap-type: x proximity;
-    overscroll-behavior-inline: contain;
-  }
-  .vhs-item { flex: 0 0 min(218px, 72vw); scroll-snap-align: start; perspective: none; }
-  .vhs-case {
     display: grid;
-    grid-template-columns: 74px minmax(0, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+    align-items: end;
+    gap: .55rem .4rem;
+    overflow: hidden;
+    padding: .8rem .45rem 1.35rem;
+    border-width: 6px;
+  }
+  .vhs-item { min-width: 0; perspective: none; }
+  .vhs-case {
+    display: block;
     width: 100%;
-    height: 164px;
+    height: 154px;
     aspect-ratio: auto;
     border-width: 4px;
     transform: none;
@@ -1115,60 +1113,64 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .vhs-case img { display: none; }
   .case-spine {
     position: relative;
-    inset: auto;
+    inset: 0;
     display: block;
-    width: auto;
+    width: 100%;
     height: 100%;
-    border-right: 2px solid #52453a;
+    border-right: 0;
     background: linear-gradient(90deg, #080706, #4c2c21 54%, #171310);
   }
   .case-spine::after {
     content: "";
     position: absolute;
-    inset: 12px 10px;
+    inset: 8px 6px;
     border: 1px solid rgba(246,235,204,.55);
     border-radius: 2px;
     opacity: .6;
   }
-  .case-year { bottom: 14px; left: 50%; transform: translateX(-50%); color: var(--cream); }
+  .case-year { z-index: 3; bottom: 7px; left: 50%; transform: translateX(-50%); color: var(--yellow); font-size: .48rem; }
   .case-label {
-    position: static;
-    display: flex;
-    min-width: 0;
+    position: absolute;
+    z-index: 3;
+    inset: 10px 3px 22px;
+    display: block;
     margin: 0;
-    padding: .7rem .65rem;
-    flex-direction: column;
-    justify-content: center;
-    gap: .35rem;
-    border-top: 0;
-    border-left: 4px solid var(--red);
+    padding: 0;
+    border: 0;
     box-shadow: none;
-    text-align: left;
+    background: transparent;
+    text-align: center;
   }
   .case-label strong {
-    display: -webkit-box;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: block;
+    width: 132px;
     overflow: hidden;
-    white-space: normal;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
-    font-size: .82rem;
-    line-height: 1.08;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    color: var(--cream);
+    font-size: .58rem;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: 1px 1px 0 #000;
   }
-  .case-label small { font-size: .58rem; }
-  .letterboxd-sticker { top: .35rem; right: .35rem; }
+  .case-label small, .letterboxd-sticker { display: none; }
 
   .tape-fallback { padding: 6rem .7rem 2rem; text-align: left; }
   .tape-fallback-heading { text-align: center; }
-  .tape-fallback-grid { display: flex; gap: .75rem; overflow-x: auto; padding: .4rem .15rem 1rem; }
-  .tape-fallback-card { flex: 0 0 min(218px, 72vw); display: grid; grid-template-columns: 74px minmax(0, 1fr); min-height: 164px; }
+  .tape-fallback-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(42px, 1fr)); gap: .55rem .4rem; padding: .4rem .15rem 1rem; }
+  .tape-fallback-card { display: block; min-height: 154px; }
   .tape-fallback-card img { display: none; }
-  .tape-fallback-front { position: static; display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: .35rem; padding: .7rem .65rem; color: #17120f; background: var(--cream); }
-  .tape-fallback-front strong { white-space: normal; }
-  .tape-fallback-card::before { content: ""; display: block; grid-row: 1; width: 74px; height: 100%; background: linear-gradient(90deg, #080706, #4c2c21 54%, #171310); border-right: 2px solid #52453a; }
+  .tape-fallback-front { position: absolute; inset: 10px 3px 22px; display: block; padding: 0; color: var(--cream); background: transparent; text-align: center; }
+  .tape-fallback-front strong { position: absolute; top: 50%; left: 50%; display: block; width: 132px; overflow: hidden; transform: translate(-50%, -50%) rotate(-90deg); font-size: .58rem; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+  .tape-fallback-front small { display: none; }
+  .tape-fallback-card::before { content: ""; display: block; width: 100%; height: 100%; background: linear-gradient(90deg, #080706, #4c2c21 54%, #171310); }
 }
 
 @media (min-width: 761px) and (max-width: 900px) and (orientation: landscape) and (pointer: coarse) {
   .shelf-room { padding-inline: 1rem; }
-  .vhs-item { flex-basis: min(248px, 30vw); }
-  .vhs-case { height: 178px; }
+  .shelf { grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); }
+  .vhs-case, .tape-fallback-card { height: 166px; min-height: 166px; }
 }

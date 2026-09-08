@@ -1,6 +1,6 @@
 import * as THREE from '/vendor/three.module.js';
 import { loadFeaturedTitles } from './featured-titles.mjs';
-import { createVhsCase } from './vhs-case.mjs';
+import { createVhsCase, createVhsSpine } from './vhs-case.mjs';
 
 const COLUMNS = 10;
 const ROWS = 4;
@@ -75,44 +75,6 @@ function drawStandMarker(context, stand) {
   context.fillText(String(stand + 1).padStart(2, '0'), width / 2, 126);
 }
 
-function drawMobileTitle(context, title, theme) {
-  const { width, height } = context.canvas;
-  context.fillStyle = '#e7d8b1';
-  context.fillRect(0, 0, width, height);
-  context.strokeStyle = theme.trim;
-  context.lineWidth = 10;
-  context.strokeRect(5, 5, width - 10, height - 10);
-  context.fillStyle = theme.sign;
-  context.textAlign = 'left';
-  context.textBaseline = 'middle';
-  context.font = '900 27px Arial Narrow, Arial, sans-serif';
-  const words = String(title.name || 'Untitled').toUpperCase().split(/\s+/);
-  const lines = [];
-  for (const word of words) {
-    const current = lines.at(-1) || '';
-    const next = current ? `${current} ${word}` : word;
-    if (current && context.measureText(next).width > width - 42) lines.push(word);
-    else if (current) lines[lines.length - 1] = next;
-    else lines.push(word);
-  }
-  lines.slice(0, 3).forEach((line, index) => context.fillText(line, 24, 39 + index * 29));
-  context.fillStyle = theme.trim;
-  context.font = '700 20px Courier New, monospace';
-  context.fillText(`${title.year || '—'} · ${title.type === 'series' ? 'SÉRIE' : 'FILME'}`, 24, height - 20);
-}
-
-function createMobileTitlePlate(title, theme) {
-  const canvas = canvasTexture(420, 150, (context) => drawMobileTitle(context, title, theme));
-  const edge = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.72 });
-  const face = new THREE.MeshStandardMaterial({ map: canvas.texture, roughness: 0.58 });
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(1.48, 0.62, 0.1),
-    [edge, edge, edge, edge, face, edge],
-  );
-  mesh.castShadow = true;
-  return { mesh, texture: canvas.texture, materials: [edge, face] };
-}
-
 function featuredMovies(titles) {
   return titles.filter((title) => title.type === 'movie').slice(0, 3);
 }
@@ -147,6 +109,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
   const room = new THREE.Group();
   scene.add(room);
+  const desktopShelfObjects = [];
+  const addDesktopShelf = (object) => { room.add(object); desktopShelfObjects.push(object); return object; };
   const wood = new THREE.MeshStandardMaterial({ color: 0x111011, roughness: 0.68, metalness: 0.08 });
   const edge = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.72 });
   const backingMaterial = new THREE.MeshStandardMaterial({ color: activeTheme.backing, roughness: 0.78 });
@@ -154,12 +118,12 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   const settingWall = new THREE.Mesh(new THREE.BoxGeometry(30, 16, 0.3), settingWallMaterial);
   settingWall.position.set(0, 0.6, -3.15);
   settingWall.receiveShadow = true;
-  room.add(settingWall);
+  addDesktopShelf(settingWall);
   const trim = new THREE.MeshStandardMaterial({ color: activeTheme.trim, roughness: 0.72 });
   const backing = new THREE.Mesh(new THREE.BoxGeometry(12, 9.2, 0.35), backingMaterial);
   backing.position.z = -0.45;
   backing.receiveShadow = true;
-  room.add(backing);
+  addDesktopShelf(backing);
 
   const featuredPosterGroup = new THREE.Group();
   const featuredPosterLoader = new THREE.TextureLoader();
@@ -206,17 +170,42 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.34, 9.85, 0.72), wood);
     post.position.set(x, -0.12, -0.02);
     post.castShadow = true;
-    room.add(post);
+    addDesktopShelf(post);
   }
   for (const y of [-4.25, -2.2, -0.15, 1.9, 3.95]) {
     const board = new THREE.Mesh(new THREE.BoxGeometry(12.4, 0.3, 1.05), wood);
     board.position.set(0, y, 0);
     board.castShadow = true;
     board.receiveShadow = true;
-    room.add(board);
+    addDesktopShelf(board);
     const lip = new THREE.Mesh(new THREE.BoxGeometry(12.42, 0.09, 1.08), trim);
     lip.position.set(0, y + 0.18, 0.02);
-    room.add(lip);
+    addDesktopShelf(lip);
+  }
+
+  // This is a separate physical rack for phone-sized screens, inspired by real VHS shelves.
+  const compactRack = new THREE.Group();
+  compactRack.visible = false;
+  room.add(compactRack);
+  const compactBacking = new THREE.Mesh(new THREE.BoxGeometry(7.1, 9.4, 0.35), backingMaterial);
+  compactBacking.position.z = -0.45;
+  compactBacking.receiveShadow = true;
+  compactRack.add(compactBacking);
+  for (const x of [-3.55, 3.55]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.32, 9.85, 0.72), wood);
+    post.position.set(x, -0.12, -0.02);
+    post.castShadow = true;
+    compactRack.add(post);
+  }
+  for (const y of [-4.25, -2.5, -.75, 1, 2.75, 4.5]) {
+    const board = new THREE.Mesh(new THREE.BoxGeometry(7.45, 0.28, 1.05), wood);
+    board.position.set(0, y, 0);
+    board.castShadow = true;
+    board.receiveShadow = true;
+    compactRack.add(board);
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(7.47, 0.08, 1.08), trim);
+    lip.position.set(0, y + 0.17, 0.02);
+    compactRack.add(lip);
   }
 
   let activeProviders = providers;
@@ -287,6 +276,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let frame = 0;
   let activeTitles = titles;
   let activeLayoutKey = '';
+  let activeColumns = COLUMNS;
   let pointerTargetX = 0;
   let pointerTargetY = 0.55;
   let baseCameraDistance = 18.2;
@@ -310,23 +300,18 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     return width >= height ? 'mobile-landscape' : 'mobile-portrait';
   }
 
-  function compactLayout() { return layoutKey() !== 'desktop'; }
-
   function applyLayoutDecorations(compact) {
+    desktopShelfObjects.forEach((object) => { object.visible = !compact; });
+    compactRack.visible = compact;
     featuredPosterGroup.visible = !compact;
     standMarker.visible = !compact;
-    const scale = compact ? 0.78 : 1;
+    const scale = compact ? 0.82 : 1;
     sign.scale.set(scale, scale, scale);
   }
 
   function clearTapes() {
     for (const record of tapeRecords) {
       record.vhs.dispose();
-      if (record.titlePlate) {
-        record.titlePlate.geometry.dispose();
-        record.titlePlate.material.forEach((material) => material.dispose());
-        record.titleTexture.dispose();
-      }
       tapes.remove(record.group);
     }
     tapeRecords = [];
@@ -340,38 +325,29 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const compact = currentLayoutKey !== 'desktop';
     applyLayoutDecorations(compact);
     const landscape = currentLayoutKey === 'mobile-landscape';
-    const columns = compact ? (landscape ? 4 : 2) : COLUMNS;
-    const spacingX = compact ? (landscape ? 2.72 : 2.8) : 1.11;
-    const spacingY = compact ? 2.18 : 2.05;
+    const columns = compact ? (landscape ? 10 : 8) : COLUMNS;
+    activeColumns = columns;
+    const spacingX = compact ? (landscape ? .67 : .78) : 1.11;
+    const spacingY = compact ? 1.74 : 2.05;
     const xOrigin = compact ? -((columns - 1) * spacingX) / 2 : -5;
-    const yOrigin = compact ? (landscape ? 1.25 : 3.15) : 2.9;
+    const yOrigin = compact ? (landscape ? 2.72 : 3.45) : 2.9;
     nextTitles.slice(0, MAX_TAPES).forEach((title, index) => {
       const row = Math.floor(index / columns);
       const column = index % COLUMNS;
       const layoutColumn = index % columns;
       const group = new THREE.Group();
-      group.position.set(xOrigin + layoutColumn * spacingX, yOrigin - row * spacingY, compact ? 0.5 : 0.34);
-      group.userData.baseZ = compact ? 0.5 : 0.34;
-      group.rotation.y = compact ? (layoutColumn - (columns - 1) / 2) * -0.018 : (column - 4.5) * -0.007;
+      group.position.set(xOrigin + layoutColumn * spacingX, yOrigin - row * spacingY, compact ? 0.38 : 0.34);
+      group.userData.baseZ = compact ? 0.38 : 0.34;
+      group.rotation.y = compact ? (layoutColumn - (columns - 1) / 2) * -0.012 : (column - 4.5) * -0.007;
       group.userData.index = index;
 
-      const vhs = createVhsCase(title, compact ? { width: 0.98, height: 1.68, depth: 0.46 } : undefined);
+      const vhs = compact ? createVhsSpine(title, { width: 0.48, height: 1.42, depth: 0.52 }) : createVhsCase(title);
       const { caseMesh, front } = vhs;
       caseMesh.userData.index = index;
       front.userData.index = index;
       group.add(vhs.group);
-      let titlePlate = null;
-      let titleTexture = null;
-      if (compact) {
-        const plate = createMobileTitlePlate(title, activeTheme);
-        titlePlate = plate.mesh;
-        titleTexture = plate.texture;
-        titlePlate.position.set(1.03, 0, 0.24);
-        titlePlate.userData.index = index;
-        group.add(titlePlate);
-      }
       tapes.add(group);
-      const record = { title, group, caseMesh, front, titlePlate, titleTexture, material: vhs.material, posterUrl: vhs.posterUrl, vhs };
+      const record = { title, group, caseMesh, front, material: vhs.material, posterUrl: vhs.posterUrl, vhs };
       tapeRecords.push(record);
     });
     selected = Math.min(selected, Math.max(tapeRecords.length - 1, 0));
@@ -441,7 +417,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   function pick(event) {
     updatePointer(event);
     raycaster.setFromCamera(pointer, camera);
-    return raycaster.intersectObjects(tapeRecords.flatMap(({ caseMesh, front, titlePlate }) => [caseMesh, front, titlePlate].filter(Boolean)), false)[0] || null;
+    return raycaster.intersectObjects(tapeRecords.flatMap(({ caseMesh, front }) => [caseMesh, front]), false)[0] || null;
   }
 
   function updateCameraDistance() {
@@ -500,8 +476,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     if (!tapeRecords.length) return;
     if (event.key === 'ArrowLeft') selected = Math.max(0, selected - 1);
     else if (event.key === 'ArrowRight') selected = Math.min(tapeRecords.length - 1, selected + 1);
-    else if (event.key === 'ArrowUp') selected = Math.max(0, selected - COLUMNS);
-    else if (event.key === 'ArrowDown') selected = Math.min(tapeRecords.length - 1, selected + COLUMNS);
+    else if (event.key === 'ArrowUp') selected = Math.max(0, selected - activeColumns);
+    else if (event.key === 'ArrowDown') selected = Math.min(tapeRecords.length - 1, selected + activeColumns);
     else if (event.key === 'Enter' || event.key === ' ') {
       const record = tapeRecords[selected];
       if (record) onSelect(record.title, record.posterUrl);
@@ -515,8 +491,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     const verticalTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const fitHeight = 6.05 / verticalTangent;
-    const fitWidth = 6.45 / (verticalTangent * camera.aspect);
+    const compact = layoutKey() !== 'desktop';
+    const fitHeight = (compact ? 5.2 : 6.05) / verticalTangent;
+    const fitWidth = (compact ? 3.9 : 6.45) / (verticalTangent * camera.aspect);
     baseCameraDistance = Math.max(fitHeight, fitWidth) * 1.18;
     const nextLayoutKey = layoutKey();
     if (activeLayoutKey && nextLayoutKey !== activeLayoutKey && activeTitles.length) renderTapes(activeTitles);

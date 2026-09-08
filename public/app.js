@@ -898,7 +898,6 @@
       letterboxd.href = createLetterboxdUrl(title);
       letterboxd.setAttribute('aria-label', `Open ${title.name} on Letterboxd`);
       button.setAttribute('aria-label', `Inspect ${title.name}, ${title.year || 'year unknown'}`);
-      button.dataset.title = title.name;
       button.addEventListener('click', () => openTitleFromOrigin(title, { source: 'shelf', mode: state.mode }, true, posterTextureUrl(image.currentSrc || image.src)));
       article.dataset.titleId = title.id;
       grid.append(node);
