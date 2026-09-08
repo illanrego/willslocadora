@@ -343,6 +343,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   renderer.toneMappingExposure = 1.15;
   renderer.domElement.className = 'vhs-canvas';
   renderer.domElement.tabIndex = 0;
+  renderer.domElement.style.touchAction = 'none';
   renderer.domElement.setAttribute('aria-label', `${title.name} VHS case. Drag to rotate, double-click to flip, or press the arrow keys.`);
   container.append(renderer.domElement);
 
@@ -437,6 +438,8 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   let frame = 0;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
+  const activePointers = new Map();
+  let pinchPrevDist = 0;
 
   let detailFocus = 'whole';
   let zoom = 1;
@@ -506,6 +509,14 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   }
 
   function pointerDown(event) {
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointers.size > 1) {
+      // Pinch: stop rotating while two fingers are down.
+      if (dragging) dragging = false;
+      renderer.domElement.classList.remove('is-dragging');
+      pinchPrevDist = 0;
+      return;
+    }
     dragging = true;
     moved = 0;
     velocityY = 0;
@@ -517,22 +528,50 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   }
 
   function pointerMove(event) {
+    if (activePointers.has(event.pointerId)) activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointers.size >= 2) {
+      const [a, b] = [...activePointers.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchPrevDist > 0) adjustZoom(((dist - pinchPrevDist) / pinchPrevDist) * 0.6);
+      pinchPrevDist = dist;
+      return;
+    }
     if (!dragging) {
+      if (event.pointerType !== 'mouse') return;
       renderer.domElement.style.cursor = isClickableHit(pick(event)) ? 'pointer' : 'grab';
       return;
     }
     const dx = event.clientX - lastX;
     const dy = event.clientY - lastY;
     moved += Math.abs(dx) + Math.abs(dy);
-    velocityY = dx * 0.012;
+    velocityY = dx * (event.pointerType === 'mouse' ? 0.012 : 0.008);
     targetY += velocityY;
-    targetX = THREE.MathUtils.clamp(targetX + dy * 0.008, -0.72, 0.72);
+    targetX = THREE.MathUtils.clamp(targetX + dy * (event.pointerType === 'mouse' ? 0.008 : 0.006), -0.72, 0.72);
     lastX = event.clientX;
     lastY = event.clientY;
   }
 
   function pointerUp(event) {
-    if (!dragging) return;
+    const wasMulti = activePointers.size > 1;
+    activePointers.delete(event.pointerId);
+    pinchPrevDist = activePointers.size === 2 ? pinchPrevDist : 0;
+    if (activePointers.size > 0) {
+      // One finger down again after a pinch: keep inspecting by drag, re-based on the remaining finger.
+      if (activePointers.size === 1 && wasMulti) {
+        const [remaining] = [...activePointers.values()];
+        dragging = true;
+        moved = 0;
+        velocityY = 0;
+        lastX = remaining.x;
+        lastY = remaining.y;
+        renderer.domElement.classList.add('is-dragging');
+      }
+      return;
+    }
+    if (!dragging) {
+      renderer.domElement.classList.remove('is-dragging');
+      return;
+    }
     dragging = false;
     renderer.domElement.classList.remove('is-dragging');
     if (moved >= 8) {
@@ -542,7 +581,11 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     }
     const hit = pick(event);
     renderer.domElement.style.cursor = isClickableHit(hit) ? 'pointer' : 'grab';
-    if (!hit) return onClose();
+    if (!hit) {
+      // Mobile taps must not land an accidental close; use the × button instead.
+      if (event.pointerType === 'mouse') onClose();
+      return;
+    }
     const coordinates = actionCoordinates(hit);
     if (coordinates) {
       const { x, y } = coordinates;
@@ -552,6 +595,13 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       if (inside(ACTIONS.availability, x, y)) return onAvailability();
       if (inside(ACTIONS.watch, x, y)) return onWatch();
     }
+  }
+
+  function pointerCancel(event) {
+    activePointers.delete(event.pointerId);
+    pinchPrevDist = 0;
+    dragging = false;
+    renderer.domElement.classList.remove('is-dragging');
   }
 
   function doubleClick(event) {
@@ -583,7 +633,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   renderer.domElement.addEventListener('pointerdown', pointerDown);
   renderer.domElement.addEventListener('pointermove', pointerMove);
   renderer.domElement.addEventListener('pointerup', pointerUp);
-  renderer.domElement.addEventListener('pointercancel', pointerUp);
+  renderer.domElement.addEventListener('pointercancel', pointerCancel);
   renderer.domElement.addEventListener('dblclick', doubleClick);
   renderer.domElement.addEventListener('wheel', wheel, { passive: false });
   renderer.domElement.addEventListener('keydown', keyDown);
@@ -630,7 +680,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       renderer.domElement.removeEventListener('pointerdown', pointerDown);
       renderer.domElement.removeEventListener('pointermove', pointerMove);
       renderer.domElement.removeEventListener('pointerup', pointerUp);
-      renderer.domElement.removeEventListener('pointercancel', pointerUp);
+      renderer.domElement.removeEventListener('pointercancel', pointerCancel);
       renderer.domElement.removeEventListener('dblclick', doubleClick);
       renderer.domElement.removeEventListener('wheel', wheel);
       renderer.domElement.removeEventListener('keydown', keyDown);
