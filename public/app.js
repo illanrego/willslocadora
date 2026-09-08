@@ -233,8 +233,8 @@
   function renderAccount() {
     const { configured, signedIn, profile } = state.member;
     const accountButton = $('#account-open');
-    accountButton.setAttribute('aria-label', profile?.username ? `Minha conta · ${profile.username}` : 'Minha conta');
-    accountButton.title = profile?.username ? `Minha conta · ${profile.username}` : 'Minha conta';
+    accountButton.setAttribute('aria-label', profile?.username ? `Carteirinha · ${profile.username}` : 'Carteirinha');
+    accountButton.title = profile?.username ? `Carteirinha · ${profile.username}` : 'Carteirinha';
     $('#account-sign-in').hidden = !configured || signedIn;
     $('#account-sign-out').hidden = !signedIn;
     if (!profile) usernameEditing = signedIn;
@@ -2034,6 +2034,7 @@
     $('#immersive-go').addEventListener('click', applyImmersiveFilters);
     $('#provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#provider-checkboxes'))));
     $('#immersive-provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#immersive-provider-checkboxes'))));
+    $('#account-provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#account-provider-checkboxes'))));
     $('#ignore-store-year').addEventListener('change', (event) => setIgnoreStoreYear(event.currentTarget.checked));
     $('#immersive-ignore-store-year').addEventListener('change', (event) => {
       setIgnoreStoreYear(event.currentTarget.checked);
