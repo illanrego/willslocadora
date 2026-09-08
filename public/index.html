@@ -218,8 +218,13 @@
             <button id="balcony-zoom-in" type="button" aria-label="Zoom in">+</button>
             <button id="balcony-zoom-out" type="button" aria-label="Zoom out">−</button>
           </div>
-          <button id="balcony-panel-open" type="button" data-i18n="openCounter">Abrir controles do balcão</button>
-          <button id="balcony-return-shelf" type="button" data-i18n="returnShelf">Voltar à estante imersiva</button>
+          <button id="balcony-panel-open" type="button" aria-label="Abrir controles do Balcão">
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M3 8h18M5 8v11h14V8M8 5h8l2 3H6l2-3Zm-1 14h10"/></svg>
+            <span class="balcony-desktop-label" data-i18n="openCounter">Abrir controles do balcão</span><span class="balcony-mobile-label">Balcão</span>
+          </button>
+          <button id="balcony-return-shelf" type="button" aria-label="Voltar à estante imersiva">
+            <span class="balcony-back-icon" aria-hidden="true">‹</span><span class="balcony-desktop-label" data-i18n="returnShelf">Voltar à estante imersiva</span>
+          </button>
         </header>
         <div id="balcony-stage" class="balcony-stage"></div>
         <div class="balcony-member-actions">

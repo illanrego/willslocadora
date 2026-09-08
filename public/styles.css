@@ -47,6 +47,7 @@ button:focus-visible, input:focus-visible, .vhs-case:focus-visible { outline: 3p
 #year-go { min-height: 30px; border: 1px solid #ffe178; color: var(--black); background: var(--yellow); cursor: pointer; font-size: .72rem; font-weight: 900; text-transform: uppercase; }
 .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; padding: .5rem 1rem; }
 .mobile-menu-toggle, .mobile-action-label { display: none; }
+.balcony-mobile-label { display: none; }
 .header-actions button { min-height: 36px; padding: .4rem .7rem; border: 1px solid #59473b; background: transparent; cursor: pointer; text-transform: uppercase; letter-spacing: .08em; font-size: .68rem; }
 .header-actions .header-icon-button { display: inline-grid; width: 38px; min-width: 38px; min-height: 38px; padding: 0; place-items: center; border: 2px solid #b78636; border-radius: 3px; color: var(--cream); background: linear-gradient(#283a50, #111a29); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 3px 3px 0 rgba(0,0,0,.36); }
 .header-actions .header-icon-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: square; stroke-linejoin: miter; }
@@ -1116,6 +1117,84 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-area-inset-bottom) + 8rem)); }
   .brand-tag { font-size: .75rem; }
   .immersive-filters { max-height: 35dvh; }
+}
+
+/* Mobile 3D Balcão: a small top utility bar and a separate member dock. */
+@media (max-width: 600px) {
+  .balcony-room, .balcony-stage {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+  .balcony-hud {
+    top: max(.5rem, env(safe-area-inset-top));
+    right: max(.5rem, env(safe-area-inset-right));
+    bottom: auto;
+    left: max(.5rem, env(safe-area-inset-left));
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    gap: .35rem;
+    width: auto;
+    max-width: none;
+    padding: .35rem;
+    border: 1px solid rgba(231,216,177,.34);
+    border-radius: 12px;
+    background: rgba(8,13,23,.84);
+    box-shadow: 0 5px 20px rgba(0,0,0,.4);
+    backdrop-filter: blur(6px);
+    transform: none;
+  }
+  .balcony-hud p { display: none !important; }
+  .balcony-hud #balcony-return-shelf { grid-column: 1; grid-row: 1; min-width: 42px; padding: 0; }
+  .balcony-hud #balcony-panel-open { grid-column: 2; grid-row: 1; display: inline-flex; min-width: 0; gap: .35rem; align-items: center; justify-content: center; }
+  .balcony-hud .balcony-zoom { grid-column: 3; grid-row: 1; display: flex; gap: .25rem; }
+  .balcony-hud > button,
+  .balcony-hud .balcony-zoom button {
+    min-height: 42px;
+    border: 0 !important;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+  .balcony-hud .balcony-zoom button { min-width: 34px; width: 34px; padding: 0; font-size: 1.05rem; }
+  .balcony-hud #balcony-panel-open svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+  .balcony-back-icon { font: 400 1.8rem/1 Arial, sans-serif; }
+  .balcony-desktop-label { display: none; }
+  .balcony-mobile-label { display: inline; font-size: .62rem; }
+
+  body[data-store-mode="balcony"] .store-dock { display: none; }
+  .balcony-member-actions {
+    top: auto;
+    right: max(.55rem, env(safe-area-inset-right));
+    bottom: max(.55rem, env(safe-area-inset-bottom));
+    left: max(.55rem, env(safe-area-inset-left));
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .4rem;
+    padding: .35rem;
+    border: 1px solid rgba(231,216,177,.32);
+    border-radius: 12px;
+    background: rgba(8,13,23,.84);
+    box-shadow: 0 5px 20px rgba(0,0,0,.4);
+    backdrop-filter: blur(6px);
+    transform: none;
+  }
+  .balcony-room .balcony-member-actions button {
+    min-width: 0;
+    min-height: 48px;
+    margin: 0;
+    border: 0 !important;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+  .balcony-room .scene-inspection-controls {
+    top: max(4.25rem, calc(env(safe-area-inset-top) + 4rem));
+    right: max(.55rem, env(safe-area-inset-right));
+    left: auto;
+    padding: .3rem;
+    border: 1px solid rgba(231,216,177,.34);
+    border-radius: 999px;
+    transform: none;
+  }
+  .balcony-room .scene-inspection-controls button { min-width: 36px; min-height: 36px; border-radius: 50%; box-shadow: none; }
 }
 
 /* Mobile immersive shelf: compact edge controls and an always-visible safe-area dock. */

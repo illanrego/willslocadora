@@ -123,6 +123,15 @@ test('rental and return use separate Balcão windows', () => {
   assert.match(app, /window\.requestAnimationFrame\(openReturnWindow\)/);
 });
 
+test('mobile 3D Balcão separates its compact utility bar from member actions', () => {
+  assert.match(page, /id="balcony-panel-open"[^>]*aria-label="Abrir controles do Balcão"[\s\S]*class="balcony-mobile-label">Balcão<\/span>/);
+  assert.match(page, /id="balcony-return-shelf"[^>]*aria-label="Voltar à estante imersiva"[\s\S]*class="balcony-back-icon"[^>]*>‹<\/span>/);
+  assert.match(css, /Mobile 3D Balcão: a small top utility bar and a separate member dock/);
+  assert.match(css, /\.balcony-hud \{[\s\S]*grid-template-columns: 42px minmax\(0, 1fr\) auto;/);
+  assert.match(css, /body\[data-store-mode="balcony"\] \.store-dock \{ display: none; \}/);
+  assert.match(css, /\.balcony-member-actions \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+});
+
 test('immersive mode exposes a basket independently from the Balcony', () => {
   assert.match(page, /class="immersive-picker immersive-genre-picker"/);
   assert.match(page, /id="immersive-basket-open"[^>]*aria-controls="basket-dialog"[^>]*>\s*[\s\S]*immersive-basket-label/);
