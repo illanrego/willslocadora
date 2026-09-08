@@ -228,12 +228,13 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     compactPosts[1].position.x = postX;
   }
 
-  function fitLamps(compact) {
-    const half = compact ? compactRackWidth / 2 + 0.35 : 3.2;
-    lampFixtures.forEach((fixture, index) => { fixture.position.x = (index === 0 ? -1 : 1) * half; });
+  function fitLamps(compact, dropY = 0) {
+    const half = compact ? compactRackWidth / 2 + 0.12 : 3.2;
+    const y = 6.05 - dropY;
+    lampFixtures.forEach((fixture, index) => { fixture.position.set((index === 0 ? -1 : 1) * half, y, 0.62); });
     lamps.forEach((lamp, index) => {
       const x = (index === 0 ? -1 : 1) * half;
-      lamp.position.x = x;
+      lamp.position.set(x, y - 0.23, 0.7);
       lamp.target.position.x = x;
     });
   }
@@ -343,14 +344,16 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     featuredPosterGroup.visible = !compact;
     standMarker.visible = !compact;
     if (compact) {
-      const sw = (compactRackWidth - 0.2) / 7.9;
+      const sw = (compactRackWidth + 1.2) / 7.9;
       sign.scale.set(sw, sw, sw);
-      sign.position.y = 6.05;
+      const dropY = 1.58 * sw * 0.9;
+      sign.position.y = 6.05 - dropY;
+      fitLamps(true, dropY);
     } else {
       sign.scale.set(1, 1, 1);
       sign.position.y = 5.15;
+      fitLamps(false);
     }
-    fitLamps(compact);
   }
 
   function clearTapes() {
