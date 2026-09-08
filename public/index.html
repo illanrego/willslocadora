@@ -112,8 +112,8 @@
           <button id="immersive-zoom-in" type="button" aria-label="Zoom in">+</button>
           <button id="immersive-zoom-out" type="button" aria-label="Zoom out">−</button>
         </div>
-        <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" hidden>← Previous stand</button>
-        <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" hidden>Next stand →</button>
+        <button id="immersive-previous-stand" class="immersive-stand-button immersive-previous-stand" type="button" aria-label="Estante anterior" hidden><span aria-hidden="true">‹</span><span class="immersive-stand-label">Estante anterior</span></button>
+        <button id="immersive-next-stand" class="immersive-stand-button immersive-next-stand" type="button" aria-label="Próxima estante" hidden><span class="immersive-stand-label">Próxima estante</span><span aria-hidden="true">›</span></button>
         <div class="immersive-primary-actions" aria-label="Primary store actions">
           <button id="immersive-basket-open" class="immersive-basket-button" type="button" aria-controls="basket-dialog" aria-label="Abrir Cesta" title="Abrir Cesta">
             <svg class="basket-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M5 8h14l-1 12H6L5 8Zm3 0a4 4 0 0 1 8 0M9 12v4m6-4v4"/></svg>
@@ -149,7 +149,11 @@
             <nav class="immersive-menu-actions" aria-label="Immersive actions">
               <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="brazilStreaming">Seus streamings</span></button>
               <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false"><span aria-hidden="true">⚙</span><span data-i18n="settings">Ajustes</span></button>
-              <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Ocultar menu">Ocultar</button>
+              <button id="immersive-hud-toggle" type="button" aria-controls="immersive-hud" aria-expanded="true" aria-label="Fechar menu da estante">
+                <span class="immersive-menu-open-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="immersive-menu-label">Estante</span>
+                <span class="immersive-menu-close-icon" aria-hidden="true">×</span>
+              </button>
             </nav>
           </div>
           <p id="immersive-provider-summary" class="provider-summary"></p>

@@ -96,6 +96,18 @@ test('collapsed immersive HUD keeps its nested restore button visible', () => {
   assert.match(css, /\.immersive-hud\.is-collapsed \.immersive-hud-strip > :not\(\.immersive-menu-actions\), \.immersive-hud\.is-collapsed \.immersive-menu-actions > :not\(#immersive-hud-toggle\)/);
 });
 
+test('mobile immersive navigation uses an x close control, subtle stand arrows, and a safe-area action dock', () => {
+  assert.match(page, /id="immersive-hud-toggle"[^>]*aria-label="Fechar menu da estante"[\s\S]*class="immersive-menu-close-icon"[^>]*>×<\/span>/);
+  assert.doesNotMatch(page, /id="immersive-hud-toggle"[^>]*>Ocultar<\/button>/);
+  assert.match(page, /id="immersive-previous-stand"[^>]*aria-label="Estante anterior"[\s\S]*<span aria-hidden="true">‹<\/span>/);
+  assert.match(page, /id="immersive-next-stand"[^>]*aria-label="Próxima estante"[\s\S]*<span aria-hidden="true">›<\/span>/);
+  assert.match(app, /const mobileShelf = window\.matchMedia\('\(max-width: 600px\)'\)\.matches;/);
+  assert.match(app, /setImmersiveHudCollapsed\(mobileShelf\);/);
+  assert.match(css, /Mobile immersive shelf: compact edge controls and an always-visible safe-area dock/);
+  assert.match(css, /\.immersive-primary-actions \{[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+  assert.match(css, /\.immersive-stand-label \{ display: none; \}/);
+});
+
 test('rental and return use separate Balcão windows', () => {
   assert.match(page, /id="catalog-search-open-counter"[^>]*>Pesquisar títulos<\/button>/);
   assert.match(page, /id="returns-dialog"/);

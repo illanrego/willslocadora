@@ -49,8 +49,8 @@ test('server binds to loopback and serves health plus static app', async (t) => 
   assert.match(page, /id="immersive-settings"[^>]+hidden/);
   assert.match(page, /id="immersive-zoom-out"[^>]+aria-label="Zoom out"/);
   assert.match(page, /id="immersive-zoom-in"[^>]+aria-label="Zoom in"/);
-  assert.match(page, /id="immersive-previous-stand"[^>]+hidden[^>]*>← Previous stand/);
-  assert.match(page, /id="immersive-next-stand"[^>]+hidden[^>]*>Next stand/);
+  assert.match(page, /id="immersive-previous-stand"[^>]+aria-label="Estante anterior"[^>]+hidden[^>]*><span aria-hidden="true">‹<\/span>/);
+  assert.match(page, /id="immersive-next-stand"[^>]+aria-label="Próxima estante"[^>]+hidden/);
   assert.match(page, /id="ambience-toggle"[^>]+aria-pressed="false"[^>]*>Ambiente da loja<\/button>/);
   assert.match(page, /id="music-toggle"[^>]+aria-pressed="false"[^>]*>Música da loja<\/button>/);
   assert.match(page, /<label class="music-track-picker"[^>]*>\s*<span data-i18n="musicTape">Fita musical<\/span>\s*<select id="music-track"/);

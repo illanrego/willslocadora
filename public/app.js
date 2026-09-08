@@ -1057,8 +1057,7 @@
     const hud = $('#immersive-hud');
     hud.classList.toggle('is-collapsed', Boolean(collapsed));
     $('#immersive-hud-toggle').setAttribute('aria-expanded', String(!collapsed));
-    $('#immersive-hud-toggle').setAttribute('aria-label', collapsed ? 'Show immersive controls' : 'Hide immersive controls');
-    $('#immersive-hud-toggle').textContent = collapsed ? 'Menu da estante' : 'Ocultar';
+    $('#immersive-hud-toggle').setAttribute('aria-label', collapsed ? 'Abrir menu da estante' : 'Fechar menu da estante');
     if (collapsed) {
       setImmersiveFilters(false);
       setImmersiveSettings(false);
@@ -1144,8 +1143,9 @@
       balcony?.dispose();
       balcony = null;
       $('#balcony-stage').replaceChildren();
-      setImmersiveHudCollapsed(false);
-      setImmersiveFilters(true);
+      const mobileShelf = window.matchMedia('(max-width: 600px)').matches;
+      setImmersiveHudCollapsed(mobileShelf);
+      setImmersiveFilters(!mobileShelf);
       mountImmersive();
     }
     else if (isBalcony) {
