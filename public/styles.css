@@ -1450,7 +1450,7 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .mobile-menu-close-icon { display: none; font: 400 1.8rem/1 Arial, sans-serif; }
   .store-header.is-mobile-menu-open .mobile-menu-open-icon { display: none; }
   .store-header.is-mobile-menu-open .mobile-menu-close-icon { display: block; }
-  .header-actions, .browse-menu { display: none; }
+  .header-actions { display: none; }
   .store-header.is-mobile-menu-open .header-actions {
     grid-column: 1 / -1;
     display: grid;
@@ -1472,17 +1472,21 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     box-shadow: 0 3px 0 rgba(0,0,0,.36);
   }
   .store-header.is-mobile-menu-open .mobile-action-label { display: inline; font-size: .58rem; }
-  .store-header.is-mobile-menu-open > .browse-menu {
+  .store-header > .browse-menu {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: .55rem;
     padding: .75rem;
   }
-  .browse-menu .browse-select { grid-column: 1 / -1; }
-  .browse-menu .format-switch { grid-column: 1; }
-  .browse-menu .normal-filters-toggle { grid-column: 2; }
-  .browse-menu .year-machine { grid-column: 1 / -1; width: 100%; margin: 0; grid-template-columns: 38px minmax(0, 1fr) 38px 48px; }
+  .browse-menu .browse-select { grid-column: 1; order: 1; }
+  .browse-menu .year-machine { grid-column: 1; order: 2; width: 100%; margin: 0; grid-template-columns: 38px minmax(0, 1fr) 38px 48px; }
+  .browse-menu .normal-filters-toggle { grid-column: 1; order: 3; justify-content: space-between; width: 100%; min-height: 44px; }
+  .normal-filters-chevron { font-size: 1.15rem; transition: transform .16s ease; }
+  .normal-filters-toggle[aria-expanded="true"] .normal-filters-chevron { transform: rotate(180deg); }
+  .browse-menu .format-switch { display: none; grid-column: 1; order: 4; }
+  .store-header.is-mobile-menu-open .browse-menu .format-switch { display: grid; }
   .browse-menu .normal-provider-filters { grid-column: 1 / -1; width: 100%; }
+  .browse-menu .normal-provider-filters { order: 5; }
   .normal-provider-filters .provider-picker { grid-template-columns: 1fr; }
   .normal-provider-filters .provider-picker legend { grid-column: auto; }
   .normal-provider-filters .provider-checkboxes { padding-bottom: .4rem; }

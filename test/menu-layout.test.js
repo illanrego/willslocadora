@@ -28,15 +28,22 @@ test('watchlist and account use accessible icon buttons that remain visible on p
   assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*\.header-actions \.header-icon-button \{ display: inline-grid;/);
 });
 
-test('mobile storefront navigation collapses behind an accessible menu button without changing desktop controls', () => {
+test('mobile storefront keeps genre, year, and streaming controls outside the collapsible utility menu', () => {
   assert.match(page, /id="mobile-menu-toggle"[^>]*aria-controls="store-header"[^>]*aria-expanded="false"[^>]*aria-label="Abrir menu"/);
   assert.match(page, /class="mobile-menu-close-icon"[^>]*aria-hidden="true">×<\/span>/);
   assert.match(app, /function setMobileMenu\(open\)/);
   assert.match(app, /classList\.toggle\('is-mobile-menu-open', expanded\)/);
   assert.match(app, /expanded \? 'Fechar menu' : 'Abrir menu'/);
-  assert.match(css, /@media \(max-width: 600px\) \{[\s\S]*\.header-actions, \.browse-menu \{ display: none; \}/);
+  assert.match(page, /id="normal-filters-toggle"[\s\S]*class="normal-filters-chevron"[^>]*>⌄<\/span>/);
+  assert.match(css, /@media \(max-width: 600px\) \{[\s\S]*\.header-actions \{ display: none; \}/);
   assert.match(css, /\.store-header\.is-mobile-menu-open \.header-actions \{/);
-  assert.match(css, /\.store-header\.is-mobile-menu-open > \.browse-menu \{/);
+  assert.match(css, /\.store-header > \.browse-menu \{/);
+  assert.match(css, /\.browse-menu \.browse-select \{ grid-column: 1; order: 1; \}/);
+  assert.match(css, /\.browse-menu \.year-machine \{ grid-column: 1; order: 2;/);
+  assert.match(css, /\.browse-menu \.normal-filters-toggle \{ grid-column: 1; order: 3;/);
+  assert.match(css, /\.browse-menu \.format-switch \{ display: none;/);
+  assert.match(css, /\.store-header\.is-mobile-menu-open \.browse-menu \.format-switch \{ display: grid; \}/);
+  assert.match(app, /setNormalFilters\(state\.providers\.length === 0\);/);
 });
 
 test('dialog and member cards use the uniform raised Locadora frame instead of accent-edge stripes', () => {
