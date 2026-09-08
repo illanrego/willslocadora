@@ -326,6 +326,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let swipeLock = false;
   let dragging = false;
   let dragOffsetTarget = 0;
+  let dragOffsetTargetY = 0;
   let compactRackWidth = 3.78;
   const homeLookAt = new THREE.Vector3(0, 0.25, 0);
   const sectionFocus = new THREE.Vector3(0, 0.25, 0);
@@ -515,6 +516,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     swipeLock = false;
     dragging = true;
     dragOffsetTarget = 0;
+    dragOffsetTargetY = 0;
   }
 
   function pointerMoveGesture(event) {
@@ -526,9 +528,12 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       if (pinchPrevDist > 0) adjustZoom(((dist - pinchPrevDist) / pinchPrevDist) * 0.35);
       pinchPrevDist = dist;
       dragOffsetTarget = room.position.x; // freeze the rack while pinching
+      dragOffsetTargetY = room.position.y;
     } else if (event.pointerType !== 'mouse' && activeLayoutKey !== 'desktop' && dragging) {
       const scale = Math.max(compactRackWidth, 1) / Math.max(renderer.domElement.clientWidth, 1);
       dragOffsetTarget = THREE.MathUtils.clamp((event.clientX - dragStart.x) * scale, -3, 3);
+      const scaleY = 4.2 / Math.max(renderer.domElement.clientHeight, 1);
+      dragOffsetTargetY = THREE.MathUtils.clamp((event.clientY - dragStart.y) * scaleY, -2, 2);
     }
   }
 
@@ -538,6 +543,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     pinchPrevDist = activePointers.size === 2 ? pinchPrevDist : 0;
     dragging = false;
     dragOffsetTarget = 0;
+    dragOffsetTargetY = 0;
     if (wasMulti || activePointers.size > 0 || event.pointerType === 'mouse') return;
     const dx = event.clientX - dragStart.x;
     const dy = event.clientY - dragStart.y;
@@ -556,6 +562,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     pinchPrevDist = 0;
     dragging = false;
     dragOffsetTarget = 0;
+    dragOffsetTargetY = 0;
   }
 
   function click(event) {
@@ -651,8 +658,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     } else if (dragging) {
       // Touch browsing: the stand follows the finger; on release it springs back or pages over.
       room.position.x += (dragOffsetTarget - room.position.x) * 0.35;
-    } else if (Math.abs(room.position.x) > 0.001) {
+      room.position.y += (dragOffsetTargetY - room.position.y) * 0.35;
+    } else if (Math.abs(room.position.x) > 0.001 || Math.abs(room.position.y) > 0.001) {
       room.position.x += (0 - room.position.x) * 0.12;
+      room.position.y += (0 - room.position.y) * 0.12;
     }
     tapeRecords.forEach((record, index) => {
       const active = index === hovered || index === selected;
