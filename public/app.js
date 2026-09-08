@@ -116,7 +116,10 @@
     document.documentElement.lang = state.locale === 'pt-BR' ? 'pt-BR' : 'en';
     document.querySelectorAll('[data-i18n]').forEach((element) => { element.textContent = t(element.dataset.i18n); });
     document.querySelectorAll('[data-i18n-aria-label]').forEach((element) => { element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel)); });
-    $('#locale-select').value = state.locale;
+    const localeToggle = $('#locale-toggle');
+    const nextLocale = state.locale === 'pt-BR' ? 'en-US' : 'pt-BR';
+    localeToggle.querySelector('.language-toggle-label').textContent = nextLocale === 'pt-BR' ? 'PT' : 'EN';
+    localeToggle.setAttribute('aria-label', t(nextLocale === 'pt-BR' ? 'portuguese' : 'english'));
     $('#genre-select').value = String(state.genreIndex);
     for (const select of [$('#genre-select'), $('#immersive-genre-select')]) {
       select.querySelectorAll('option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
@@ -2010,8 +2013,8 @@
     });
     genreSelect.value = String(state.genreIndex);
     immersiveGenreSelect.value = String(state.genreIndex);
-    $('#locale-select').addEventListener('change', (event) => {
-      state.locale = normalizeLocale(event.currentTarget.value);
+    $('#locale-toggle').addEventListener('click', () => {
+      state.locale = state.locale === 'pt-BR' ? 'en-US' : 'pt-BR';
       localStorage.setItem('locadora.locale', state.locale);
       applyLocale();
       loadShelf();

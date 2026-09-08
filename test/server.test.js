@@ -40,7 +40,7 @@ test('server binds to loopback and serves health plus static app', async (t) => 
   assert.match(page, /Will's Locadora/);
   assert.match(page, /id="store-year-input"[^>]+type="number"/);
   assert.match(page, /id="year-go"[^>]+data-i18n="go"[^>]*>Ir<\/button>/);
-  assert.match(page, /id="locale-select"/);
+  assert.match(page, /id="locale-toggle"/);
   assert.match(page, /id="provider-checkboxes"/);
   assert.match(page, /<input type="checkbox" data-provider-id="netflix"/);
   assert.match(page, /id="immersive-provider-checkboxes"/);
