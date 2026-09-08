@@ -57,7 +57,7 @@ button:focus-visible, input:focus-visible, .vhs-case:focus-visible { outline: 3p
 .counter-button span { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: .4rem; background: var(--red); color: white; border-radius: 50%; }
 .mode-button {
   border-color: var(--cream) !important;
-  color: var(--ink) !important;
+  color: black !important;
   background: linear-gradient(180deg, #ffe178 0%, #f2c744 55%, #d19a1f 100%) !important;
   font-weight: 900;
   transform: perspective(240px) rotateX(-10deg) rotate(-1deg);
