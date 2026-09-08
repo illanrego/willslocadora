@@ -46,7 +46,7 @@
           <button class="is-active" data-type="movie" type="button" data-i18n="movies">Filmes</button>
           <button data-type="series" type="button" data-i18n="series">Séries</button>
         </div>
-        <button id="normal-filters-toggle" class="normal-filters-toggle" type="button" aria-controls="normal-provider-filters" aria-expanded="true"><span aria-hidden="true">⌕</span><span data-i18n="brazilStreaming">Seus streamings</span></button>
+        <button id="normal-filters-toggle" class="normal-filters-toggle" type="button" aria-controls="normal-provider-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="brazilStreaming">Seus streamings</span></button>
         <form id="year-form" class="year-machine" aria-label="Store year">
           <label class="year-label" for="store-year-input" data-i18n="storeYear">Ano da loja</label>
           <button class="year-step" id="year-back" type="button" data-i18n-aria-label="previousYear" aria-label="Ano anterior">−</button>
@@ -54,11 +54,12 @@
           <button class="year-step" id="year-forward" type="button" data-i18n-aria-label="nextYear" aria-label="Próximo ano">+</button>
           <button id="year-go" type="submit" data-i18n="go">Ir</button>
         </form>
-        <div id="normal-provider-filters" class="normal-provider-filters">
+        <div id="normal-provider-filters" class="normal-provider-filters" hidden>
           <p class="streaming-hint" data-i18n="streamingHint">Selecione os serviços que você assina ou explore tudo. Não precisa de conta para passear.</p>
           <fieldset class="provider-picker">
             <legend data-i18n="brazilStreaming">Streaming no Brasil</legend>
             <div id="provider-checkboxes" class="provider-checkboxes" aria-label="Brazil streaming availability">
+              <label class="provider-filter-none"><input type="checkbox" data-provider-none> Sem filtro</label>
               <label><input type="checkbox" data-provider-id="netflix"> Netflix</label>
               <label><input type="checkbox" data-provider-id="prime-video"> Prime Video</label>
               <label><input type="checkbox" data-provider-id="max"> Max</label>
@@ -287,6 +288,7 @@
       <h3 id="account-streamings-title">Seus streamings padrão</h3>
       <p class="panel-copy">Marque os serviços que você assina — a prateleira abre já filtrada por eles.</p>
       <div id="account-provider-checkboxes" class="provider-checkboxes" aria-label="Streamings padrão da carteirinha">
+        <label class="provider-filter-none"><input type="checkbox" data-provider-none> Sem filtro</label>
         <label><input type="checkbox" data-provider-id="netflix"> Netflix</label>
         <label><input type="checkbox" data-provider-id="prime-video"> Prime Video</label>
         <label><input type="checkbox" data-provider-id="max"> Max</label>

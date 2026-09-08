@@ -800,6 +800,7 @@
 
   function syncProviderControls() {
     document.querySelectorAll('[data-provider-id]').forEach((input) => { input.checked = state.providers.includes(input.dataset.providerId); });
+    document.querySelectorAll('[data-provider-none]').forEach((input) => { input.checked = state.providers.length === 0; });
     const enabled = state.providers.length > 0;
     state.ignoreStoreYear = enabled && state.ignoreStoreYear;
     for (const selector of ['#ignore-store-year', '#immersive-ignore-store-year']) {
@@ -2031,10 +2032,12 @@
     });
     genreSelect.addEventListener('change', (event) => selectGenre(Number(event.currentTarget.value)));
     $('#normal-filters-toggle').addEventListener('click', () => setNormalFilters($('#normal-provider-filters').hidden));
+    setNormalFilters(state.providers.length === 0);
     $('#immersive-go').addEventListener('click', applyImmersiveFilters);
     $('#provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#provider-checkboxes'))));
     $('#immersive-provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#immersive-provider-checkboxes'))));
     $('#account-provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#account-provider-checkboxes'))));
+    document.querySelectorAll('[data-provider-none]').forEach((input) => input.addEventListener('change', () => { if (input.checked) setProviders([]); }));
     $('#ignore-store-year').addEventListener('change', (event) => setIgnoreStoreYear(event.currentTarget.checked));
     $('#immersive-ignore-store-year').addEventListener('change', (event) => {
       setIgnoreStoreYear(event.currentTarget.checked);
