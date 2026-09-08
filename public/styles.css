@@ -1156,7 +1156,7 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     display: block;
     width: 132px;
     overflow: hidden;
-    transform: translate(-50%, -50%) rotate(-90deg);
+    transform: translate(-50%, -50%) rotate(90deg);
     color: var(--cream);
     font-size: .58rem;
     line-height: 1;
@@ -1172,7 +1172,7 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .tape-fallback-card { display: block; min-height: 154px; }
   .tape-fallback-card img { display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .tape-fallback-front { position: absolute; z-index: 2; inset: 10px 3px 22px; display: block; padding: 0; color: var(--cream); background: transparent; text-align: center; }
-  .tape-fallback-front strong { position: absolute; top: 50%; left: 50%; display: block; width: 132px; overflow: hidden; transform: translate(-50%, -50%) rotate(-90deg); font-size: .58rem; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+  .tape-fallback-front strong { position: absolute; top: 50%; left: 50%; display: block; width: 132px; overflow: hidden; transform: translate(-50%, -50%) rotate(90deg); font-size: .58rem; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
   .tape-fallback-front small { display: none; }
   .tape-fallback-card::before { content: ""; position: absolute; z-index: 1; inset: 0; background: rgba(8, 5, 4, .32); }
 }
