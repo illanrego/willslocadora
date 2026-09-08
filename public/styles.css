@@ -1103,9 +1103,11 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   }
   .vhs-item { min-width: 0; perspective: none; }
   .vhs-case {
+    --mobile-spine-width: 42px;
+    --mobile-spine-height: 154px;
     display: block;
     width: 100%;
-    height: 154px;
+    height: var(--mobile-spine-height);
     aspect-ratio: auto;
     border-width: 4px;
     transform: none;
@@ -1118,13 +1120,18 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     inset: 0;
     margin: auto;
     display: none;
-    max-width: 100%;
-    max-height: 100%;
+    max-width: calc(100% - 12px);
+    max-height: calc(100% - 30px);
     object-fit: contain;
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,.5));
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,.58));
   }
   .vhs-case.has-logo .case-logo { display: block; }
-  .vhs-case.has-logo .case-logo.is-landscape { transform: rotate(90deg); }
+  .vhs-case.has-logo .case-logo.is-landscape {
+    width: calc(var(--mobile-spine-height) - 30px);
+    max-width: none;
+    max-height: calc(var(--mobile-spine-width) - 12px);
+    transform: rotate(90deg);
+  }
   .vhs-case.has-logo .case-label { visibility: hidden; }
   .case-spine {
     position: absolute;
@@ -1154,25 +1161,25 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     top: 50%;
     left: 50%;
     display: block;
-    width: 132px;
+    width: calc(var(--mobile-spine-height) - 42px);
     overflow: hidden;
     transform: translate(-50%, -50%) rotate(90deg);
-    color: var(--cream);
-    font-size: .58rem;
-    line-height: 1;
+    color: #fff4d1;
+    font: 900 1.1rem/1 "Arial Narrow", Arial, sans-serif;
+    text-transform: uppercase;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-shadow: 1px 1px 0 #000;
+    text-shadow: 2px 2px 0 #000;
   }
   .case-label small, .letterboxd-sticker { display: none; }
 
   .tape-fallback { padding: 6rem .7rem 2rem; text-align: left; }
   .tape-fallback-heading { text-align: center; }
   .tape-fallback-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(42px, 1fr)); gap: .55rem .4rem; padding: .4rem .15rem 1rem; }
-  .tape-fallback-card { display: block; min-height: 154px; }
+  .tape-fallback-card { --mobile-spine-height: 154px; display: block; min-height: var(--mobile-spine-height); }
   .tape-fallback-card img { display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .tape-fallback-front { position: absolute; z-index: 2; inset: 10px 3px 22px; display: block; padding: 0; color: var(--cream); background: transparent; text-align: center; }
-  .tape-fallback-front strong { position: absolute; top: 50%; left: 50%; display: block; width: 132px; overflow: hidden; transform: translate(-50%, -50%) rotate(90deg); font-size: .58rem; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+  .tape-fallback-front strong { position: absolute; top: 50%; left: 50%; display: block; width: calc(var(--mobile-spine-height) - 42px); overflow: hidden; transform: translate(-50%, -50%) rotate(90deg); font: 900 1.1rem/1 "Arial Narrow", Arial, sans-serif; text-transform: uppercase; text-overflow: ellipsis; white-space: nowrap; }
   .tape-fallback-front small { display: none; }
   .tape-fallback-card::before { content: ""; position: absolute; z-index: 1; inset: 0; background: rgba(8, 5, 4, .32); }
 }
@@ -1180,5 +1187,5 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
 @media (min-width: 761px) and (max-width: 900px) and (orientation: landscape) and (pointer: coarse) {
   .shelf-room { padding-inline: 1rem; }
   .shelf { grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); }
-  .vhs-case, .tape-fallback-card { height: 166px; min-height: 166px; }
+  .vhs-case, .tape-fallback-card { --mobile-spine-width: 48px; --mobile-spine-height: 166px; height: var(--mobile-spine-height); min-height: var(--mobile-spine-height); }
 }
