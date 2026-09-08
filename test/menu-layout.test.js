@@ -7,13 +7,13 @@ const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
 const css = readFileSync(require.resolve('../public/styles.css'), 'utf8');
 const balcony = readFileSync(require.resolve('../public/balcony.mjs'), 'utf8');
 
-test('normal browsing exposes subscription choices alongside the compact browse controls', () => {
+test('normal browsing exposes subscription choices from the compact browse controls', () => {
   const header = page.match(/<header id="store-header"[\s\S]*?<\/header>/)?.[0] || '';
   assert.match(header, /id="year-form"/);
   assert.match(header, /id="year-go"/);
   assert.match(header, /id="genre-select"/);
   assert.match(header, /id="normal-filters-toggle"[^>]*aria-controls="normal-provider-filters"/);
-  assert.doesNotMatch(header, /id="normal-provider-filters"[^>]*hidden/);
+  assert.match(header, /id="normal-provider-filters"[^>]*hidden/);
   assert.match(header, /data-i18n="streamingHint"/);
   assert.match(header, /class="format-switch"/);
   assert.match(header, /id="provider-checkboxes"/);
@@ -26,6 +26,17 @@ test('watchlist and account use accessible icon buttons that remain visible on p
   assert.match(page, /id="account-open"[^>]*class="utility-button header-icon-button"[^>]*aria-label="Minha conta"[\s\S]*?<svg aria-hidden="true"/);
   assert.match(css, /\.header-actions \.header-icon-button \{ display: inline-grid;/);
   assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*\.header-actions \.header-icon-button \{ display: inline-grid;/);
+});
+
+test('mobile storefront navigation collapses behind an accessible menu button without changing desktop controls', () => {
+  assert.match(page, /id="mobile-menu-toggle"[^>]*aria-controls="store-header"[^>]*aria-expanded="false"[^>]*aria-label="Abrir menu"/);
+  assert.match(page, /class="mobile-menu-close-icon"[^>]*aria-hidden="true">×<\/span>/);
+  assert.match(app, /function setMobileMenu\(open\)/);
+  assert.match(app, /classList\.toggle\('is-mobile-menu-open', expanded\)/);
+  assert.match(app, /expanded \? 'Fechar menu' : 'Abrir menu'/);
+  assert.match(css, /@media \(max-width: 600px\) \{[\s\S]*\.header-actions, \.browse-menu \{ display: none; \}/);
+  assert.match(css, /\.store-header\.is-mobile-menu-open \.header-actions \{/);
+  assert.match(css, /\.store-header\.is-mobile-menu-open > \.browse-menu \{/);
 });
 
 test('dialog and member cards use the uniform raised Locadora frame instead of accent-edge stripes', () => {
@@ -210,7 +221,7 @@ test('rental and return windows open the shared optional support panel', () => {
 });
 
 test('the member destination is a detailed Member Section rather than a generic account panel', () => {
-  assert.match(page, /<h2>Seção do membro<\/h2>/);
+  assert.match(page, /<h2>Carteirinha<\/h2>/);
   assert.match(page, /id="account-member-since"/);
   assert.match(page, /id="account-active-count"/);
   assert.match(page, /id="account-history-count"/);

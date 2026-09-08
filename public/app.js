@@ -1088,6 +1088,13 @@
     $('#normal-filters-toggle').setAttribute('aria-expanded', String(expanded));
   }
 
+  function setMobileMenu(open) {
+    const expanded = Boolean(open);
+    $('#store-header').classList.toggle('is-mobile-menu-open', expanded);
+    $('#mobile-menu-toggle').setAttribute('aria-expanded', String(expanded));
+    $('#mobile-menu-toggle').setAttribute('aria-label', expanded ? 'Fechar menu' : 'Abrir menu');
+  }
+
   async function toggleStoreAudio(channel, buttonId, enabledLabel, disabledLabel) {
     const button = $(buttonId);
     try {
@@ -2022,6 +2029,9 @@
       loadShelf();
     });
     applyLocale(false);
+    $('#mobile-menu-toggle').addEventListener('click', () => {
+      setMobileMenu(!$('#store-header').classList.contains('is-mobile-menu-open'));
+    });
     $('#immersive-year-input').value = state.year;
     syncProviderControls();
     syncLightingControls();
