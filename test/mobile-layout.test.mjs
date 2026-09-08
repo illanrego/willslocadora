@@ -4,12 +4,13 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('mobile 2D shelves use a bounded grid of title-bearing tape spines', () => {
+test('mobile 2D shelves show poster-backed tape spines with a vertical title', () => {
   const styles = read('public/styles.css');
   assert.match(styles, /@media \(max-width: 760px\), \(max-width: 900px\) and \(pointer: coarse\)/);
   assert.match(styles, /\.shelf \{\s*display: grid;\s*grid-template-columns: repeat\(auto-fit, minmax\(42px, 1fr\)\);/);
-  assert.match(styles, /\.case-label strong \{[\s\S]*rotate\(-90deg\)/);
-  assert.match(styles, /\.vhs-case img \{ display: none; \}/);
+  assert.match(styles, /\.case-label strong \{[^}]*rotate\(-90deg\)/);
+  assert.match(styles, /\.vhs-case img \{ position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; \}/);
+  assert.match(styles, /\.case-spine \{[^}]*background: rgba\(8, 5, 4, \.32\);/);
 });
 
 test('mobile immersive shelves rebuild a narrow spine-facing rack for portrait and landscape', () => {

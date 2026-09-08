@@ -191,21 +191,39 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   compactBacking.position.z = -0.45;
   compactBacking.receiveShadow = true;
   compactRack.add(compactBacking);
-  for (const x of [-3.55, 3.55]) {
+  const compactPost = (x) => {
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.32, 9.85, 0.72), wood);
     post.position.set(x, -0.12, -0.02);
     post.castShadow = true;
     compactRack.add(post);
-  }
+    return post;
+  };
+  const compactPosts = [compactPost(-3.55), compactPost(3.55)];
+  const compactBoards = [];
+  const compactLips = [];
   for (const y of [-4.25, -2.5, -.75, 1, 2.75, 4.5]) {
     const board = new THREE.Mesh(new THREE.BoxGeometry(7.45, 0.28, 1.05), wood);
     board.position.set(0, y, 0);
     board.castShadow = true;
     board.receiveShadow = true;
     compactRack.add(board);
+    compactBoards.push(board);
     const lip = new THREE.Mesh(new THREE.BoxGeometry(7.47, 0.08, 1.08), trim);
     lip.position.set(0, y + 0.17, 0.02);
     compactRack.add(lip);
+    compactLips.push(lip);
+  }
+  // Size the phone rack to sit just outside the spine cluster so the stand hugs the tapes.
+  function fitCompactRack(columns, spacingX, spineWidth) {
+    const halfSpan = ((columns - 1) * spacingX) / 2 + spineWidth / 2;
+    const rackHalf = halfSpan + 0.22;
+    const boardWidth = rackHalf * 2;
+    const postX = boardWidth / 2 - 0.18;
+    compactBacking.scale.x = boardWidth / 7.1;
+    compactBoards.forEach((board) => { board.scale.x = boardWidth / 7.45; });
+    compactLips.forEach((lip) => { lip.scale.x = boardWidth / 7.47; });
+    compactPosts[0].position.x = -postX;
+    compactPosts[1].position.x = postX;
   }
 
   let activeProviders = providers;
@@ -331,6 +349,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const spacingY = compact ? 1.74 : 2.05;
     const xOrigin = compact ? -((columns - 1) * spacingX) / 2 : -5;
     const yOrigin = compact ? (landscape ? 2.72 : 3.45) : 2.9;
+    if (compact) fitCompactRack(columns, spacingX, 0.4);
     nextTitles.slice(0, MAX_TAPES).forEach((title, index) => {
       const row = Math.floor(index / columns);
       const column = index % COLUMNS;
