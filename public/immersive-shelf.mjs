@@ -79,7 +79,7 @@ function featuredMovies(titles) {
   return titles.filter((title) => title.type === 'movie').slice(0, 3);
 }
 
-export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect }) {
+export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect, onSwipe }) {
   let activeTheme = theme || { backing: '#2f526b', trim: '#527f9e', sign: '#101827', lamp: '#c99a2e' };
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -89,6 +89,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   renderer.domElement.className = 'immersive-canvas';
   renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute('aria-label', `${genre} rental shelf. Use arrow keys to choose a tape and Enter to inspect it.`);
+  renderer.domElement.style.touchAction = 'none';
   container.append(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -218,12 +219,23 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const halfSpan = ((columns - 1) * spacingX) / 2 + spineWidth / 2;
     const rackHalf = halfSpan + 0.22;
     const boardWidth = rackHalf * 2;
+    compactRackWidth = boardWidth;
     const postX = boardWidth / 2 - 0.18;
     compactBacking.scale.x = boardWidth / 7.1;
     compactBoards.forEach((board) => { board.scale.x = boardWidth / 7.45; });
     compactLips.forEach((lip) => { lip.scale.x = boardWidth / 7.47; });
     compactPosts[0].position.x = -postX;
     compactPosts[1].position.x = postX;
+  }
+
+  function fitLamps(compact) {
+    const half = compact ? compactRackWidth / 2 + 0.35 : 3.2;
+    lampFixtures.forEach((fixture, index) => { fixture.position.x = (index === 0 ? -1 : 1) * half; });
+    lamps.forEach((lamp, index) => {
+      const x = (index === 0 ? -1 : 1) * half;
+      lamp.position.x = x;
+      lamp.target.position.x = x;
+    });
   }
 
   let activeProviders = providers;
@@ -247,6 +259,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   room.add(standMarker);
 
   const lampPositions = [-3.2, 3.2];
+  const lampFixtures = [];
   const lampBulbs = [];
   const lamps = [];
   const lampShade = new THREE.MeshStandardMaterial({ color: 0x6b321d, metalness: 0.65, roughness: 0.32, side: THREE.DoubleSide });
@@ -266,6 +279,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     fixture.add(bulb);
     lampBulbs.push(bulb);
     room.add(fixture);
+    lampFixtures.push(fixture);
 
     const lamp = new THREE.SpotLight(lighting?.color || activeTheme.lamp, 32 * ((lighting?.brightness || 100) / 100), 13, 0.58, 0.6, 1.5);
     lamp.position.set(x, 5.82, 0.7);
@@ -305,6 +319,11 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let standTransition = null;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
+  const activePointers = new Map();
+  let pinchPrevDist = 0;
+  let dragStart = { x: 0, y: 0, t: 0 };
+  let swipeLock = false;
+  let compactRackWidth = 3.78;
   const homeLookAt = new THREE.Vector3(0, 0.25, 0);
   const sectionFocus = new THREE.Vector3(0, 0.25, 0);
   const cameraLookAt = homeLookAt.clone();
@@ -323,8 +342,15 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     compactRack.visible = compact;
     featuredPosterGroup.visible = !compact;
     standMarker.visible = !compact;
-    const scale = compact ? 0.82 : 1;
-    sign.scale.set(scale, scale, scale);
+    if (compact) {
+      const sw = (compactRackWidth - 0.2) / 7.9;
+      sign.scale.set(sw, sw, sw);
+      sign.position.y = 6.05;
+    } else {
+      sign.scale.set(1, 1, 1);
+      sign.position.y = 5.15;
+    }
+    fitLamps(compact);
   }
 
   function clearTapes() {
@@ -341,15 +367,15 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const currentLayoutKey = layoutKey();
     activeLayoutKey = currentLayoutKey;
     const compact = currentLayoutKey !== 'desktop';
-    applyLayoutDecorations(compact);
     const landscape = currentLayoutKey === 'mobile-landscape';
     const columns = compact ? (landscape ? 10 : 8) : COLUMNS;
     activeColumns = columns;
     const spacingX = compact ? (landscape ? .4 : .42) : 1.11;
     const spacingY = compact ? 1.74 : 2.05;
+    if (compact) fitCompactRack(columns, spacingX, 0.4);
+    applyLayoutDecorations(compact);
     const xOrigin = compact ? -((columns - 1) * spacingX) / 2 : -5;
     const yOrigin = compact ? (landscape ? 2.72 : 3.45) : 2.9;
-    if (compact) fitCompactRack(columns, spacingX, 0.4);
     nextTitles.slice(0, MAX_TAPES).forEach((title, index) => {
       const row = Math.floor(index / columns);
       const column = index % COLUMNS;
@@ -473,7 +499,41 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     renderer.domElement.style.cursor = hovered >= 0 ? 'pointer' : 'default';
   }
 
+  function pointerDown(event) {
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointers.size === 1) dragStart = { x: event.clientX, y: event.clientY, t: performance.now() };
+    pinchPrevDist = 0;
+    swipeLock = false;
+  }
+
+  function pointerMoveGesture(event) {
+    if (!activePointers.has(event.pointerId)) return;
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointers.size === 2) {
+      const [a, b] = [...activePointers.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchPrevDist > 0) adjustZoom(((dist - pinchPrevDist) / pinchPrevDist) * 0.35);
+      pinchPrevDist = dist;
+    }
+  }
+
+  function pointerUp(event) {
+    const wasMulti = activePointers.size > 1;
+    activePointers.delete(event.pointerId);
+    pinchPrevDist = activePointers.size === 2 ? pinchPrevDist : 0;
+    if (wasMulti || activePointers.size > 0) return;
+    const dx = event.clientX - dragStart.x;
+    const dy = event.clientY - dragStart.y;
+    const dt = performance.now() - dragStart.t;
+    if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2 && dt < 700) {
+      swipeLock = true;
+      onSwipe?.(dx < 0 ? 1 : -1);
+      setTimeout(() => { swipeLock = false; }, 250);
+    }
+  }
+
   function click(event) {
+    if (swipeLock) return;
     const hit = pick(event);
     if (!hit) return;
     selected = hit.object.userData.index;
@@ -530,6 +590,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   renderer.domElement.addEventListener('click', click);
   renderer.domElement.addEventListener('keydown', keyDown);
   renderer.domElement.addEventListener('wheel', wheel, { passive: false });
+  renderer.domElement.addEventListener('pointerdown', pointerDown);
+  renderer.domElement.addEventListener('pointermove', pointerMoveGesture);
+  renderer.domElement.addEventListener('pointerup', pointerUp);
+  renderer.domElement.addEventListener('pointercancel', pointerUp);
   resize();
   renderTapes(titles);
   loadFeaturedPosters(year);
@@ -624,6 +688,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       renderer.domElement.removeEventListener('click', click);
       renderer.domElement.removeEventListener('keydown', keyDown);
       renderer.domElement.removeEventListener('wheel', wheel);
+      renderer.domElement.removeEventListener('pointerdown', pointerDown);
+      renderer.domElement.removeEventListener('pointermove', pointerMoveGesture);
+      renderer.domElement.removeEventListener('pointerup', pointerUp);
+      renderer.domElement.removeEventListener('pointercancel', pointerUp);
       clearTapes();
       clearFeaturedPosters();
       signCanvas.texture.dispose();

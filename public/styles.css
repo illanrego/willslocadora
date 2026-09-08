@@ -377,6 +377,19 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
   .immersive-browse-controls { grid-column: 1 / -1; }
   .immersive-destination { grid-column: 1; }
   .immersive-settings { grid-template-columns: 1fr; }
+  /* Touch: pinch/drag replace the fat controls; stand buttons fade into the edges. */
+  .immersive-zoom { display: none; }
+  .immersive-stand-button {
+    min-height: 40px;
+    padding: .4rem .55rem;
+    font-size: .58rem;
+    opacity: .45;
+    border-color: rgba(246,235,204,.26);
+    box-shadow: 0 3px 10px rgba(0,0,0,.3);
+  }
+  .immersive-stand-button:hover, .immersive-stand-button:focus-visible { opacity: 1; }
+  .immersive-previous-stand { left: .8rem; }
+  .immersive-next-stand { right: .8rem; }
 }
 
 @media (max-width: 560px) {

@@ -1041,6 +1041,7 @@
         stand: state.stand,
         ...immersiveVisuals(),
         onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'shelf', mode: 'immersive' }, true, posterUrl),
+        onSwipe: (direction) => { if (direction < 0) goToPreviousStand(); else goToNextStand(); },
       });
       stage.querySelector('.immersive-canvas')?.focus();
       $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
