@@ -17,6 +17,6 @@ test('mobile immersive shelves rebuild a narrow spine-facing rack for portrait a
   assert.match(immersive, /function layoutKey\(\)/);
   assert.match(immersive, /mobile-landscape/);
   assert.match(immersive, /const compactRack = new THREE\.Group\(\)/);
-  assert.match(immersive, /createVhsSpine\(title, \{ width: 0\.48, height: 1\.42, depth: 0\.52 \}\)/);
+  assert.match(immersive, /createVhsSpine\(title, \{ width: 0\.4, height: 1\.42, depth: 0\.3 \}\)/);
   assert.match(immersive, /const columns = compact \? \(landscape \? 10 : 8\) : COLUMNS/);
 });

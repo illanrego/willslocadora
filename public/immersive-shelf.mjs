@@ -327,7 +327,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const landscape = currentLayoutKey === 'mobile-landscape';
     const columns = compact ? (landscape ? 10 : 8) : COLUMNS;
     activeColumns = columns;
-    const spacingX = compact ? (landscape ? .67 : .78) : 1.11;
+    const spacingX = compact ? (landscape ? .4 : .42) : 1.11;
     const spacingY = compact ? 1.74 : 2.05;
     const xOrigin = compact ? -((columns - 1) * spacingX) / 2 : -5;
     const yOrigin = compact ? (landscape ? 2.72 : 3.45) : 2.9;
@@ -341,7 +341,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       group.rotation.y = compact ? (layoutColumn - (columns - 1) / 2) * -0.012 : (column - 4.5) * -0.007;
       group.userData.index = index;
 
-      const vhs = compact ? createVhsSpine(title, { width: 0.48, height: 1.42, depth: 0.52 }) : createVhsCase(title);
+      const vhs = compact ? createVhsSpine(title, { width: 0.4, height: 1.42, depth: 0.3 }) : createVhsCase(title);
       const { caseMesh, front } = vhs;
       caseMesh.userData.index = index;
       front.userData.index = index;
