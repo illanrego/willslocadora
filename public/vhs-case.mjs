@@ -45,10 +45,10 @@ function drawSpineLogo(context, title, logoImage) {
   const ih = logoImage.naturalHeight || logoImage.height;
   if (!iw || !ih) return;
   const portrait = ih >= iw;
-  const maxW = width - 26;
-  const maxH = height - 90;
+  const maxW = width - 12;
+  const maxH = height - 30;
   context.save();
-  context.translate(width / 2, height / 2 - 8);
+  context.translate(width / 2, height / 2);
   if (!portrait) context.rotate(-Math.PI / 2);
   const scale = portrait
     ? Math.min(maxW / iw, maxH / ih)

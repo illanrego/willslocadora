@@ -1118,8 +1118,8 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     inset: 0;
     margin: auto;
     display: none;
-    max-width: 62%;
-    max-height: 78%;
+    max-width: 86%;
+    max-height: 92%;
     object-fit: contain;
     filter: drop-shadow(0 1px 1px rgba(0,0,0,.5));
   }
