@@ -327,6 +327,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let dragging = false;
   let dragOffsetTarget = 0;
   let dragOffsetTargetY = 0;
+  let dragBaseX = 0;
+  let dragBaseY = 0;
+  let ySpringBack = false;
   let compactRackWidth = 3.78;
   const homeLookAt = new THREE.Vector3(0, 0.25, 0);
   const sectionFocus = new THREE.Vector3(0, 0.25, 0);
@@ -517,6 +520,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     dragging = true;
     dragOffsetTarget = 0;
     dragOffsetTargetY = 0;
+    dragBaseX = room.position.x;
+    dragBaseY = room.position.y;
+    ySpringBack = false;
   }
 
   function pointerMoveGesture(event) {
@@ -531,9 +537,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       dragOffsetTargetY = room.position.y;
     } else if (event.pointerType !== 'mouse' && activeLayoutKey !== 'desktop' && dragging) {
       const scale = Math.max(compactRackWidth, 1) / Math.max(renderer.domElement.clientWidth, 1);
-      dragOffsetTarget = THREE.MathUtils.clamp((event.clientX - dragStart.x) * scale, -3, 3);
+      dragOffsetTarget = THREE.MathUtils.clamp(dragBaseX + (event.clientX - dragStart.x) * scale, -3, 3);
       const scaleY = 4.2 / Math.max(renderer.domElement.clientHeight, 1);
-      dragOffsetTargetY = THREE.MathUtils.clamp((event.clientY - dragStart.y) * scaleY, -2, 2);
+      dragOffsetTargetY = THREE.MathUtils.clamp(dragBaseY + (dragStart.y - event.clientY) * scaleY, -3.5, 3.5);
     }
   }
 
@@ -553,6 +559,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     setTimeout(() => { swipeLock = false; }, 300);
     const width = Math.max(renderer.domElement.clientWidth, 1);
     if (Math.abs(dx) > width * 0.22 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 900) {
+      ySpringBack = true; // paging to a new stand recenters the vertical view
       onSwipe?.(dx < 0 ? 1 : -1);
     }
   }
@@ -563,6 +570,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     dragging = false;
     dragOffsetTarget = 0;
     dragOffsetTargetY = 0;
+    ySpringBack = false;
   }
 
   function click(event) {
@@ -656,12 +664,12 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
         standTransition = null;
       }
     } else if (dragging) {
-      // Touch browsing: the stand follows the finger; on release it springs back or pages over.
+      // Touch browsing: the stand follows the finger; x springs/pages on release, y stays put.
       room.position.x += (dragOffsetTarget - room.position.x) * 0.35;
       room.position.y += (dragOffsetTargetY - room.position.y) * 0.35;
-    } else if (Math.abs(room.position.x) > 0.001 || Math.abs(room.position.y) > 0.001) {
+    } else if (Math.abs(room.position.x) > 0.001 || (ySpringBack && Math.abs(room.position.y) > 0.001)) {
       room.position.x += (0 - room.position.x) * 0.12;
-      room.position.y += (0 - room.position.y) * 0.12;
+      if (ySpringBack) room.position.y += (0 - room.position.y) * 0.12;
     }
     tapeRecords.forEach((record, index) => {
       const active = index === hovered || index === selected;
