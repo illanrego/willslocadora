@@ -54,6 +54,7 @@
     genreIndex: Number(localStorage.getItem('locadora.genre')) || 0,
     type: localStorage.getItem('locadora.type') === 'series' ? 'series' : 'movie',
     providers: (() => { try { const saved = JSON.parse(localStorage.getItem('locadora.providers') || '[]'); return Array.isArray(saved) ? saved.filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort() : []; } catch { const legacy = localStorage.getItem('locadora.provider'); return ['netflix', 'prime-video'].includes(legacy) ? [legacy] : []; } })(),
+    providerPreferenceSet: localStorage.getItem('locadora.providers') !== null || localStorage.getItem('locadora.provider') !== null,
     ignoreStoreYear: window.LocadoraSessionSupport.allYearsPreference(localStorage.getItem('locadora.ignoreStoreYear')),
     lighting: loadLighting(),
     providerRegistry: [],
@@ -801,7 +802,7 @@
 
   function syncProviderControls() {
     document.querySelectorAll('[data-provider-id]').forEach((input) => { input.checked = state.providers.includes(input.dataset.providerId); });
-    document.querySelectorAll('[data-provider-none]').forEach((input) => { input.checked = state.providers.length === 0; });
+    document.querySelectorAll('[data-provider-none]').forEach((input) => { input.checked = state.providerPreferenceSet && state.providers.length === 0; });
     const enabled = state.providers.length > 0;
     state.ignoreStoreYear = enabled && state.ignoreStoreYear;
     for (const selector of ['#ignore-store-year', '#immersive-ignore-store-year']) {
@@ -812,10 +813,20 @@
 
   function setProviders(values, reload = true) {
     state.providers = [...new Set(values)].filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort();
+    state.providerPreferenceSet = true;
     localStorage.setItem('locadora.providers', JSON.stringify(state.providers));
     state.ignoreStoreYear = window.LocadoraSessionSupport.allYearsPreference(localStorage.getItem('locadora.ignoreStoreYear'));
     syncProviderControls();
     if (reload) loadShelf();
+  }
+
+  function handleProviderChange(event) {
+    if (event.target.matches('[data-provider-none]')) {
+      if (event.target.checked) setProviders([]);
+      else syncProviderControls();
+      return;
+    }
+    setProviders(selectedProviderIds(event.currentTarget));
   }
 
   function setIgnoreStoreYear(value, reload = true) {
@@ -2059,12 +2070,11 @@
     });
     genreSelect.addEventListener('change', (event) => selectGenre(Number(event.currentTarget.value)));
     $('#normal-filters-toggle').addEventListener('click', () => setNormalFilters($('#normal-provider-filters').hidden));
-    setNormalFilters(state.providers.length === 0);
+    setNormalFilters(!state.providerPreferenceSet);
     $('#immersive-go').addEventListener('click', applyImmersiveFilters);
-    $('#provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#provider-checkboxes'))));
-    $('#immersive-provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#immersive-provider-checkboxes'))));
-    $('#account-provider-checkboxes').addEventListener('change', () => setProviders(selectedProviderIds($('#account-provider-checkboxes'))));
-    document.querySelectorAll('[data-provider-none]').forEach((input) => input.addEventListener('change', () => { if (input.checked) setProviders([]); }));
+    $('#provider-checkboxes').addEventListener('change', handleProviderChange);
+    $('#immersive-provider-checkboxes').addEventListener('change', handleProviderChange);
+    $('#account-provider-checkboxes').addEventListener('change', handleProviderChange);
     $('#ignore-store-year').addEventListener('change', (event) => setIgnoreStoreYear(event.currentTarget.checked));
     $('#immersive-ignore-store-year').addEventListener('change', (event) => {
       setIgnoreStoreYear(event.currentTarget.checked);

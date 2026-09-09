@@ -18,6 +18,7 @@ test('normal browsing exposes subscription choices from the compact browse contr
   assert.match(header, /data-i18n="streamingHint"/);
   assert.match(header, /class="format-switch"/);
   assert.match(header, /id="provider-checkboxes"/);
+  assert.match(header, /data-provider-none>[\s\S]*data-i18n="stremioAll">Stremio \(todos\)<\/span>/);
   assert.doesNotMatch(page, /<aside class="aisle-directory"/);
 });
 
@@ -44,7 +45,13 @@ test('mobile storefront keeps genre, year, and streaming controls outside the co
   assert.match(css, /\.browse-menu \.normal-filters-toggle \{ grid-column: 1; order: 3;/);
   assert.match(css, /\.browse-menu \.format-switch \{ display: none;/);
   assert.match(css, /\.store-header\.is-mobile-menu-open \.browse-menu \.format-switch \{ display: grid; \}/);
-  assert.match(app, /setNormalFilters\(state\.providers\.length === 0\);/);
+  assert.match(app, /providerPreferenceSet: localStorage\.getItem\('locadora\.providers'\) !== null \|\| localStorage\.getItem\('locadora\.provider'\) !== null/);
+  assert.match(app, /state\.providerPreferenceSet = true;[\s\S]*localStorage\.setItem\('locadora\.providers', JSON\.stringify\(state\.providers\)\)/);
+  assert.match(app, /input\.checked = state\.providerPreferenceSet && state\.providers\.length === 0/);
+  assert.match(app, /setNormalFilters\(!state\.providerPreferenceSet\);/);
+  assert.match(page, /id="immersive-provider-checkboxes"[\s\S]*data-provider-none>[\s\S]*data-i18n="stremioAll"/);
+  assert.match(page, /id="account-provider-checkboxes"[\s\S]*data-provider-none>[\s\S]*data-i18n="stremioAll"/);
+  assert.match(app, /function handleProviderChange\(event\)/);
 });
 
 test('dialog and member cards use the uniform raised Locadora frame instead of accent-edge stripes', () => {
