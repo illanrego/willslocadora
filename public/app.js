@@ -986,31 +986,43 @@
 
   // Lazy background logo enrichment: fetch metadata for each shelf title so its logo
   // (styled wordmark) can replace the plain spine/tile label. Cached per session.
+  const LOGO_METADATA_ATTEMPTS = 4;
+  const LOGO_METADATA_RETRY_DELAYS = [1500, 5000, 15000];
   let logoHydrationToken = 0;
-  function hydrateTapeLogos() {
+  async function hydrateTapeLogos() {
     const titles = (state.titles || []).slice(0, 40);
     if (!titles.length) return;
     const token = ++logoHydrationToken;
-    let cursor = 0;
     const CONCURRENCY = 4;
-    const worker = async () => {
-      while (cursor < titles.length && token === logoHydrationToken) {
-        const title = titles[cursor++];
-        try {
-          await loadTitleMetadata(title);
-          if (!title.logo) continue;
-          const logoUrl = posterTextureUrl(title.logo);
-          immersiveShelf?.setLogo?.(title.id, logoUrl, title.logo);
-          const tile = shelf?.querySelector(`.vhs-item[data-title-id="${CSS.escape(title.id)}"]`);
-          const vhs = tile?.querySelector('.vhs-case');
-          const logoImg = tile?.querySelector('.case-logo');
-          if (vhs && logoImg) {
-            loadTapeLogo(logoImg, vhs, [logoUrl, title.logo]);
-          }
-        } catch { /* logo stays optional; tile keeps its text label */ }
+    let pending = titles;
+    for (let attempt = 0; attempt < LOGO_METADATA_ATTEMPTS && pending.length && token === logoHydrationToken; attempt += 1) {
+      if (attempt) {
+        await new Promise((resolve) => window.setTimeout(resolve, LOGO_METADATA_RETRY_DELAYS[attempt - 1]));
+        if (token !== logoHydrationToken) return;
       }
-    };
-    for (let i = 0; i < CONCURRENCY; i++) worker();
+      let cursor = 0;
+      const retry = [];
+      const worker = async () => {
+        while (cursor < pending.length && token === logoHydrationToken) {
+          const title = pending[cursor++];
+          try {
+            if (!title.logo) await loadTitleMetadata(title);
+            if (token !== logoHydrationToken) return;
+            if (!title.logo) continue;
+            const logoUrl = posterTextureUrl(title.logo);
+            immersiveShelf?.setLogo?.(title.id, logoUrl, title.logo);
+            const tile = shelf?.querySelector(`.vhs-item[data-title-id="${CSS.escape(title.id)}"]`);
+            const vhs = tile?.querySelector('.vhs-case');
+            const logoImg = tile?.querySelector('.case-logo');
+            if (vhs && logoImg) loadTapeLogo(logoImg, vhs, [logoUrl, title.logo]);
+          } catch {
+            if (token === logoHydrationToken) retry.push(title);
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker));
+      pending = retry;
+    }
   }
 
   function vhsAssets(title, posterUrl = posterTextureUrl(title.poster || posterFallback(title))) {
@@ -1101,6 +1113,7 @@
       stage.querySelector('.immersive-canvas')?.focus();
       $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
       syncImmersiveStandControls();
+      hydrateTapeLogos();
     } catch (error) {
       if (token !== immersiveToken) return;
       try { await mountImmersiveFallback(stage); }
@@ -1242,6 +1255,7 @@
       balcony = null;
       $('#balcony-stage').replaceChildren();
       $('#immersive-toggle').focus();
+      hydrateTapeLogos();
     }
   }
 

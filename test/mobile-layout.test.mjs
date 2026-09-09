@@ -63,6 +63,10 @@ test('3D tape artwork queues, retries, and cancels slow cover loads', () => {
 
 test('2D shelf logos retry without hiding the title fallback', () => {
   const app = read('public/app.js');
+  assert.match(app, /const LOGO_METADATA_ATTEMPTS = 4/);
+  assert.match(app, /const LOGO_METADATA_RETRY_DELAYS = \[1500, 5000, 15000\]/);
+  assert.match(app, /await Promise\.all\(Array\.from\(\{ length: Math\.min\(CONCURRENCY, pending\.length\) \}, worker\)\)/);
+  assert.match(app, /if \(token === logoHydrationToken\) retry\.push\(title\)/);
   assert.match(app, /const LOGO_LOAD_ATTEMPTS = 6/);
   assert.match(app, /const LOGO_RETRY_DELAYS = \[1200, 4000, 12000, 30000, 60000\]/);
   assert.match(app, /function loadTapeLogo\(image, tape, sources\)/);
