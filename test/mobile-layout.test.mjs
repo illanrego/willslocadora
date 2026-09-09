@@ -74,8 +74,9 @@ test('mobile immersive shelves keep the desktop stand-number plaque visible in c
 
 test('mobile immersive drag changes the camera perspective without translating the shelf room', () => {
   const immersive = read('public/immersive-shelf.mjs');
-  assert.match(immersive, /pointerTargetX = THREE\.MathUtils\.clamp\(dragPointerBaseX/);
-  assert.match(immersive, /pointerTargetY = THREE\.MathUtils\.clamp\(dragPointerBaseY/);
+  assert.match(immersive, /renderer\.domElement\.setPointerCapture\?\.\(event\.pointerId\)/);
+  assert.match(immersive, /pointerTargetX = THREE\.MathUtils\.clamp\(dragPointerBaseX[\s\S]*\* 8, -6, 6\)/);
+  assert.match(immersive, /pointerTargetY = THREE\.MathUtils\.clamp\(dragPointerBaseY[\s\S]*\* 5, -2\.7, 3\.8\)/);
   assert.doesNotMatch(immersive, /dragOffsetTarget = THREE\.MathUtils\.clamp/);
   assert.doesNotMatch(immersive, /room\.position\.x \+= \(dragOffsetTarget/);
   assert.doesNotMatch(immersive, /room\.position\.y \+= \(dragOffsetTargetY/);

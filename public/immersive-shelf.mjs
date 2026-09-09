@@ -546,6 +546,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
   function pointerDown(event) {
     activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    renderer.domElement.setPointerCapture?.(event.pointerId);
     if (activePointers.size === 1) dragStart = { x: event.clientX, y: event.clientY, t: performance.now() };
     pinchPrevDist = 0;
     swipeLock = false;
@@ -565,20 +566,17 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     } else if (event.pointerType !== 'mouse' && activeLayoutKey !== 'desktop' && dragging) {
       const width = Math.max(renderer.domElement.clientWidth, 1);
       const height = Math.max(renderer.domElement.clientHeight, 1);
-      pointerTargetX = THREE.MathUtils.clamp(dragPointerBaseX + ((event.clientX - dragStart.x) / width) * 0.9, -0.7, 0.7);
-      pointerTargetY = THREE.MathUtils.clamp(dragPointerBaseY + ((dragStart.y - event.clientY) / height) * 0.7, 0.05, 1.05);
+      pointerTargetX = THREE.MathUtils.clamp(dragPointerBaseX + ((event.clientX - dragStart.x) / width) * 8, -6, 6);
+      pointerTargetY = THREE.MathUtils.clamp(dragPointerBaseY + ((dragStart.y - event.clientY) / height) * 5, -2.7, 3.8);
     }
   }
 
   function pointerUp(event) {
     const wasMulti = activePointers.size > 1;
     activePointers.delete(event.pointerId);
+    if (renderer.domElement.hasPointerCapture?.(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
     pinchPrevDist = activePointers.size === 2 ? pinchPrevDist : 0;
     dragging = false;
-    if (activePointers.size === 0) {
-      pointerTargetX = 0;
-      pointerTargetY = 0.55;
-    }
     if (wasMulti || activePointers.size > 0 || event.pointerType === 'mouse') return;
     const dx = event.clientX - dragStart.x;
     const dy = event.clientY - dragStart.y;
@@ -588,12 +586,15 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     setTimeout(() => { swipeLock = false; }, 300);
     const width = Math.max(renderer.domElement.clientWidth, 1);
     if (Math.abs(dx) > width * 0.22 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 900) {
+      pointerTargetX = 0;
+      pointerTargetY = 0.55;
       onSwipe?.(dx < 0 ? 1 : -1);
     }
   }
 
   function pointerCancel(event) {
     activePointers.delete(event.pointerId);
+    if (renderer.domElement.hasPointerCapture?.(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
     pinchPrevDist = 0;
     dragging = false;
     pointerTargetX = 0;
