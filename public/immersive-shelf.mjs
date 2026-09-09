@@ -235,10 +235,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     compactLips.push(lip);
   }
   // Size the phone rack to sit just outside the spine cluster so the stand hugs the tapes.
-  function fitCompactRack(columns, spacingX, spineWidth) {
+  function fitCompactRack(columns, spacingX, spineWidth, fixedWidth = 0) {
     const halfSpan = ((columns - 1) * spacingX) / 2 + spineWidth / 2;
     const rackHalf = halfSpan + 0.22;
-    const boardWidth = rackHalf * 2;
+    const boardWidth = fixedWidth || rackHalf * 2;
     compactRackWidth = boardWidth;
     const postX = boardWidth / 2 - 0.18;
     compactBacking.scale.x = boardWidth / 7.1;
@@ -406,11 +406,14 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     activeLayoutKey = currentLayoutKey;
     const compact = currentLayoutKey !== 'desktop';
     const landscape = currentLayoutKey === 'mobile-landscape';
-    const columns = compact ? (landscape ? 10 : 8) : COLUMNS;
+    const mobileSpineWidth = .32;
+    const mobileSpineGap = landscape ? 0 : .02;
+    const mobileRackWidth = landscape ? 4.44 : 3.78;
+    const columns = compact ? 10 : COLUMNS;
     activeColumns = columns;
-    const spacingX = compact ? (landscape ? .4 : .42) : 1.11;
+    const spacingX = compact ? mobileSpineWidth + mobileSpineGap : 1.11;
     const spacingY = compact ? 1.74 : 2.05;
-    if (compact) fitCompactRack(columns, spacingX, 0.4);
+    if (compact) fitCompactRack(columns, spacingX, mobileSpineWidth, mobileRackWidth);
     applyLayoutDecorations(compact);
     const xOrigin = compact ? -((columns - 1) * spacingX) / 2 : -5;
     const yOrigin = compact ? (landscape ? 2.72 : 3.45) : 2.9;
@@ -426,7 +429,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
       const imageOptions = { posterUrl: title.posterUrl, fallbackPosterUrl: title.posterFallbackUrl };
       const vhs = compact
-        ? createVhsSpine(title, { ...imageOptions, logoUrl: title.logoUrl, fallbackLogoUrl: title.logoFallbackUrl, width: 0.4, height: 1.42, depth: 0.3 })
+        ? createVhsSpine(title, { ...imageOptions, logoUrl: title.logoUrl, fallbackLogoUrl: title.logoFallbackUrl, width: mobileSpineWidth, height: 1.42, depth: 0.3, labelScale: mobileSpineWidth / .4 })
         : createVhsCase(title, imageOptions);
       const { caseMesh, front } = vhs;
       caseMesh.userData.index = index;

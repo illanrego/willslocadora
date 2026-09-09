@@ -92,14 +92,14 @@ function spineColor(title) {
 // Spine label: the TMDB logo (styled wordmark) when available, else the plain vertical title.
 // Vertical logos (like Toy Story 4) keep their natural orientation; horizontal ones
 // (like Deadpool 2) are rotated 90° so they read vertically along the spine.
-function drawSpineLogo(context, title, logoImage) {
+function drawSpineLogo(context, title, logoImage, labelScale = 1) {
   const { width, height } = context.canvas;
   const iw = logoImage.naturalWidth || logoImage.width;
   const ih = logoImage.naturalHeight || logoImage.height;
   if (!iw || !ih) return;
   const portrait = ih >= iw;
-  const maxW = width - 12;
-  const maxH = height - 30;
+  const maxW = (width - 12) * labelScale;
+  const maxH = (height - 30) * labelScale;
   context.save();
   context.translate(width / 2, height / 2);
   if (!portrait) context.rotate(Math.PI / 2);
@@ -113,10 +113,10 @@ function drawSpineLogo(context, title, logoImage) {
 }
 
 // Shared spine label + VHS tab, drawn over whichever spine background is chosen.
-function drawSpineLabel(context, title, logoImage) {
+function drawSpineLabel(context, title, logoImage, labelScale = 1) {
   const { width, height } = context.canvas;
   if (logoImage && (logoImage.naturalWidth || logoImage.width)) {
-    drawSpineLogo(context, title, logoImage);
+    drawSpineLogo(context, title, logoImage, labelScale);
   } else {
     context.save();
     context.translate(width / 2, height / 2);
@@ -125,9 +125,9 @@ function drawSpineLabel(context, title, logoImage) {
     context.fillStyle = '#fff4d1';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.font = '900 31px Arial Narrow, Arial, sans-serif';
+    context.font = `900 ${Math.round(31 * labelScale)}px Arial Narrow, Arial, sans-serif`;
     const name = String(title.name || 'Untitled').toUpperCase();
-    context.fillText(name.length > 30 ? `${name.slice(0, 29)}…` : name, 0, -9, height - 42);
+    context.fillText(name.length > 30 ? `${name.slice(0, 29)}…` : name, 0, -9, (height - 42) * labelScale);
     context.restore();
   }
   context.fillStyle = '#101827';
@@ -140,17 +140,17 @@ function drawSpineLabel(context, title, logoImage) {
 }
 
 // Placeholder spine used before/without a poster: a deterministic per-title color.
-function drawSpine(context, title, logoImage) {
+function drawSpine(context, title, logoImage, labelScale) {
   const { width, height } = context.canvas;
   context.fillStyle = spineColor(title);
   context.fillRect(0, 0, width, height);
   context.fillStyle = 'rgba(10, 8, 7, .4)';
   context.fillRect(8, 8, width - 16, height - 16);
-  drawSpineLabel(context, title, logoImage);
+  drawSpineLabel(context, title, logoImage, labelScale);
 }
 
 // Spine styled from the actual TMDB poster, so the side matches the movie design.
-function drawSpineArt(context, title, image, logoImage) {
+function drawSpineArt(context, title, image, logoImage, labelScale) {
   const { width, height } = context.canvas;
   const scale = Math.max(width / image.width, height / image.height);
   const drawWidth = image.width * scale;
@@ -159,7 +159,7 @@ function drawSpineArt(context, title, image, logoImage) {
   context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
   context.fillStyle = 'rgba(8, 5, 4, .32)';
   context.fillRect(0, 0, width, height);
-  drawSpineLabel(context, title, logoImage);
+  drawSpineLabel(context, title, logoImage, labelScale);
 }
 
 export function createVhsCase(title, { width = .82, height = 1.45, depth = .36, posterUrl = title.posterUrl || title.poster || '', fallbackPosterUrl = title.posterFallbackUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : '') } = {}) {
@@ -177,7 +177,7 @@ export function createVhsCase(title, { width = .82, height = 1.45, depth = .36, 
   return { group, caseMesh, front, material, posterUrl: fallbackPosterUrl || posterUrl, dispose() { disposed = true; cancelPosterLoad(); cover.texture.dispose(); material.dispose(); front.geometry.dispose(); caseMesh.geometry.dispose(); caseMaterial.dispose(); } };
 }
 
-export function createVhsSpine(title, { width = .4, height = 1.42, depth = .3, posterUrl = title.posterUrl || title.poster || '', fallbackPosterUrl = title.posterFallbackUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : ''), logoUrl = title.logoUrl || title.logo || '', fallbackLogoUrl = title.logoFallbackUrl || (title.logo ? window.locadoraPosterUrl(title.logo) : '') } = {}) {
+export function createVhsSpine(title, { width = .4, height = 1.42, depth = .3, labelScale = 1, posterUrl = title.posterUrl || title.poster || '', fallbackPosterUrl = title.posterFallbackUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : ''), logoUrl = title.logoUrl || title.logo || '', fallbackLogoUrl = title.logoFallbackUrl || (title.logo ? window.locadoraPosterUrl(title.logo) : '') } = {}) {
   const group = new THREE.Group();
   const caseMaterial = new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .7 });
   const caseMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), caseMaterial);
@@ -199,8 +199,8 @@ export function createVhsSpine(title, { width = .4, height = 1.42, depth = .3, p
   const draw = () => {
     if (disposed) return;
     const context = canvas.getContext('2d');
-    if (posterImage) drawSpineArt(context, title, posterImage, logoImage);
-    else drawSpine(context, title, logoImage);
+    if (posterImage) drawSpineArt(context, title, posterImage, logoImage, labelScale);
+    else drawSpine(context, title, logoImage, labelScale);
     texture.needsUpdate = true;
   };
   draw();
