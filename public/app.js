@@ -8,7 +8,7 @@
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
   const { DEFAULT_LIGHTING, kelvinToRgb, normalizeLighting } = window.LocadoraImmersivePreferences;
-  const { createBoundedStandCache } = window.LocadoraStandCache;
+  const { createBoundedCache, createBoundedStandCache } = window.LocadoraStandCache;
   const genres = [
     { labelKey: 'genreAction', theme: 'Action & Adventure', genres: ['Action', 'Adventure'] },
     { labelKey: 'genreComedy', theme: 'Comedy', genres: ['Comedy'] },
@@ -65,7 +65,7 @@
     member: { configured: false, signedIn: false, profile: null, watchlist: [], savedTitles: [], localSavedTitles: loadLocalSavedTitles(), history: [], historyHasMore: false },
     request: null,
     stand: 0,
-    metadata: new Map(),
+    metadata: createBoundedCache(120),
     renderedTitleKeys: new Set(),
     mode: 'normal',
     hasNextStand: false,
@@ -108,6 +108,13 @@
     activeVhsViewer = null;
     activeViewerTitle = null;
     $('#title-detail').replaceChildren();
+  }
+
+  function syncSceneActivity() {
+    const dialogOpen = Boolean(document.querySelector('dialog[open]'));
+    immersiveShelf?.setActive?.(!dialogOpen);
+    balcony?.setActive?.(!dialogOpen);
+    activeVhsViewer?.setActive(titleDialog.open);
   }
 
   function genreLabel(genre) { return t(genre.labelKey); }
@@ -871,7 +878,12 @@
       item.append(box);
       return item;
     }));
-    shelf.replaceChildren(grid);
+    replaceShelfContents(grid);
+  }
+
+  function replaceShelfContents(...children) {
+    shelf.querySelectorAll('.case-logo').forEach((image) => image.cancelLogoLoad?.());
+    shelf.replaceChildren(...children);
   }
 
   function loadTitleMetadata(title) {
@@ -889,7 +901,7 @@
   }
 
   function renderShelf(titles, stand, append) {
-    if (!append) shelf.replaceChildren();
+    if (!append) replaceShelfContents();
     const section = document.createElement('section');
     section.className = 'shelf-stand';
     section.setAttribute('aria-label', `Stand ${stand + 1}`);
@@ -910,12 +922,7 @@
       const logo = node.querySelector('.case-logo');
       if (title.logo) {
         const logoUrl = posterTextureUrl(title.logo);
-        logo.src = logoUrl;
-        button.classList.add('has-logo');
-        logo.addEventListener('load', () => {
-          const landscape = (logo.naturalWidth || 0) > (logo.naturalHeight || 0);
-          logo.classList.toggle('is-landscape', landscape);
-        }, { once: true });
+        loadTapeLogo(logo, button, [logoUrl, title.logo]);
       }
       node.querySelector('.case-year').textContent = title.year || '—';
       node.querySelector('.case-label strong').textContent = title.name;
@@ -942,6 +949,48 @@
     return window.locadoraPosterUrl(source);
   }
 
+  const LOGO_LOAD_ATTEMPTS = 6;
+  const LOGO_RETRY_DELAYS = [1200, 4000, 12000, 30000, 60000];
+
+  function loadTapeLogo(image, tape, sources) {
+    const urls = [...new Set(sources.filter(Boolean))];
+    if (!urls.length) return;
+    image.cancelLogoLoad?.();
+    let attempt = 0;
+    let retryTimer = 0;
+    let cancelled = false;
+    const clearListeners = () => {
+      image.removeEventListener('load', handleLoad);
+      image.removeEventListener('error', handleError);
+    };
+    const handleLoad = () => {
+      if (cancelled) return;
+      tape.classList.add('has-logo');
+      image.classList.toggle('is-landscape', (image.naturalWidth || 0) > (image.naturalHeight || 0));
+      clearListeners();
+    };
+    const handleError = () => {
+      if (cancelled) return;
+      tape.classList.remove('has-logo');
+      attempt += 1;
+      if (attempt >= LOGO_LOAD_ATTEMPTS) return clearListeners();
+      retryTimer = window.setTimeout(tryLoad, LOGO_RETRY_DELAYS[Math.min(attempt - 1, LOGO_RETRY_DELAYS.length - 1)]);
+    };
+    const tryLoad = () => {
+      retryTimer = 0;
+      if (cancelled || !image.isConnected) return;
+      image.src = urls[attempt % urls.length];
+    };
+    image.cancelLogoLoad = () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      clearListeners();
+    };
+    image.addEventListener('load', handleLoad);
+    image.addEventListener('error', handleError);
+    image.src = urls[0];
+  }
+
   // Lazy background logo enrichment: fetch metadata for each shelf title so its logo
   // (styled wordmark) can replace the plain spine/tile label. Cached per session.
   let logoHydrationToken = 0;
@@ -963,11 +1012,7 @@
           const vhs = tile?.querySelector('.vhs-case');
           const logoImg = tile?.querySelector('.case-logo');
           if (vhs && logoImg) {
-            vhs.classList.add('has-logo');
-            logoImg.src = logoUrl;
-            logoImg.addEventListener('load', () => {
-              logoImg.classList.toggle('is-landscape', (logoImg.naturalWidth || 0) > (logoImg.naturalHeight || 0));
-            }, { once: true });
+            loadTapeLogo(logoImg, vhs, [logoUrl, title.logo]);
           }
         } catch { /* logo stays optional; tile keeps its text label */ }
       }
@@ -1012,6 +1057,8 @@
     state.stand = stand;
     state.titles = cached.titles;
     state.hasNextStand = cached.hasNextStand;
+    state.renderedTitleKeys = new Set(state.titles.map((title) => `${title.type}:${title.id}`));
+    if (state.mode !== 'normal') renderShelf(state.titles, stand, false);
     refreshImmersive(direction);
     syncImmersiveStandControls();
     hydrateTapeLogos();
@@ -1058,6 +1105,7 @@
         onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'shelf', mode: 'immersive' }, true, posterUrl),
         onSwipe: (direction) => { if (direction < 0) goToPreviousStand(); else goToNextStand(); },
       });
+      syncSceneActivity();
       stage.querySelector('.immersive-canvas')?.focus();
       $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
       syncImmersiveStandControls();
@@ -1237,7 +1285,8 @@
       const params = new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear) });
       const body = await api(`/api/shelf?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
-      if (!append) state.renderedTitleKeys = new Set();
+      const appendToNormalShelf = append && state.mode === 'normal';
+      if (!appendToNormalShelf) state.renderedTitleKeys = new Set();
       const hasAnotherSourcePage = Boolean(body.hasNextStand);
       state.titles = body.titles.filter((title) => {
         const key = `${title.type}:${title.id}`;
@@ -1256,7 +1305,7 @@
       state.stand = stand;
       state.hasNextStand = hasAnotherSourcePage;
       state.standCache.set(stand, { titles: state.titles, hasNextStand: hasAnotherSourcePage });
-      renderShelf(state.titles, stand, append);
+      renderShelf(state.titles, stand, appendToNormalShelf);
       refreshImmersive(transitionDirection);
       $('#shelf-status').textContent = append ? `${state.titles.length} ${t('moreTapes')}` : `${state.titles.length} ${t('tapesFound')}`;
       $('#load-more-shelf').hidden = !hasAnotherSourcePage;
@@ -1584,6 +1633,7 @@
         onTip: sessionSupport.openDonation,
         onCollectiveAwards: () => { openRentalDesk(); $('#balcony-panel-status').textContent = t('collectiveAwardsNotice'); },
       });
+      syncSceneActivity();
     } catch (error) {
       try { await mountBalconyFallback(stage); }
       catch { stage.textContent = `The Balcony could not be loaded: ${error.message}`; }
@@ -1856,6 +1906,7 @@
     detail.dataset.titleKey = `${title.type}:${title.id}`;
     if (activeVhsViewer) {
       if (!titleDialog.open) titleDialog.showModal();
+      activeVhsViewer.setActive(true);
       activeVhsViewer.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
       syncTitleBasketAction();
       syncTitleSavedActions();
@@ -2151,6 +2202,7 @@
     });
     titleDialog.addEventListener('close', () => {
       viewerToken += 1;
+      activeVhsViewer?.setActive(false);
       if (inspectionOrigin) {
         restoreInspectionOrigin();
         return;
@@ -2261,8 +2313,13 @@
   }
 
   wireEvents();
+  const dialogActivityObserver = new MutationObserver(syncSceneActivity);
+  dialogActivityObserver.observe(document.body, { attributes: true, attributeFilter: ['open'], subtree: true });
   initMemberAccount();
-  window.addEventListener('pagehide', disposeVhsViewer, { once: true });
+  window.addEventListener('pagehide', () => {
+    dialogActivityObserver.disconnect();
+    disposeVhsViewer();
+  }, { once: true });
   loadProviderRegistry();
   saveCounter();
   setYear(state.year);
