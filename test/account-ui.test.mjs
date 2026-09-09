@@ -146,8 +146,11 @@ test('auth form gives accessible visual feedback for validation, loading, and re
   assert.match(account, /setBusy\(true\)/);
   assert.match(account, /aria-invalid/);
   assert.match(account, /pattern="\[a-z0-9_\\\\-\]\{3,24\}"/);
+  assert.match(account, /password-visibility-toggle/);
+  assert.match(account, /aria-pressed/);
   assert.match(styles, /\.auth-feedback/);
   assert.match(styles, /\.source-form input\[aria-invalid="true"\]/);
+  assert.match(styles, /\.password-visibility-toggle/);
 });
 
 test('a rent confirmation interrupted by identity setup resumes the same basket', () => {

@@ -72,13 +72,24 @@
     return body;
   }
 
+  function resetPasswordVisibility(dialog) {
+    dialog.querySelectorAll('.password-visibility-toggle').forEach((toggle) => {
+      const input = dialog.querySelector(`#${toggle.dataset.passwordTarget}`);
+      if (!input) return;
+      input.type = 'password';
+      toggle.textContent = 'Mostrar';
+      toggle.setAttribute('aria-label', 'Mostrar senha');
+      toggle.setAttribute('aria-pressed', 'false');
+    });
+  }
+
   function ensureDialog() {
     let dialog = document.querySelector('#auth-dialog');
     if (dialog) return dialog;
     dialog = document.createElement('dialog');
     dialog.id = 'auth-dialog';
     dialog.className = 'panel-dialog member-dialog';
-    dialog.innerHTML = `<form method="dialog" class="panel-header"><div><span class="eyebrow">CARTEIRINHA</span><h2 id="auth-heading">Entrar na Locadora</h2></div><button class="dialog-close" value="close" aria-label="Fechar">×</button></form><div id="auth-status" class="auth-feedback" role="alert" aria-live="assertive" hidden></div><form id="auth-form" class="source-form"><label for="auth-identifier">Email ou nome de usuário</label><input id="auth-identifier" name="identifier" autocomplete="username" required aria-describedby="auth-status"><p class="auth-field-hint" id="auth-identifier-hint">Entre com o email ou nome que você cadastrou.</p><label for="auth-password">Senha</label><input id="auth-password" name="password" type="password" minlength="8" autocomplete="current-password" required aria-describedby="auth-status"><label id="auth-username-label" for="auth-username" hidden>Nome de usuário</label><input id="auth-username" name="username" minlength="3" maxlength="24" pattern="[a-z0-9_\\-]{3,24}" autocomplete="nickname" hidden aria-describedby="auth-status"><p class="auth-field-hint" id="auth-username-hint" hidden>Use de 3 a 24 letras minúsculas, números, _ ou -.</p><div class="auth-form-actions"><button class="account-action" id="auth-submit" type="submit">Entrar</button><button class="account-action account-secondary-action" id="auth-mode" type="button">Criar conta</button></div><button class="auth-text-action" id="auth-forgot" type="button">Esqueci minha senha</button></form><form id="reset-form" class="source-form" hidden><p class="auth-field-hint">Escolha uma nova senha para sua Carteirinha.</p><label for="reset-password">Nova senha</label><input id="reset-password" type="password" minlength="8" autocomplete="new-password" required aria-describedby="auth-status"><label for="reset-password-confirm">Repita a nova senha</label><input id="reset-password-confirm" type="password" minlength="8" autocomplete="new-password" required aria-describedby="auth-status"><button class="account-action" type="submit">Salvar nova senha</button></form>`;
+    dialog.innerHTML = `<form method="dialog" class="panel-header"><div><span class="eyebrow">CARTEIRINHA</span><h2 id="auth-heading">Entrar na Locadora</h2></div><button class="dialog-close" value="close" aria-label="Fechar">×</button></form><div id="auth-status" class="auth-feedback" role="alert" aria-live="assertive" hidden></div><form id="auth-form" class="source-form"><label for="auth-identifier">Email ou nome de usuário</label><input id="auth-identifier" name="identifier" autocomplete="username" required aria-describedby="auth-status"><p class="auth-field-hint" id="auth-identifier-hint">Entre com o email ou nome que você cadastrou.</p><label for="auth-password">Senha</label><div class="password-field"><input id="auth-password" name="password" type="password" minlength="8" autocomplete="current-password" required aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="auth-password" aria-controls="auth-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><label id="auth-username-label" for="auth-username" hidden>Nome de usuário</label><input id="auth-username" name="username" minlength="3" maxlength="24" pattern="[a-z0-9_\\-]{3,24}" autocomplete="nickname" hidden aria-describedby="auth-status"><p class="auth-field-hint" id="auth-username-hint" hidden>Use de 3 a 24 letras minúsculas, números, _ ou -.</p><div class="auth-form-actions"><button class="account-action" id="auth-submit" type="submit">Entrar</button><button class="account-action account-secondary-action" id="auth-mode" type="button">Criar conta</button></div><button class="auth-text-action" id="auth-forgot" type="button">Esqueci minha senha</button></form><form id="reset-form" class="source-form" hidden><p class="auth-field-hint">Escolha uma nova senha para sua Carteirinha.</p><label for="reset-password">Nova senha</label><div class="password-field"><input id="reset-password" type="password" minlength="8" autocomplete="new-password" required aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="reset-password" aria-controls="reset-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><label for="reset-password-confirm">Repita a nova senha</label><div class="password-field"><input id="reset-password-confirm" type="password" minlength="8" autocomplete="new-password" required aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="reset-password-confirm" aria-controls="reset-password-confirm" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><button class="account-action" type="submit">Salvar nova senha</button></form>`;
     document.body.append(dialog);
     const form = dialog.querySelector('#auth-form');
     let signup = false;
@@ -87,6 +98,17 @@
     const identifierLabel = dialog.querySelector('label[for="auth-identifier"]');
     const passwordInput = dialog.querySelector('#auth-password');
     const usernameInput = dialog.querySelector('#auth-username');
+    dialog.querySelectorAll('.password-visibility-toggle').forEach((toggle) => {
+      toggle.addEventListener('click', () => {
+        const input = dialog.querySelector(`#${toggle.dataset.passwordTarget}`);
+        if (!input) return;
+        const visible = input.type === 'password';
+        input.type = visible ? 'text' : 'password';
+        toggle.textContent = visible ? 'Ocultar' : 'Mostrar';
+        toggle.setAttribute('aria-label', visible ? 'Ocultar senha' : 'Mostrar senha');
+        toggle.setAttribute('aria-pressed', String(visible));
+      });
+    });
     const submit = dialog.querySelector('#auth-submit');
     const modeButton = dialog.querySelector('#auth-mode');
     const forgotButton = dialog.querySelector('#auth-forgot');
@@ -194,6 +216,7 @@
 
   function openPasswordReset(resetToken) {
     const dialog = ensureDialog();
+    resetPasswordVisibility(dialog);
     dialog.querySelector('#auth-form').hidden = true;
     const resetForm = dialog.querySelector('#reset-form');
     resetForm.hidden = false;
@@ -210,7 +233,7 @@
     publicRequest,
     state: () => state,
     onChange(listener) { subscribers.add(listener); return () => subscribers.delete(listener); },
-    async signIn() { const dialog = ensureDialog(); if (dialog.querySelector('#auth-mode').textContent === 'Já tenho conta') dialog.querySelector('#auth-mode').click(); const identifier = dialog.querySelector('#auth-identifier'); identifier.type = 'text'; identifier.autocomplete = 'username'; identifier.placeholder = ''; dialog.querySelector('label[for="auth-identifier"]').textContent = 'Email ou nome de usuário'; dialog.querySelector('#auth-status').hidden = true; dialog.querySelector('#auth-status').textContent = ''; dialog.querySelector('#reset-form').hidden = true; dialog.querySelector('#auth-form').hidden = false; dialog.querySelector('#auth-heading').textContent = 'Entrar na Locadora'; dialog.querySelector('#auth-form').reset(); dialog.showModal(); },
+    async signIn() { const dialog = ensureDialog(); if (dialog.querySelector('#auth-mode').textContent === 'Já tenho conta') dialog.querySelector('#auth-mode').click(); resetPasswordVisibility(dialog); const identifier = dialog.querySelector('#auth-identifier'); identifier.type = 'text'; identifier.autocomplete = 'username'; identifier.placeholder = ''; dialog.querySelector('label[for="auth-identifier"]').textContent = 'Email ou nome de usuário'; dialog.querySelector('#auth-status').hidden = true; dialog.querySelector('#auth-status').textContent = ''; dialog.querySelector('#reset-form').hidden = true; dialog.querySelector('#auth-form').hidden = false; dialog.querySelector('#auth-heading').textContent = 'Entrar na Locadora'; dialog.querySelector('#auth-form').reset(); dialog.showModal(); },
     async signOut() {
       try { if (token) await authRequest('/sign-out', { method: 'POST', body: '{}' }); } finally {
         token = ''; window.localStorage.removeItem(tokenKey); state = Object.freeze({ configured: Boolean(authApiBase), signedIn: false, user: null }); emit();

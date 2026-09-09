@@ -240,6 +240,9 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .source-form div { display: flex; gap: .5rem; }
 .source-form input { min-width: 0; flex: 1; min-height: 46px; padding: .7rem; border: 1px solid #6a5547; background: #120e0c; color: var(--ink); }
 .source-form button { min-height: 46px; border: 0; padding: .7rem 1rem; background: var(--yellow); color: #18110d; cursor: pointer; font-weight: 900; }
+.password-field { align-items: stretch; }
+.password-field input { width: 100%; }
+.password-visibility-toggle { flex: 0 0 auto !important; min-width: 88px; border: 1px solid #6a5547 !important; color: var(--cream) !important; background: #25384d !important; font: 900 .65rem/1 "Courier New", monospace; text-transform: uppercase; }
 .auth-feedback { margin: 1rem 0; padding: .8rem .9rem; border: 2px solid #b78636; color: #fff4d1; background: #35231e; box-shadow: 3px 4px 0 rgba(0,0,0,.28); font: 700 .78rem/1.45 Arial, sans-serif; }
 .auth-feedback[data-tone="success"] { border-color: #77b78a; background: #183326; }
 .auth-field-hint { margin: .35rem 0 .8rem; color: #c6b89f; font: .72rem/1.4 Arial, sans-serif; }
@@ -613,6 +616,8 @@ dialog.panel-dialog {
 #auth-dialog #reset-form > label { text-align: center; }
 #auth-dialog #auth-form > input,
 #auth-dialog #reset-form > input { display: block; width: 100%; box-sizing: border-box; }
+#auth-dialog .password-field { width: 100%; }
+#auth-dialog .password-field input { display: block; box-sizing: border-box; }
 #auth-dialog .auth-form-actions { justify-content: center; }
 #auth-dialog .auth-form-actions .account-action { flex: 0 1 180px; }
 #auth-dialog .auth-text-action { display: block; margin-inline: auto; }
@@ -1548,4 +1553,6 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   #auth-dialog .auth-form-actions .account-action { flex: 1 1 0; min-height: 36px; margin-top: .7rem; padding: .45rem .5rem; font-size: .58rem; }
   #auth-dialog .auth-text-action { width: max-content; margin: .65rem auto 0; text-align: center; }
   #auth-dialog .source-form input { min-height: 40px; padding: .55rem; }
+  #auth-dialog .password-field { flex-direction: row; }
+  #auth-dialog .password-visibility-toggle { min-width: 76px; padding: .45rem .4rem; font-size: .56rem; }
 }
