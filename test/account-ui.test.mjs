@@ -143,6 +143,10 @@ test('auth form gives accessible visual feedback for validation, loading, and re
   const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
   assert.match(account, /role="alert" aria-live="assertive"/);
   assert.match(account, /INVALID_USERNAME_OR_PASSWORD/);
+  assert.match(account, /authErrorMessage\(error, signup\)/);
+  assert.match(account, /USERNAME_IS_ALREADY_TAKEN/);
+  assert.match(account, /Esse nome de usuário é reservado/);
+  assert.match(account, /RATE_LIMITED/);
   assert.match(account, /setBusy\(true\)/);
   assert.match(account, /aria-invalid/);
   assert.match(account, /pattern="\[a-z0-9_\\\\-\]\{3,24\}"/);

@@ -83,6 +83,33 @@
     });
   }
 
+  function authErrorMessage(error, signup) {
+    const commonMessages = {
+      INVALID_USERNAME_OR_PASSWORD: 'Não encontramos essa combinação de login e senha. Confira os dados ou crie sua conta.',
+      INVALID_EMAIL_OR_PASSWORD: 'Não encontramos essa combinação de email e senha. Confira os dados e tente novamente.',
+      INVALID_EMAIL: 'Esse email não parece válido. Confira a digitação.',
+      USER_NOT_FOUND: 'Não encontramos essa combinação de login e senha. Confira os dados e tente novamente.',
+      RATE_LIMITED: 'Muitas tentativas em pouco tempo. Aguarde um minuto e tente novamente.',
+      TOO_MANY_REQUESTS: 'Muitas tentativas em pouco tempo. Aguarde um minuto e tente novamente.',
+      AUTH_SERVICE_UNAVAILABLE: 'A Locadora está temporariamente indisponível. Tente novamente em instantes.',
+    };
+    const signupMessages = {
+      USERNAME_IS_ALREADY_TAKEN: 'Esse nome de usuário já está em uso. Escolha outro.',
+      USER_ALREADY_EXISTS: 'Já existe uma conta com esse email. Entre usando a senha cadastrada.',
+      USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'Já existe uma conta com esse email. Use outro email ou entre na sua conta.',
+      EMAIL_ALREADY_IN_USE: 'Já existe uma conta com esse email. Use outro email ou entre na sua conta.',
+      INVALID_USERNAME: 'Esse nome de usuário não é válido. Use 3–24 caracteres: letras minúsculas, números, _ ou -.',
+      USERNAME_TOO_SHORT: 'Esse nome de usuário é curto demais. Use pelo menos 3 caracteres.',
+      USERNAME_TOO_LONG: 'Esse nome de usuário é longo demais. Use no máximo 24 caracteres.',
+      PASSWORD_TOO_SHORT: 'A senha precisa ter pelo menos 8 caracteres.',
+      PASSWORD_TOO_LONG: 'Essa senha é longa demais. Escolha uma senha menor.',
+    };
+    if (signup && error.code === 'CONFLICT' && /reserved/i.test(error.message || '')) return 'Esse nome de usuário é reservado. Escolha outro.';
+    if (signup && error.code === 'CONFLICT') return 'Esse nome de usuário não está disponível. Escolha outro.';
+    const message = (signup ? { ...commonMessages, ...signupMessages } : commonMessages)[error.code];
+    return message || (error.status >= 500 ? commonMessages.AUTH_SERVICE_UNAVAILABLE : 'Não foi possível concluir. Confira os dados e tente de novo.');
+  }
+
   function ensureDialog() {
     let dialog = document.querySelector('#auth-dialog');
     if (dialog) return dialog;
@@ -179,14 +206,7 @@
         emit();
         dialog.close();
       } catch (error) {
-        const messages = {
-          INVALID_USERNAME_OR_PASSWORD: 'Não encontramos essa combinação de login e senha. Confira os dados ou crie sua conta.',
-          USERNAME_IS_ALREADY_TAKEN: 'Esse nome de usuário já está em uso. Escolha outro.',
-          USER_ALREADY_EXISTS: 'Já existe uma conta com esse email. Entre usando a senha cadastrada.',
-          INVALID_EMAIL: 'Esse email não parece válido. Confira a digitação.',
-        };
-        const message = messages[error.code] || (error.status >= 500 ? 'A Locadora está temporariamente indisponível. Tente novamente em instantes.' : 'Não foi possível concluir. Confira os dados e tente de novo.');
-        setFeedback(message);
+        setFeedback(authErrorMessage(error, signup));
       } finally { setBusy(false); }
     });
     resetForm.addEventListener('submit', async (event) => {
