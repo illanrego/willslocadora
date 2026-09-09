@@ -81,10 +81,11 @@ function featuredMovies(titles) {
 
 export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect, onSwipe }) {
   let activeTheme = theme || { backing: '#2f526b', trim: '#527f9e', sign: '#101827', lamp: '#c99a2e' };
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const mobilePerformance = window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
+  const renderer = new THREE.WebGLRenderer({ antialias: !mobilePerformance, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobilePerformance ? 1.25 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = !mobilePerformance;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.domElement.className = 'immersive-canvas';
   renderer.domElement.tabIndex = 0;

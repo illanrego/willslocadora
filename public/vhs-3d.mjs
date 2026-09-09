@@ -353,8 +353,9 @@ function drawPoster(context, image, title, logoImage = null) {
 
 export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, savedCollections = [], showSavedActions = false, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onWatchLater, onFavorite, onClose, copy }) {
   const labels = { noSynopsis: 'No synopsis was included by this catalogue source.', ...copy };
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const mobilePerformance = window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !mobilePerformance });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobilePerformance ? 1.25 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
@@ -665,7 +666,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   renderer.domElement.addEventListener('keydown', keyDown);
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const immediateMotion = window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
+  const immediateMotion = mobilePerformance;
 
   function render(time) {
     if (disposed) return;
