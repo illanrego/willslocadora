@@ -5,7 +5,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  function createBoundedCache(limit = 3) {
+  function createBoundedStandCache(limit = 3) {
     const capacity = Math.max(1, Number(limit) || 3);
     const entries = new Map();
 
@@ -25,14 +25,12 @@
     }
 
     return {
-      has: (key) => entries.has(key),
       get,
       set,
-      delete: (key) => entries.delete(key),
       clear: () => entries.clear(),
       get size() { return entries.size; },
     };
   }
 
-  return { createBoundedCache, createBoundedStandCache: createBoundedCache };
+  return { createBoundedStandCache };
 }));

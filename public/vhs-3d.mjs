@@ -22,8 +22,6 @@ const PROVIDER_LOGOS = Object.freeze({
 const VHS_MIN_ZOOM = 0.62;
 const VHS_MAX_ZOOM = 1.45;
 const VHS_ZOOM_STEP = 0.12;
-const ASSET_LOAD_ATTEMPTS = 6;
-const ASSET_RETRY_DELAYS = [1200, 4000, 12000, 30000, 60000];
 
 const LOCADORA_PALETTE = {
   ink: '#080d17',
@@ -415,8 +413,6 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   let disposed = false;
   const loader = new THREE.TextureLoader();
   const assetUrls = {};
-  const assetAttempts = {};
-  const assetRetryTimers = {};
   function redraw() {
     const frontContext = frontCanvas.canvas.getContext('2d');
     if (posterImage) drawPoster(frontContext, posterImage, title, logoImage);
@@ -425,40 +421,18 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions);
     backCanvas.texture.needsUpdate = true;
   }
-  function clearAssetRetry(name) {
-    if (!assetRetryTimers[name]) return;
-    window.clearTimeout(assetRetryTimers[name]);
-    delete assetRetryTimers[name];
-  }
-  function attemptAssetLoad(name, url) {
+  function loadAsset(name, url) {
+    if (!url || assetUrls[name] === url) return;
+    assetUrls[name] = url;
     loader.load(url, (texture) => {
       if (disposed || assetUrls[name] !== url) return texture.dispose();
-      clearAssetRetry(name);
-      delete assetAttempts[name];
       if (name === 'poster') posterImage = texture.image;
       if (name === 'backdrop') backdropImage = texture.image;
       if (name === 'logo') logoImage = texture.image;
       if (name.startsWith('provider-')) providerImages[Number(name.slice(9))] = texture.image;
       redraw();
       texture.dispose();
-    }, undefined, () => {
-      if (disposed || assetUrls[name] !== url) return;
-      const attempt = (assetAttempts[name] || 0) + 1;
-      assetAttempts[name] = attempt;
-      if (attempt >= ASSET_LOAD_ATTEMPTS) return;
-      const delay = ASSET_RETRY_DELAYS[Math.min(attempt - 1, ASSET_RETRY_DELAYS.length - 1)];
-      assetRetryTimers[name] = window.setTimeout(() => {
-        delete assetRetryTimers[name];
-        if (!disposed && assetUrls[name] === url) attemptAssetLoad(name, url);
-      }, delay);
-    });
-  }
-  function loadAsset(name, url) {
-    if (!url || assetUrls[name] === url) return;
-    clearAssetRetry(name);
-    assetUrls[name] = url;
-    assetAttempts[name] = 0;
-    attemptAssetLoad(name, url);
+    }, undefined, () => {});
   }
   function loadProviderAssets(nextTitle) {
     providerImages.length = 0;
@@ -692,10 +666,9 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   renderer.domElement.addEventListener('keydown', keyDown);
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let running = true;
 
   function render(time) {
-    if (disposed || !running) return;
+    if (disposed) return;
     camera.position.z += (targetCameraDistance - camera.position.z) * 0.14;
     group.rotation.x += (targetX - group.rotation.x) * 0.12;
     group.rotation.y += (targetY - group.rotation.y) * 0.12;
@@ -716,16 +689,6 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       currentSavedCollections = new Set(nextCollections);
       redraw();
     },
-    setActive(active) {
-      const nextRunning = Boolean(active);
-      if (disposed || nextRunning === running) return;
-      running = nextRunning;
-      if (running) frame = requestAnimationFrame(render);
-      else {
-        cancelAnimationFrame(frame);
-        frame = 0;
-      }
-    },
     update(nextTitle, nextAtCounter, assets = {}) {
       title = nextTitle;
       resetToFront();
@@ -734,8 +697,6 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       backdropImage = null;
       logoImage = null;
       providerImages.length = 0;
-      Object.keys(assetRetryTimers).forEach(clearAssetRetry);
-      Object.keys(assetAttempts).forEach((key) => { delete assetAttempts[key]; });
       Object.keys(assetUrls).forEach((key) => { delete assetUrls[key]; });
       redraw();
       loadAsset('poster', assets.posterUrl);
@@ -745,7 +706,6 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     },
     dispose() {
       disposed = true;
-      Object.keys(assetRetryTimers).forEach(clearAssetRetry);
       cancelAnimationFrame(frame);
       observer.disconnect();
       renderer.domElement.removeEventListener('pointerdown', pointerDown);

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createBoundedCache, createBoundedStandCache } = require('../public/stand-cache.js');
+const { createBoundedStandCache } = require('../public/stand-cache.js');
 
 test('stand cache keeps only the three most recently used stands', () => {
   const cache = createBoundedStandCache(3);
@@ -24,16 +24,4 @@ test('stand cache clears all old query data', () => {
   cache.clear();
   assert.equal(cache.size, 0);
   assert.equal(cache.get(0), undefined);
-});
-
-test('bounded cache supports metadata promise eviction and deletion', () => {
-  const cache = createBoundedCache(2);
-  cache.set('a', Promise.resolve('a'));
-  cache.set('b', Promise.resolve('b'));
-  cache.get('a');
-  cache.set('c', Promise.resolve('c'));
-  assert.equal(cache.has('b'), false);
-  assert.equal(cache.has('a'), true);
-  assert.equal(cache.delete('a'), true);
-  assert.equal(cache.size, 1);
 });
