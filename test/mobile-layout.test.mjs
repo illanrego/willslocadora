@@ -38,6 +38,9 @@ test('mobile immersive shelves rebuild a narrow spine-facing rack for portrait a
   assert.match(immersive, /createVhsSpine\(title, \{ \.\.\.imageOptions, logoUrl: title\.logoUrl, fallbackLogoUrl: title\.logoFallbackUrl, width: mobileSpineWidth, height: 1\.42, depth: 0\.3, labelScale: mobileSpineWidth \/ \.4 \}\)/);
   assert.match(immersive, /const compactLips = \[\];[\s\S]*for \(const y of \[-2\.5, -\.75, 1, 2\.75, 4\.5\]\)/);
   assert.match(immersive, /const compactRackCenterY = 1;[\s\S]*new THREE\.BoxGeometry\(7\.1, 7\.4, 0\.35\)[\s\S]*new THREE\.BoxGeometry\(0\.32, 7\.85, 0\.72\)/);
+  assert.match(immersive, /const compactRoomOffsetY = -1\.8;[\s\S]*room\.position\.y = compact \? compactRoomOffsetY : 0;/);
+  assert.match(immersive, /compactRoomOffsetY \+ 0\.55 \+ mobilePanY/);
+  assert.match(immersive, /compactRoomOffsetY \+ 0\.25 \+ mobilePanY/);
 });
 
 test('3D tape artwork queues, retries, and cancels slow cover loads', () => {

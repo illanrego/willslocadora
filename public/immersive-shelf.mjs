@@ -354,6 +354,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let dragPanBaseX = 0;
   let dragPanBaseY = 0;
   let compactRackWidth = 3.78;
+  const compactRoomOffsetY = -1.8;
   const homeLookAt = new THREE.Vector3(0, 0.25, 0);
   const mobilePanLookAt = homeLookAt.clone();
   const sectionFocus = new THREE.Vector3(0, 0.25, 0);
@@ -369,6 +370,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   }
 
   function applyLayoutDecorations(compact) {
+    room.position.y = compact ? compactRoomOffsetY : 0;
     desktopShelfObjects.forEach((object) => { object.visible = !compact; });
     settingWall.visible = true;
     compactRack.visible = compact;
@@ -672,7 +674,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     if (disposed) return;
     const compactView = activeLayoutKey !== 'desktop';
     const cameraTargetX = compactView ? mobilePanX : pointerTargetX;
-    const cameraTargetY = compactView ? 0.55 + mobilePanY : pointerTargetY;
+    const cameraTargetY = compactView ? compactRoomOffsetY + 0.55 + mobilePanY : pointerTargetY;
     if (!reducedMotion) {
       camera.position.x += (cameraTargetX - camera.position.x) * 0.07;
       camera.position.y += (cameraTargetY - camera.position.y) * 0.07;
@@ -682,7 +684,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       camera.position.y = cameraTargetY;
       camera.position.z = targetCameraDistance;
     }
-    mobilePanLookAt.set(mobilePanX, 0.25 + mobilePanY, 0);
+    mobilePanLookAt.set(mobilePanX, compactRoomOffsetY + 0.25 + mobilePanY, 0);
     cameraLookAt.lerp(compactView ? mobilePanLookAt : sectionZoom ? sectionFocus : homeLookAt, reducedMotion ? 1 : 0.12);
     camera.lookAt(cameraLookAt);
     if (standTransition) {
