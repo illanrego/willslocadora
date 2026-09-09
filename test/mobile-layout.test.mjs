@@ -7,7 +7,9 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 test('mobile 2D shelves show poster+logo-backed tape spines with a vertical title', () => {
   const styles = read('public/styles.css');
   assert.match(styles, /@media \(max-width: 760px\), \(max-width: 900px\) and \(pointer: coarse\)/);
-  assert.match(styles, /\.shelf \{\s*display: grid;\s*grid-template-columns: repeat\(auto-fit, minmax\(42px, 1fr\)\);/);
+  assert.match(styles, /\.shelf \{\s*display: grid;\s*grid-template-columns: repeat\(8, minmax\(0, 1fr\)\);/);
+  assert.match(styles, /\.tape-fallback-grid \{ display: grid; grid-template-columns: repeat\(8, minmax\(0, 1fr\)\);/);
+  assert.match(styles, /--mobile-spine-width: 32px/);
   assert.match(styles, /\.case-label strong \{[^}]*rotate\(90deg\)/);
   assert.match(styles, /\.vhs-case \.case-cover \{ position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; \}/);
   assert.match(styles, /\.vhs-case \.case-logo \{[\s\S]*max-width: 100%;[\s\S]*object-fit: contain;[\s\S]*\}/);

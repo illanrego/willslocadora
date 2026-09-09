@@ -1363,7 +1363,7 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .stand-number { margin-left: .1rem; }
   .shelf {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
     align-items: end;
     gap: .55rem .4rem;
     overflow: hidden;
@@ -1372,7 +1372,7 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   }
   .vhs-item { min-width: 0; perspective: none; }
   .vhs-case {
-    --mobile-spine-width: 42px;
+    --mobile-spine-width: 32px;
     --mobile-spine-height: 154px;
     display: block;
     width: 100%;
@@ -1389,8 +1389,8 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     inset: 0;
     margin: auto;
     display: none;
-    max-width: calc(100% - 12px);
-    max-height: calc(100% - 30px);
+    max-width: calc(100% - 16px);
+    max-height: calc(100% - 36px);
     object-fit: contain;
     filter: drop-shadow(0 2px 2px rgba(0,0,0,.58));
   }
@@ -1437,7 +1437,7 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     overflow: hidden;
     transform: translate(-50%, -50%) rotate(90deg);
     color: #fff4d1;
-    font: 900 1.1rem/1 "Arial Narrow", Arial, sans-serif;
+    font: 900 .88rem/1 "Arial Narrow", Arial, sans-serif;
     text-transform: uppercase;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1447,11 +1447,11 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
 
   .tape-fallback { padding: 6rem .7rem 2rem; text-align: left; }
   .tape-fallback-heading { text-align: center; }
-  .tape-fallback-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(42px, 1fr)); gap: .55rem .4rem; padding: .4rem .15rem 1rem; }
+  .tape-fallback-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: .55rem .4rem; padding: .4rem .15rem 1rem; }
   .tape-fallback-card { --mobile-spine-height: 154px; display: block; min-height: var(--mobile-spine-height); }
   .tape-fallback-card img { display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .tape-fallback-front { position: absolute; z-index: 2; inset: 10px 3px 22px; display: block; padding: 0; color: var(--cream); background: transparent; text-align: center; }
-  .tape-fallback-front strong { position: absolute; top: 50%; left: 50%; display: block; width: calc(var(--mobile-spine-height) - 42px); overflow: hidden; transform: translate(-50%, -50%) rotate(90deg); font: 900 1.1rem/1 "Arial Narrow", Arial, sans-serif; text-transform: uppercase; text-overflow: ellipsis; white-space: nowrap; }
+  .tape-fallback-front strong { position: absolute; top: 50%; left: 50%; display: block; width: calc(var(--mobile-spine-height) - 42px); overflow: hidden; transform: translate(-50%, -50%) rotate(90deg); font: 900 .88rem/1 "Arial Narrow", Arial, sans-serif; text-transform: uppercase; text-overflow: ellipsis; white-space: nowrap; }
   .tape-fallback-front small { display: none; }
   .tape-fallback-card::before { content: ""; position: absolute; z-index: 1; inset: 0; background: rgba(8, 5, 4, .32); }
 }
