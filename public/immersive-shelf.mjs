@@ -129,6 +129,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   const featuredPosterGroup = new THREE.Group();
   const featuredPosterLoader = new THREE.TextureLoader();
   const featuredPosterTextures = new Set();
+  const featuredPosterFrames = [];
   room.add(featuredPosterGroup);
   function clearFeaturedPosters() {
     featuredPosterTextures.forEach((texture) => texture.dispose());
@@ -139,6 +140,19 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       else object.material?.dispose();
     });
     featuredPosterGroup.clear();
+    featuredPosterFrames.length = 0;
+  }
+  function layoutFeaturedPosters(key) {
+    const portrait = key === 'mobile-portrait';
+    const landscape = key === 'mobile-landscape';
+    const mobile = portrait || landscape;
+    const mobileX = portrait ? [-3.05, 3.05] : [-4.4, 4.4];
+    const mobileScale = portrait ? 0.42 : 0.56;
+    featuredPosterFrames.forEach((frame, index) => {
+      frame.visible = !mobile || index < 2;
+      frame.scale.setScalar(mobile ? mobileScale : 1);
+      frame.position.set(mobile ? mobileX[index] || 0 : [-9.2, 0, 9.2][index], mobile ? 1.05 : 1.2, -2.94);
+    });
   }
   function renderFeaturedPosters(nextTitles) {
     if (disposed) return;
@@ -151,6 +165,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       poster.position.z = 0.045;
       frame.add(poster);
       featuredPosterGroup.add(frame);
+      featuredPosterFrames.push(frame);
       const posterUrl = title.posterUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : '');
       if (posterUrl) featuredPosterLoader.load(posterUrl, (texture) => {
         if (disposed || frame.parent !== featuredPosterGroup) return texture.dispose();
@@ -160,6 +175,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
         posterMaterial.needsUpdate = true;
       }, undefined, () => {});
     });
+    layoutFeaturedPosters(activeLayoutKey || layoutKey());
   }
 
   async function loadFeaturedPosters(nextYear) {
@@ -346,8 +362,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
   function applyLayoutDecorations(compact) {
     desktopShelfObjects.forEach((object) => { object.visible = !compact; });
+    settingWall.visible = true;
     compactRack.visible = compact;
-    featuredPosterGroup.visible = !compact;
+    featuredPosterGroup.visible = true;
+    layoutFeaturedPosters(layoutKey());
     standMarker.visible = !compact;
     if (compact) {
       const sw = (compactRackWidth + 2.0) / 7.9;

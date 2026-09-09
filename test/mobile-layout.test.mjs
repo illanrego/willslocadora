@@ -23,3 +23,13 @@ test('mobile immersive shelves rebuild a narrow spine-facing rack for portrait a
   assert.match(immersive, /createVhsSpine\(title, \{ width: 0\.4, height: 1\.42, depth: 0\.3 \}\)/);
   assert.match(immersive, /const columns = compact \? \(landscape \? 10 : 8\) : COLUMNS/);
 });
+
+test('mobile immersive shelves retain framed wall posters around the compact rack', () => {
+  const immersive = read('public/immersive-shelf.mjs');
+  assert.match(immersive, /function layoutFeaturedPosters\(key\)/);
+  assert.match(immersive, /const mobileX = portrait \? \[-3\.05, 3\.05\] : \[-4\.4, 4\.4\]/);
+  assert.match(immersive, /frame\.visible = !mobile \|\| index < 2/);
+  assert.match(immersive, /settingWall\.visible = true/);
+  assert.match(immersive, /featuredPosterGroup\.visible = true/);
+  assert.doesNotMatch(immersive, /featuredPosterGroup\.visible = !compact/);
+});
