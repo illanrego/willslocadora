@@ -346,10 +346,13 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let dragStart = { x: 0, y: 0, t: 0 };
   let swipeLock = false;
   let dragging = false;
-  let dragPointerBaseX = 0;
-  let dragPointerBaseY = 0.55;
+  let mobilePanX = 0;
+  let mobilePanY = 0;
+  let dragPanBaseX = 0;
+  let dragPanBaseY = 0;
   let compactRackWidth = 3.78;
   const homeLookAt = new THREE.Vector3(0, 0.25, 0);
+  const mobilePanLookAt = homeLookAt.clone();
   const sectionFocus = new THREE.Vector3(0, 0.25, 0);
   const cameraLookAt = homeLookAt.clone();
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -495,7 +498,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const bounds = renderer.domElement.getBoundingClientRect();
     pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
     pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
-    // Mouse movement gently steers the POV; touch gestures update it through pointerMoveGesture.
+    // Mouse movement gently steers the desktop POV; touch gestures pan the compact rack.
     if (event.pointerType === 'mouse') {
       pointerTargetX = pointer.x * 0.275;
       pointerTargetY = 0.55 + pointer.y * 0.175;
@@ -551,8 +554,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     pinchPrevDist = 0;
     swipeLock = false;
     dragging = true;
-    dragPointerBaseX = pointerTargetX;
-    dragPointerBaseY = pointerTargetY;
+    dragPanBaseX = mobilePanX;
+    dragPanBaseY = mobilePanY;
   }
 
   function pointerMoveGesture(event) {
@@ -566,8 +569,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     } else if (event.pointerType !== 'mouse' && activeLayoutKey !== 'desktop' && dragging) {
       const width = Math.max(renderer.domElement.clientWidth, 1);
       const height = Math.max(renderer.domElement.clientHeight, 1);
-      pointerTargetX = THREE.MathUtils.clamp(dragPointerBaseX + ((event.clientX - dragStart.x) / width) * 8, -6, 6);
-      pointerTargetY = THREE.MathUtils.clamp(dragPointerBaseY + ((dragStart.y - event.clientY) / height) * 5, -2.7, 3.8);
+      mobilePanX = THREE.MathUtils.clamp(dragPanBaseX - ((event.clientX - dragStart.x) / width) * 4, -2.6, 2.6);
+      mobilePanY = THREE.MathUtils.clamp(dragPanBaseY + ((event.clientY - dragStart.y) / height) * 4.5, -3.4, 3.4);
     }
   }
 
@@ -580,16 +583,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     if (wasMulti || activePointers.size > 0 || event.pointerType === 'mouse') return;
     const dx = event.clientX - dragStart.x;
     const dy = event.clientY - dragStart.y;
-    const dt = performance.now() - dragStart.t;
     if (Math.hypot(dx, dy) <= 12) return; // tap: the click event opens the tape
     swipeLock = true;
     setTimeout(() => { swipeLock = false; }, 300);
-    const width = Math.max(renderer.domElement.clientWidth, 1);
-    if (Math.abs(dx) > width * 0.22 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 900) {
-      pointerTargetX = 0;
-      pointerTargetY = 0.55;
-      onSwipe?.(dx < 0 ? 1 : -1);
-    }
   }
 
   function pointerCancel(event) {
@@ -597,8 +593,6 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     if (renderer.domElement.hasPointerCapture?.(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
     pinchPrevDist = 0;
     dragging = false;
-    pointerTargetX = 0;
-    pointerTargetY = 0.55;
   }
 
   function click(event) {
@@ -670,16 +664,20 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
   function render(time) {
     if (disposed) return;
+    const compactView = activeLayoutKey !== 'desktop';
+    const cameraTargetX = compactView ? mobilePanX : pointerTargetX;
+    const cameraTargetY = compactView ? 0.55 + mobilePanY : pointerTargetY;
     if (!reducedMotion) {
-      camera.position.x += (pointerTargetX - camera.position.x) * 0.035;
-      camera.position.y += (pointerTargetY - camera.position.y) * 0.035;
+      camera.position.x += (cameraTargetX - camera.position.x) * 0.07;
+      camera.position.y += (cameraTargetY - camera.position.y) * 0.07;
       camera.position.z += (targetCameraDistance - camera.position.z) * 0.12;
     } else {
-      camera.position.x = pointerTargetX;
-      camera.position.y = pointerTargetY;
+      camera.position.x = cameraTargetX;
+      camera.position.y = cameraTargetY;
       camera.position.z = targetCameraDistance;
     }
-    cameraLookAt.lerp(sectionZoom ? sectionFocus : homeLookAt, reducedMotion ? 1 : 0.12);
+    mobilePanLookAt.set(mobilePanX, 0.25 + mobilePanY, 0);
+    cameraLookAt.lerp(compactView ? mobilePanLookAt : sectionZoom ? sectionFocus : homeLookAt, reducedMotion ? 1 : 0.12);
     camera.lookAt(cameraLookAt);
     if (standTransition) {
       const targetX = standTransition.phase === 'out' ? -standTransition.direction * 14 : 0;
