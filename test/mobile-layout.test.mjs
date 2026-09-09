@@ -41,6 +41,7 @@ test('mobile immersive shelves rebuild a narrow spine-facing rack for portrait a
   assert.match(immersive, /const compactRoomOffsetY = -1\.8;[\s\S]*room\.position\.y = compact \? compactRoomOffsetY : 0;/);
   assert.match(immersive, /compactRoomOffsetY \+ 0\.55 \+ mobilePanY/);
   assert.match(immersive, /compactRoomOffsetY \+ 0\.25 \+ mobilePanY/);
+  assert.match(immersive, /const compactOverheadLight = new THREE\.PointLight\(0xffedc7, 30, 20\);[\s\S]*compactOverheadLight\.position\.set\(0, 7, 4\.5\)[\s\S]*compactOverheadLight\.visible = compact;/);
 });
 
 test('3D tape artwork queues, retries, and cancels slow cover loads', () => {

@@ -107,6 +107,12 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   const amberLight = new THREE.PointLight(0xc99a2e, 18, 18);
   amberLight.position.set(5, 2, 5);
   scene.add(amberLight);
+  // A broad, shadowless overhead fill keeps the compact rack readable without
+  // deep silhouettes on the wall posters. It is enabled only on phone layouts.
+  const compactOverheadLight = new THREE.PointLight(0xffedc7, 30, 20);
+  compactOverheadLight.position.set(0, 7, 4.5);
+  compactOverheadLight.visible = false;
+  scene.add(compactOverheadLight);
 
   const room = new THREE.Group();
   scene.add(room);
@@ -371,6 +377,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
   function applyLayoutDecorations(compact) {
     room.position.y = compact ? compactRoomOffsetY : 0;
+    compactOverheadLight.visible = compact;
     desktopShelfObjects.forEach((object) => { object.visible = !compact; });
     settingWall.visible = true;
     compactRack.visible = compact;
