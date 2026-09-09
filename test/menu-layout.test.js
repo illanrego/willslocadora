@@ -279,10 +279,11 @@ test('the member destination is a detailed Member Section rather than a generic 
   assert.match(page, /id="account-history-count"/);
 });
 
-test('VHS inspection offers the basket as a floating action and labels its tape-back action consistently', () => {
+test('VHS inspection offers the basket as a floating action without duplicating streamings', () => {
   assert.match(app, /basket\.textContent = 'Botar na cesta';/);
   assert.match(app, /memberActions\.append\(basket\)/);
-  assert.match(app, /utilityActions\.append\(streamingAction, savedActions, titleReview, teaser\)/);
+  assert.match(app, /utilityActions\.append\(savedActions, titleReview, teaser\)/);
+  assert.doesNotMatch(app, /title-streaming-action/);
   assert.match(app, /savedActions\.className = 'title-saved-actions';/);
   assert.match(app, /basket\.addEventListener\('click', \(\) => \{[\s\S]*toggleCounter\(current\)/);
   const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
@@ -307,7 +308,7 @@ test('mobile VHS inspection uses its red tape button for streamings and keeps on
   assert.match(app, /onAvailability: \(\) => \{\s*if \(activeViewerTitle\) sessionSupport\.openStreamings\(activeViewerTitle\);\s*\}/);
   assert.match(app, /titleReview\.textContent = 'Avaliações';/);
   assert.doesNotMatch(app, /reviewIcon\.textContent = '☆'/);
-  assert.match(css, /\.title-utility-actions > \.title-streaming-action \{ display: none; \}/);
+  assert.doesNotMatch(app, /title-streaming-action/);
 });
 
 test('tape inspection omits the support prompt while other dialogs retain their support entries', () => {

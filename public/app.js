@@ -1947,13 +1947,6 @@
     }
     const utilityActions = document.createElement('div');
     utilityActions.className = 'title-utility-actions';
-    const streamingAction = sessionSupport.button('', () => { if (activeViewerTitle) sessionSupport.openStreamings(activeViewerTitle); }, 'title-streaming-action title-icon-action');
-    streamingAction.setAttribute('aria-label', t('viewStreamings'));
-    const streamingIcon = document.createElement('span');
-    streamingIcon.className = 'title-action-icon'; streamingIcon.setAttribute('aria-hidden', 'true'); streamingIcon.textContent = '▶';
-    const streamingLabel = document.createElement('span');
-    streamingLabel.className = 'title-action-label'; streamingLabel.textContent = t('viewStreamings');
-    streamingAction.append(streamingIcon, streamingLabel);
     const titleReview = document.createElement('button');
     titleReview.type = 'button'; titleReview.className = 'title-review-action title-icon-action'; titleReview.setAttribute('aria-label', 'Ver avaliações desta fita');
     titleReview.textContent = 'Avaliações';
@@ -1962,7 +1955,7 @@
     teaser.type = 'button'; teaser.className = 'title-review-teaser'; teaser.hidden = true;
     teaser.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
     memberActions.append(basket);
-    utilityActions.append(streamingAction, savedActions, titleReview, teaser);
+    utilityActions.append(savedActions, titleReview, teaser);
     stage.append(memberActions, utilityActions);
     refreshTitleReviewTeaser(title, teaser);
     detail.append(stage);

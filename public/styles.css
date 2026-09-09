@@ -472,7 +472,6 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .title-utility-actions { position: absolute; z-index: 3; top: 50%; right: clamp(.75rem, 5vw, 4rem); display: grid; width: min(220px, 32vw); gap: .4rem; transform: translateY(-50%); }
 .title-utility-actions > button { width: 100%; text-align: left; box-shadow: 3px 4px 0 rgba(0,0,0,.45); }
 .title-icon-action { display: inline-flex; align-items: center; gap: .45rem; }
-.title-action-icon { font-size: .9rem; line-height: 1; }
 .title-utility-actions .title-review-action { color: #1b1612; background: #e7d8b1; border-color: var(--yellow); }
 .title-review-teaser { display: grid; gap: .35rem; color: #e7d8b1 !important; text-transform: none !important; }
 .title-review-teaser strong { color: var(--yellow); font-size: .64rem; }
@@ -498,15 +497,12 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
     border-radius: 50%;
     text-align: center;
   }
-  .title-utility-actions > .title-streaming-action { display: none; }
   .title-utility-actions > .title-review-action {
     width: auto;
     min-width: 0;
     padding: 0 .85rem;
     border-radius: 999px;
   }
-  .title-utility-actions .title-action-icon { font-size: 1.15rem; }
-  .title-utility-actions .title-action-label,
   .title-utility-actions .title-saved-actions,
   .title-utility-actions .title-review-teaser { display: none; }
 }
