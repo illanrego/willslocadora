@@ -1,5 +1,53 @@
 import * as THREE from '/vendor/three.module.js';
 
+const TEXTURE_LOAD_CONCURRENCY = 6;
+const TEXTURE_LOAD_ATTEMPTS = 6;
+const TEXTURE_RETRY_DELAYS = [1200, 4000, 12000, 30000, 60000];
+const textureLoadQueue = [];
+let activeTextureLoads = 0;
+
+function pumpTextureLoads() {
+  while (activeTextureLoads < TEXTURE_LOAD_CONCURRENCY && textureLoadQueue.length) {
+    const job = textureLoadQueue.shift();
+    if (job.cancelled) continue;
+    activeTextureLoads += 1;
+    const url = job.urls[job.attempt % job.urls.length];
+    new THREE.TextureLoader().load(url, (texture) => {
+      activeTextureLoads -= 1;
+      try {
+        if (job.cancelled) texture.dispose();
+        else job.onLoad(texture);
+      } finally {
+        pumpTextureLoads();
+      }
+    }, undefined, () => {
+      activeTextureLoads -= 1;
+      job.attempt += 1;
+      if (!job.cancelled && job.attempt < TEXTURE_LOAD_ATTEMPTS) {
+        const delay = TEXTURE_RETRY_DELAYS[Math.min(job.attempt - 1, TEXTURE_RETRY_DELAYS.length - 1)];
+        job.retryTimer = window.setTimeout(() => {
+          job.retryTimer = 0;
+          textureLoadQueue.push(job);
+          pumpTextureLoads();
+        }, delay);
+      }
+      pumpTextureLoads();
+    });
+  }
+}
+
+function loadTextureWithRetry(sources, onLoad) {
+  const urls = [...new Set(sources.filter(Boolean))];
+  if (!urls.length) return () => {};
+  const job = { urls, onLoad, attempt: 0, cancelled: false, retryTimer: 0 };
+  textureLoadQueue.push(job);
+  pumpTextureLoads();
+  return () => {
+    job.cancelled = true;
+    if (job.retryTimer) window.clearTimeout(job.retryTimer);
+  };
+}
+
 export function drawVhsPlaceholder(context, title) {
   const { width, height } = context.canvas;
   context.fillStyle = '#17130f'; context.fillRect(0, 0, width, height);
@@ -108,7 +156,7 @@ function drawSpineArt(context, title, image, logoImage) {
   drawSpineLabel(context, title, logoImage);
 }
 
-export function createVhsCase(title, { width = .82, height = 1.45, depth = .36, posterUrl = title.posterUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : '') } = {}) {
+export function createVhsCase(title, { width = .82, height = 1.45, depth = .36, posterUrl = title.posterUrl || title.poster || '', fallbackPosterUrl = title.posterFallbackUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : '') } = {}) {
   const group = new THREE.Group();
   const caseMaterial = new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .7 });
   const caseMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), caseMaterial); caseMesh.castShadow = true; group.add(caseMesh);
@@ -116,14 +164,14 @@ export function createVhsCase(title, { width = .82, height = 1.45, depth = .36, 
   const material = new THREE.MeshStandardMaterial({ map: cover.texture, roughness: .64 });
   const front = new THREE.Mesh(new THREE.PlaneGeometry(width * .88, height * .876), material); front.position.z = depth / 2 + .005; group.add(front);
   let disposed = false;
-  if (posterUrl) new THREE.TextureLoader().load(posterUrl, (texture) => {
+  const cancelPosterLoad = loadTextureWithRetry([posterUrl, fallbackPosterUrl], (texture) => {
     if (disposed) return texture.dispose();
     drawCover(cover.canvas.getContext('2d'), texture.image); cover.texture.needsUpdate = true; texture.dispose();
-  }, undefined, () => {});
-  return { group, caseMesh, front, material, posterUrl, dispose() { disposed = true; cover.texture.dispose(); material.dispose(); front.geometry.dispose(); caseMesh.geometry.dispose(); caseMaterial.dispose(); } };
+  });
+  return { group, caseMesh, front, material, posterUrl: fallbackPosterUrl || posterUrl, dispose() { disposed = true; cancelPosterLoad(); cover.texture.dispose(); material.dispose(); front.geometry.dispose(); caseMesh.geometry.dispose(); caseMaterial.dispose(); } };
 }
 
-export function createVhsSpine(title, { width = .4, height = 1.42, depth = .3, posterUrl = title.posterUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : ''), logoUrl = title.logoUrl || (title.logo ? window.locadoraPosterUrl(title.logo) : '') } = {}) {
+export function createVhsSpine(title, { width = .4, height = 1.42, depth = .3, posterUrl = title.posterUrl || title.poster || '', fallbackPosterUrl = title.posterFallbackUrl || (title.poster ? window.locadoraPosterUrl(title.poster) : ''), logoUrl = title.logoUrl || title.logo || '', fallbackLogoUrl = title.logoFallbackUrl || (title.logo ? window.locadoraPosterUrl(title.logo) : '') } = {}) {
   const group = new THREE.Group();
   const caseMaterial = new THREE.MeshStandardMaterial({ color: 0x171310, roughness: .7 });
   const caseMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), caseMaterial);
@@ -150,29 +198,31 @@ export function createVhsSpine(title, { width = .4, height = 1.42, depth = .3, p
     texture.needsUpdate = true;
   };
   draw();
-  if (posterUrl) new THREE.TextureLoader().load(posterUrl, (poster) => {
+  const cancelPosterLoad = loadTextureWithRetry([posterUrl, fallbackPosterUrl], (poster) => {
     if (disposed) return poster.dispose();
     posterImage = poster.image;
     draw();
     poster.dispose();
-  }, undefined, () => {});
-  const loadLogo = (url) => {
+  });
+  let cancelLogoLoad = () => {};
+  const loadLogo = (url, fallbackUrl = '') => {
     if (!url || disposed) return;
-    new THREE.TextureLoader().load(url, (logo) => {
+    cancelLogoLoad();
+    cancelLogoLoad = loadTextureWithRetry([url, fallbackUrl], (logo) => {
       if (disposed || url !== activeLogoUrl) return logo.dispose();
       logoImage = logo.image;
       draw();
       logo.dispose();
-    }, undefined, () => {});
+    });
   };
-  loadLogo(activeLogoUrl);
+  loadLogo(activeLogoUrl, fallbackLogoUrl);
   return {
-    group, caseMesh, front, material, posterUrl, logoUrl: activeLogoUrl,
-    setLogo(url) {
+    group, caseMesh, front, material, posterUrl: fallbackPosterUrl || posterUrl, logoUrl: activeLogoUrl,
+    setLogo(url, fallbackUrl = '') {
       if (disposed || !url || url === activeLogoUrl) return;
       activeLogoUrl = url;
-      loadLogo(url);
+      loadLogo(url, fallbackUrl);
     },
-    dispose() { disposed = true; texture.dispose(); material.dispose(); front.geometry.dispose(); caseMesh.geometry.dispose(); caseMaterial.dispose(); },
+    dispose() { disposed = true; cancelPosterLoad(); cancelLogoLoad(); texture.dispose(); material.dispose(); front.geometry.dispose(); caseMesh.geometry.dispose(); caseMaterial.dispose(); },
   };
 }

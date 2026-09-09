@@ -413,7 +413,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       group.rotation.y = compact ? (layoutColumn - (columns - 1) / 2) * -0.012 : (column - 4.5) * -0.007;
       group.userData.index = index;
 
-      const vhs = compact ? createVhsSpine(title, { width: 0.4, height: 1.42, depth: 0.3 }) : createVhsCase(title);
+      const imageOptions = { posterUrl: title.posterUrl, fallbackPosterUrl: title.posterFallbackUrl };
+      const vhs = compact
+        ? createVhsSpine(title, { ...imageOptions, logoUrl: title.logoUrl, fallbackLogoUrl: title.logoFallbackUrl, width: 0.4, height: 1.42, depth: 0.3 })
+        : createVhsCase(title, imageOptions);
       const { caseMesh, front } = vhs;
       caseMesh.userData.index = index;
       front.userData.index = index;
@@ -716,9 +719,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       applyVisuals(nextVisuals);
       updateSign(genre, year, type, false, activeStand);
     },
-    setLogo(titleId, logoUrl) {
+    setLogo(titleId, logoUrl, fallbackLogoUrl) {
       const record = tapeRecords.find((entry) => entry.title && String(entry.title.id) === String(titleId));
-      if (record && typeof record.vhs?.setLogo === 'function') record.vhs.setLogo(logoUrl);
+      if (record && typeof record.vhs?.setLogo === 'function') record.vhs.setLogo(logoUrl, fallbackLogoUrl);
     },
     update(nextTitles, nextGenre, nextYear, nextType, nextStand, nextVisuals) {
       applyVisuals(nextVisuals);

@@ -20,8 +20,21 @@ test('mobile immersive shelves rebuild a narrow spine-facing rack for portrait a
   assert.match(immersive, /function layoutKey\(\)/);
   assert.match(immersive, /mobile-landscape/);
   assert.match(immersive, /const compactRack = new THREE\.Group\(\)/);
-  assert.match(immersive, /createVhsSpine\(title, \{ width: 0\.4, height: 1\.42, depth: 0\.3 \}\)/);
+  assert.match(immersive, /createVhsSpine\(title, \{ \.\.\.imageOptions, logoUrl: title\.logoUrl, fallbackLogoUrl: title\.logoFallbackUrl, width: 0\.4, height: 1\.42, depth: 0\.3 \}\)/);
   assert.match(immersive, /const columns = compact \? \(landscape \? 10 : 8\) : COLUMNS/);
+});
+
+test('3D tape artwork queues, retries, and cancels slow cover loads', () => {
+  const cases = read('public/vhs-case.mjs');
+  const app = read('public/app.js');
+  assert.match(cases, /const TEXTURE_LOAD_CONCURRENCY = 6/);
+  assert.match(cases, /const TEXTURE_LOAD_ATTEMPTS = 6/);
+  assert.match(cases, /const TEXTURE_RETRY_DELAYS = \[1200, 4000, 12000, 30000, 60000\]/);
+  assert.match(cases, /function loadTextureWithRetry\(sources, onLoad\)/);
+  assert.match(cases, /job\.cancelled = true/);
+  assert.match(cases, /loadTextureWithRetry\(\[posterUrl, fallbackPosterUrl\]/);
+  assert.match(cases, /dispose\(\) \{ disposed = true; cancelPosterLoad\(\);/);
+  assert.match(app, /posterUrl: title\.poster \|\| posterFallback\(title\),[\s\S]*posterFallbackUrl: posterTextureUrl/);
 });
 
 test('mobile immersive shelves retain framed wall posters around the compact rack', () => {
