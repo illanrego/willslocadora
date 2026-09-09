@@ -334,6 +334,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   room.add(tapes);
   let tapeRecords = [];
   let disposed = false;
+  let running = true;
   let hovered = -1;
   let selected = 0;
   let frame = 0;
@@ -678,7 +679,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   applyVisuals({});
 
   function render(time) {
-    if (disposed) return;
+    if (disposed || !running) return;
     const compactView = activeLayoutKey !== 'desktop';
     const cameraTargetX = compactView ? mobilePanX : pointerTargetX;
     const cameraTargetY = compactView ? compactRoomOffsetY + 0.55 + mobilePanY : pointerTargetY;
@@ -721,6 +722,16 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   frame = requestAnimationFrame(render);
 
   return {
+    setActive(active) {
+      const nextRunning = Boolean(active);
+      if (disposed || nextRunning === running) return;
+      running = nextRunning;
+      if (running) frame = requestAnimationFrame(render);
+      else {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+    },
     zoomIn() {
       return adjustZoom(0.12);
     },

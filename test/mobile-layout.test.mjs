@@ -44,6 +44,15 @@ test('mobile immersive shelves rebuild a narrow spine-facing rack for portrait a
   assert.match(immersive, /const compactOverheadLight = new THREE\.PointLight\(0xffedc7, 30, 20\);[\s\S]*compactOverheadLight\.position\.set\(0, 7, 4\.5\)[\s\S]*compactOverheadLight\.visible = compact;/);
 });
 
+test('tape inspection pauses the immersive shelf renderer behind its dialog', () => {
+  const immersive = read('public/immersive-shelf.mjs');
+  const app = read('public/app.js');
+  assert.match(immersive, /setActive\(active\)/);
+  assert.match(immersive, /if \(disposed \|\| !running\) return/);
+  assert.match(app, /if \(state\.mode === 'immersive'\) immersiveShelf\?\.setActive\?\.\(false\)/);
+  assert.match(app, /titleDialog\.addEventListener\('close',[\s\S]*immersiveShelf\?\.setActive\?\.\(true\)/);
+});
+
 test('3D tape artwork queues, retries, and cancels slow cover loads', () => {
   const cases = read('public/vhs-case.mjs');
   const app = read('public/app.js');

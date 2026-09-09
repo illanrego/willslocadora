@@ -1908,6 +1908,7 @@
     const detail = $('#title-detail');
     const token = ++viewerToken;
     activeViewerTitle = title;
+    if (state.mode === 'immersive') immersiveShelf?.setActive?.(false);
     detail.dataset.titleKey = `${title.type}:${title.id}`;
     if (activeVhsViewer) {
       if (!titleDialog.open) titleDialog.showModal();
@@ -2195,6 +2196,7 @@
     });
     titleDialog.addEventListener('close', () => {
       viewerToken += 1;
+      if (state.mode === 'immersive') immersiveShelf?.setActive?.(true);
       if (inspectionOrigin) {
         restoreInspectionOrigin();
         return;
