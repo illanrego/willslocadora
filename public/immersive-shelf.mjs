@@ -222,7 +222,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   const compactPosts = [compactPost(-3.55), compactPost(3.55)];
   const compactBoards = [];
   const compactLips = [];
-  for (const y of [-4.25, -2.5, -.75, 1, 2.75, 4.5]) {
+  // Four compact rows need only five support boards; the former bottom board
+  // belonged to the old five-row phone layout and left an empty tier below.
+  for (const y of [-2.5, -.75, 1, 2.75, 4.5]) {
     const board = new THREE.Mesh(new THREE.BoxGeometry(7.45, 0.28, 1.05), wood);
     board.position.set(0, y, 0);
     board.castShadow = true;

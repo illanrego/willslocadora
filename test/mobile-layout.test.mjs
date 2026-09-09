@@ -36,6 +36,7 @@ test('mobile immersive shelves rebuild a narrow spine-facing rack for portrait a
   assert.match(immersive, /const mobileRackWidth = landscape \? 4\.44 : 3\.78/);
   assert.match(immersive, /fitCompactRack\(columns, spacingX, mobileSpineWidth, mobileRackWidth\)/);
   assert.match(immersive, /createVhsSpine\(title, \{ \.\.\.imageOptions, logoUrl: title\.logoUrl, fallbackLogoUrl: title\.logoFallbackUrl, width: mobileSpineWidth, height: 1\.42, depth: 0\.3, labelScale: mobileSpineWidth \/ \.4 \}\)/);
+  assert.match(immersive, /const compactLips = \[\];[\s\S]*for \(const y of \[-2\.5, -\.75, 1, 2\.75, 4\.5\]\)/);
 });
 
 test('3D tape artwork queues, retries, and cancels slow cover loads', () => {
