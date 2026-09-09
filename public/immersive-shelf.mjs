@@ -674,6 +674,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       camera.position.y += (pointerTargetY - camera.position.y) * 0.035;
       camera.position.z += (targetCameraDistance - camera.position.z) * 0.12;
     } else {
+      camera.position.x = pointerTargetX;
+      camera.position.y = pointerTargetY;
       camera.position.z = targetCameraDistance;
     }
     cameraLookAt.lerp(sectionZoom ? sectionFocus : homeLookAt, reducedMotion ? 1 : 0.12);
