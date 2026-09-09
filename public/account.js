@@ -84,6 +84,7 @@
     let signup = false;
     const status = dialog.querySelector('#auth-status');
     const identifierInput = dialog.querySelector('#auth-identifier');
+    const identifierLabel = dialog.querySelector('label[for="auth-identifier"]');
     const passwordInput = dialog.querySelector('#auth-password');
     const usernameInput = dialog.querySelector('#auth-username');
     const submit = dialog.querySelector('#auth-submit');
@@ -101,6 +102,12 @@
       forgotButton.disabled = busy;
       submit.textContent = busy ? (signup ? 'Criando…' : 'Entrando…') : (signup ? 'Criar conta' : 'Entrar');
     };
+    const setIdentifierMode = (emailOnly) => {
+      identifierLabel.textContent = emailOnly ? 'Email' : 'Email ou nome de usuário';
+      identifierInput.type = emailOnly ? 'email' : 'text';
+      identifierInput.autocomplete = emailOnly ? 'email' : 'username';
+      identifierInput.placeholder = emailOnly ? 'seu@email.com' : '';
+    };
     const clearFieldErrors = () => [identifierInput, passwordInput, usernameInput].forEach((input) => input.removeAttribute('aria-invalid'));
     const showFieldError = (input, message) => { input.setAttribute('aria-invalid', 'true'); setFeedback(message); input.focus(); };
     [identifierInput, passwordInput, usernameInput].forEach((input) => input.addEventListener('input', () => { input.removeAttribute('aria-invalid'); if (status.dataset.tone === 'error') setFeedback(''); }));
@@ -113,12 +120,12 @@
       usernameInput.required = signup;
       dialog.querySelector('#auth-username-hint').hidden = !signup;
       forgotButton.hidden = signup;
-      identifierInput.type = signup ? 'email' : 'text';
-      identifierInput.autocomplete = signup ? 'email' : 'username';
+      setIdentifierMode(signup);
       setFeedback('');
       clearFieldErrors();
     });
     forgotButton.addEventListener('click', async () => {
+      setIdentifierMode(true);
       const email = identifierInput.value.trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showFieldError(identifierInput, 'Digite seu email para receber um link de recuperação.');
       setBusy(true);
@@ -203,7 +210,7 @@
     publicRequest,
     state: () => state,
     onChange(listener) { subscribers.add(listener); return () => subscribers.delete(listener); },
-    async signIn() { const dialog = ensureDialog(); if (dialog.querySelector('#auth-mode').textContent === 'Já tenho conta') dialog.querySelector('#auth-mode').click(); dialog.querySelector('#auth-status').hidden = true; dialog.querySelector('#auth-status').textContent = ''; dialog.querySelector('#reset-form').hidden = true; dialog.querySelector('#auth-form').hidden = false; dialog.querySelector('#auth-heading').textContent = 'Entrar na Locadora'; dialog.querySelector('#auth-form').reset(); dialog.showModal(); },
+    async signIn() { const dialog = ensureDialog(); if (dialog.querySelector('#auth-mode').textContent === 'Já tenho conta') dialog.querySelector('#auth-mode').click(); const identifier = dialog.querySelector('#auth-identifier'); identifier.type = 'text'; identifier.autocomplete = 'username'; identifier.placeholder = ''; dialog.querySelector('label[for="auth-identifier"]').textContent = 'Email ou nome de usuário'; dialog.querySelector('#auth-status').hidden = true; dialog.querySelector('#auth-status').textContent = ''; dialog.querySelector('#reset-form').hidden = true; dialog.querySelector('#auth-form').hidden = false; dialog.querySelector('#auth-heading').textContent = 'Entrar na Locadora'; dialog.querySelector('#auth-form').reset(); dialog.showModal(); },
     async signOut() {
       try { if (token) await authRequest('/sign-out', { method: 'POST', body: '{}' }); } finally {
         token = ''; window.localStorage.removeItem(tokenKey); state = Object.freeze({ configured: Boolean(authApiBase), signedIn: false, user: null }); emit();

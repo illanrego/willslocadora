@@ -610,6 +610,16 @@ dialog.panel-dialog {
 
 /* A membership card plus factual counts make the destination useful at a glance. */
 .member-dialog { width: min(820px, calc(100% - 1rem)) !important; }
+#auth-dialog .panel-header { padding-right: 4.2rem; }
+#auth-dialog .dialog-close { position: absolute; top: .65rem; right: .75rem; margin: 0; }
+#auth-dialog .source-form { max-width: 420px; margin-inline: auto; border-top: 0; }
+#auth-dialog #auth-form > label,
+#auth-dialog #reset-form > label { text-align: center; }
+#auth-dialog #auth-form > input,
+#auth-dialog #reset-form > input { display: block; width: 100%; box-sizing: border-box; }
+#auth-dialog .auth-form-actions { justify-content: center; }
+#auth-dialog .auth-form-actions .account-action { flex: 0 1 180px; }
+#auth-dialog .auth-text-action { display: block; margin-inline: auto; }
 .member-card {
   display: grid;
   grid-template-columns: 72px repeat(2, minmax(0, 1fr));
@@ -1533,4 +1543,13 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .normal-provider-filters .provider-picker legend { grid-column: auto; }
   .normal-provider-filters .provider-checkboxes { padding-bottom: .4rem; }
   .normal-provider-filters .ignore-year-control { border-left: 0; padding-left: 0; }
+
+  #auth-dialog { width: calc(100% - 1rem) !important; max-height: calc(100dvh - 1rem); padding-inline: .9rem; }
+  #auth-dialog .panel-header { margin-inline: -.9rem; padding: 1rem .9rem .8rem; padding-right: 3.6rem; }
+  #auth-dialog .panel-header h2 { font-size: clamp(1.8rem, 9vw, 2.4rem); }
+  #auth-dialog .dialog-close { top: .55rem; right: .6rem; width: 36px; height: 36px; font-size: 1.25rem; }
+  #auth-dialog .auth-form-actions { gap: .35rem; }
+  #auth-dialog .auth-form-actions .account-action { flex: 1 1 0; min-height: 36px; margin-top: .7rem; padding: .45rem .5rem; font-size: .58rem; }
+  #auth-dialog .auth-text-action { width: max-content; margin: .65rem auto 0; text-align: center; }
+  #auth-dialog .source-form input { min-height: 40px; padding: .55rem; }
 }
