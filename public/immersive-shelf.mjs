@@ -371,14 +371,20 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     compactRack.visible = compact;
     featuredPosterGroup.visible = true;
     layoutFeaturedPosters(layoutKey());
-    standMarker.visible = !compact;
+    standMarker.visible = true;
     if (compact) {
       const sw = (compactRackWidth + 2.0) / 7.9;
       sign.scale.set(sw, sw, sw);
       const dropY = 1.58 * sw * 0.6;
       sign.position.y = 6.05 - dropY;
+      // Keep the stand plaque in the phone camera's compact framing, beside the sign.
+      const markerScale = sw * 0.72;
+      standMarker.scale.setScalar(markerScale);
+      standMarker.position.set((sw * 7.9) / 2 + markerScale * 1.1, sign.position.y - 0.42, 0.18);
       fitLamps(true, dropY, (sw * 7.9) / 2);
     } else {
+      standMarker.scale.set(1, 1, 1);
+      standMarker.position.set(4.88, 4.88, 0.18);
       sign.scale.set(1, 1, 1);
       sign.position.y = 5.15;
       fitLamps(false);
