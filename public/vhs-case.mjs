@@ -115,7 +115,8 @@ function drawSpineLabel(context, title, logoImage) {
   } else {
     context.save();
     context.translate(width / 2, height / 2);
-    context.rotate(-Math.PI / 2);
+    // Match the 2D mobile spine: titles read from the top down.
+    context.rotate(Math.PI / 2);
     context.fillStyle = '#fff4d1';
     context.textAlign = 'center';
     context.textBaseline = 'middle';

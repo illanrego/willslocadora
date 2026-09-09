@@ -15,6 +15,13 @@ test('mobile 2D shelves show poster+logo-backed tape spines with a vertical titl
   assert.match(styles, /\.case-spine \{[^}]*background: rgba\(8, 5, 4, \.32\);/);
 });
 
+test('mobile 3D fallback spine titles read from top to bottom', () => {
+  const cases = read('public/vhs-case.mjs');
+  assert.match(cases, /drawSpineLabel\(context, title, logoImage\)/);
+  assert.match(cases, /context\.rotate\(Math\.PI \/ 2\);[\s\S]*context\.fillStyle = '#fff4d1'/);
+  assert.doesNotMatch(cases, /context\.rotate\(-Math\.PI \/ 2\);/);
+});
+
 test('mobile immersive shelves rebuild a narrow spine-facing rack for portrait and landscape', () => {
   const immersive = read('public/immersive-shelf.mjs');
   assert.match(immersive, /function layoutKey\(\)/);
