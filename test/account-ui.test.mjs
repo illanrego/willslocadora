@@ -109,7 +109,10 @@ test('tape inspection exposes public half-star reviews and gates the review form
   assert.match(app, /function hasWatchedTitle\(title\)/);
   assert.match(app, /history\.some\(\(entry\) => entry\.watchedStatus === 'watched'/);
   assert.match(app, /\/v1\/titles\/\$\{route\.type\}\/\$\{route\.tmdbId\}\/review/);
-  assert.match(app, /titleReview\.textContent = '★ Avaliações';/);
+  assert.match(app, /const streamingAction = sessionSupport\.button\('',[\s\S]*'title-streaming-action title-icon-action'\);/);
+  assert.match(app, /streamingIcon\.textContent = '▶';/);
+  assert.match(app, /reviewIcon\.textContent = '☆';/);
+  assert.match(app, /reviewLabel\.className = 'title-action-label'; reviewLabel\.textContent = 'Avaliações';/);
   assert.match(app, /utilityActions\.className = 'title-utility-actions';/);
   assert.match(app, /teaser\.className = 'title-review-teaser';/);
   assert.match(app, /byline\.textContent = `@\$\{review\.username\} · \$\{formatReviewRating\(review\.rating\)\}`/);
@@ -118,6 +121,7 @@ test('tape inspection exposes public half-star reviews and gates the review form
   assert.match(app, /button\.dataset\.savedCollection = collection/);
   assert.match(styles, /\.title-utility-actions/);
   assert.match(styles, /\.title-review-teaser/);
+  assert.match(styles, /\.title-utility-actions \.title-action-label,[\s\S]*\.title-utility-actions \.title-saved-actions,[\s\S]*\.title-utility-actions \.title-review-teaser \{ display: none; \}/);
   assert.match(styles, /\.review-rating-picker/);
   assert.match(styles, /\.review-card/);
 });

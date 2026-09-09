@@ -8,6 +8,8 @@ const ACTIONS = {
   watch: { x: 676, y: 1328, width: 276, height: 104 },
   letterboxd: { x: 856, y: 200, width: 96, height: 86 },
   imdb: { x: 856, y: 292, width: 96, height: 86 },
+  watchLater: { x: 856, y: 384, width: 96, height: 86 },
+  favorite: { x: 856, y: 476, width: 96, height: 86 },
 };
 const PROVIDER_LOGOS = Object.freeze({
   Netflix: '/images/providers/netflix.svg',
@@ -64,7 +66,7 @@ function wrappedText(context, text, x, y, maxWidth, lineHeight, maxLines) {
   return y;
 }
 
-function drawSticker(context, rect, drawLogo) {
+function drawSticker(context, rect, drawLogo, fillStyle = LOCADORA_PALETTE.ink) {
   const centerX = rect.x + rect.width / 2;
   const centerY = rect.y + rect.height / 2;
   const outerRadiusX = 68;
@@ -82,7 +84,7 @@ function drawSticker(context, rect, drawLogo) {
     if (index === 0) context.moveTo(x, y); else context.lineTo(x, y);
   }
   context.closePath();
-  context.fillStyle = '#080d17';
+  context.fillStyle = fillStyle;
   context.fill();
   context.strokeStyle = '#b7392d';
   context.lineWidth = 4;
@@ -114,6 +116,18 @@ function drawImdbSticker(context) {
     context.textAlign = 'left';
     context.textBaseline = 'alphabetic';
   });
+}
+
+function drawSavedSticker(context, rect, symbol, active) {
+  drawSticker(context, rect, (centerX, centerY) => {
+    context.fillStyle = active ? LOCADORA_PALETTE.ink : LOCADORA_PALETTE.cream;
+    context.font = `900 ${symbol === '★' ? 48 : 56}px Arial Black, sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(symbol, centerX, centerY + (symbol === '★' ? 2 : 1));
+    context.textAlign = 'left';
+    context.textBaseline = 'alphabetic';
+  }, active ? LOCADORA_PALETTE.yellow : LOCADORA_PALETTE.ink);
 }
 
 function drawFront(context, title, copy) {
@@ -187,7 +201,7 @@ function drawBarcode(context, value, x, y, width, height) {
   context.textAlign = 'left';
 }
 
-function drawBack(context, title, atCounter, posterImage = null, backdropImage = null, copy = {}, providerImages = []) {
+function drawBack(context, title, atCounter, posterImage = null, backdropImage = null, copy = {}, providerImages = [], savedCollections = new Set(), showSavedActions = false) {
   context.fillStyle = LOCADORA_PALETTE.ink;
   context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
   context.fillStyle = LOCADORA_PALETTE.navy;
@@ -206,6 +220,10 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   drawBarcode(context, title.id, 596, 68, 356, 126);
   drawLetterboxdSticker(context);
   drawImdbSticker(context);
+  if (showSavedActions) {
+    drawSavedSticker(context, ACTIONS.watchLater, '＋', savedCollections.has('watch_later'));
+    drawSavedSticker(context, ACTIONS.favorite, '★', savedCollections.has('favorite'));
+  }
 
   context.fillStyle = LOCADORA_PALETTE.yellow;
   context.font = '900 74px Impact, Arial Narrow, sans-serif';
@@ -334,7 +352,7 @@ function drawPoster(context, image, title, logoImage = null) {
   context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 92, 1366);
 }
 
-export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onClose, copy }) {
+export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, savedCollections = [], showSavedActions = false, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onWatchLater, onFavorite, onClose, copy }) {
   const labels = { noSynopsis: 'No synopsis was included by this catalogue source.', ...copy };
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -376,7 +394,8 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   let logoImage = null;
   const providerImages = [];
   let currentAtCounter = atCounter;
-  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage, labels, providerImages));
+  let currentSavedCollections = new Set(savedCollections);
+  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions));
   const backMaterial = new THREE.MeshStandardMaterial({ map: backCanvas.texture, roughness: 0.72 });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(3.82, 5.82), backMaterial);
   back.position.z = -0.236;
@@ -399,7 +418,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     if (posterImage) drawPoster(frontContext, posterImage, title, logoImage);
     else drawFront(frontContext, title, labels);
     frontCanvas.texture.needsUpdate = true;
-    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels, providerImages);
+    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions);
     backCanvas.texture.needsUpdate = true;
   }
   function loadAsset(name, url) {
@@ -505,7 +524,13 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
 
   function isClickableHit(hit) {
     const coordinates = actionCoordinates(hit);
-    return Boolean(coordinates && [ACTIONS.letterboxd, ACTIONS.imdb, ACTIONS.counter, ACTIONS.availability, ACTIONS.watch].some((rect) => inside(rect, coordinates.x, coordinates.y)));
+    return Boolean(coordinates && clickableActions().some((rect) => inside(rect, coordinates.x, coordinates.y)));
+  }
+
+  function clickableActions() {
+    const actions = [ACTIONS.letterboxd, ACTIONS.imdb, ACTIONS.counter, ACTIONS.availability, ACTIONS.watch];
+    if (showSavedActions) actions.push(ACTIONS.watchLater, ACTIONS.favorite);
+    return actions;
   }
 
   function pointerDown(event) {
@@ -591,6 +616,8 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       const { x, y } = coordinates;
       if (inside(ACTIONS.letterboxd, x, y)) return onLetterboxd?.();
       if (inside(ACTIONS.imdb, x, y)) return onImdb?.();
+      if (showSavedActions && inside(ACTIONS.watchLater, x, y)) return onWatchLater?.();
+      if (showSavedActions && inside(ACTIONS.favorite, x, y)) return onFavorite?.();
       if (inside(ACTIONS.counter, x, y)) return onCounter();
       if (inside(ACTIONS.availability, x, y)) return onAvailability();
       if (inside(ACTIONS.watch, x, y)) return onWatch();
@@ -610,7 +637,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     if (hit.object.userData.surface === 'back' && hit.uv) {
       const x = hit.uv.x * TEXTURE_WIDTH;
       const y = (1 - hit.uv.y) * TEXTURE_HEIGHT;
-      if (inside(ACTIONS.letterboxd, x, y) || inside(ACTIONS.imdb, x, y) || inside(ACTIONS.counter, x, y) || inside(ACTIONS.availability, x, y) || inside(ACTIONS.watch, x, y)) return;
+      if (clickableActions().some((rect) => inside(rect, x, y))) return;
     }
     targetY += Math.PI;
   }
@@ -658,6 +685,10 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     focusBack() { setDetailFocus('back'); },
     zoomIn() { adjustZoom(VHS_ZOOM_STEP); },
     zoomOut() { adjustZoom(-VHS_ZOOM_STEP); },
+    setSavedCollections(nextCollections) {
+      currentSavedCollections = new Set(nextCollections);
+      redraw();
+    },
     update(nextTitle, nextAtCounter, assets = {}) {
       title = nextTitle;
       resetToFront();

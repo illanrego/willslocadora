@@ -26,5 +26,17 @@ test('VHS canvas changes to a pointer over clickable back-cover actions', () => 
   const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
   assert.match(viewer, /function isClickableHit\(hit\)/);
   assert.match(viewer, /renderer\.domElement\.style\.cursor = isClickableHit\(pick\(event\)\) \? 'pointer' : 'grab'/);
-  assert.match(viewer, /ACTIONS\.letterboxd, ACTIONS\.imdb, ACTIONS\.counter, ACTIONS\.availability, ACTIONS\.watch/);
+  assert.match(viewer, /const actions = \[ACTIONS\.letterboxd, ACTIONS\.imdb, ACTIONS\.counter, ACTIONS\.availability, ACTIONS\.watch\]/);
+  assert.match(viewer, /if \(showSavedActions\) actions\.push\(ACTIONS\.watchLater, ACTIONS\.favorite\)/);
+});
+
+test('mobile VHS back cover exposes saved-list stickers and keeps their state in sync', () => {
+  const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
+  assert.match(viewer, /watchLater: \{ x: 856, y: 384/);
+  assert.match(viewer, /favorite: \{ x: 856, y: 476/);
+  assert.match(viewer, /drawSavedSticker\(context, ACTIONS\.watchLater, '＋', savedCollections\.has\('watch_later'\)\)/);
+  assert.match(viewer, /drawSavedSticker\(context, ACTIONS\.favorite, '★', savedCollections\.has\('favorite'\)\)/);
+  assert.match(viewer, /setSavedCollections\(nextCollections\)/);
+  assert.match(app, /activeVhsViewer\?\.setSavedCollections\(collections\)/);
+  assert.match(app, /showSavedActions: window\.matchMedia\('\(max-width: 600px\)'\)\.matches/);
 });

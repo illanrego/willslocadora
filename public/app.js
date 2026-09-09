@@ -538,6 +538,7 @@
   function syncTitleSavedActions() {
     if (!activeViewerTitle) return;
     const collections = savedTitleCollections(activeViewerTitle);
+    activeVhsViewer?.setSavedCollections(collections);
     document.querySelectorAll('[data-saved-collection]').forEach((button) => {
       const collection = button.dataset.savedCollection;
       const active = collections.has(collection);
@@ -1873,15 +1874,26 @@
     }
     const utilityActions = document.createElement('div');
     utilityActions.className = 'title-utility-actions';
-    utilityActions.append(sessionSupport.button(t('viewStreamings'), () => { if (activeViewerTitle) sessionSupport.openStreamings(activeViewerTitle); }, 'title-streaming-action'));
+    const streamingAction = sessionSupport.button('', () => { if (activeViewerTitle) sessionSupport.openStreamings(activeViewerTitle); }, 'title-streaming-action title-icon-action');
+    streamingAction.setAttribute('aria-label', t('viewStreamings'));
+    const streamingIcon = document.createElement('span');
+    streamingIcon.className = 'title-action-icon'; streamingIcon.setAttribute('aria-hidden', 'true'); streamingIcon.textContent = '▶';
+    const streamingLabel = document.createElement('span');
+    streamingLabel.className = 'title-action-label'; streamingLabel.textContent = t('viewStreamings');
+    streamingAction.append(streamingIcon, streamingLabel);
     const titleReview = document.createElement('button');
-    titleReview.type = 'button'; titleReview.className = 'title-review-action'; titleReview.textContent = '★ Avaliações'; titleReview.setAttribute('aria-label', 'Ver avaliações desta fita');
+    titleReview.type = 'button'; titleReview.className = 'title-review-action title-icon-action'; titleReview.setAttribute('aria-label', 'Ver avaliações desta fita');
+    const reviewIcon = document.createElement('span');
+    reviewIcon.className = 'title-action-icon'; reviewIcon.setAttribute('aria-hidden', 'true'); reviewIcon.textContent = '☆';
+    const reviewLabel = document.createElement('span');
+    reviewLabel.className = 'title-action-label'; reviewLabel.textContent = 'Avaliações';
+    titleReview.append(reviewIcon, reviewLabel);
     titleReview.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
     const teaser = document.createElement('button');
     teaser.type = 'button'; teaser.className = 'title-review-teaser'; teaser.hidden = true;
     teaser.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
     memberActions.append(basket);
-    utilityActions.append(savedActions, titleReview, teaser);
+    utilityActions.append(streamingAction, savedActions, titleReview, teaser);
     stage.append(memberActions, utilityActions);
     refreshTitleReviewTeaser(title, teaser);
     detail.append(stage);
@@ -1898,6 +1910,8 @@
         ...vhsAssets(title, posterUrl),
         copy: getCopy(state.locale),
         atCounter: isAtCounter(title),
+        savedCollections: savedTitleCollections(title),
+        showSavedActions: window.matchMedia('(max-width: 600px)').matches,
         onCounter: () => {
           const current = activeViewerTitle;
           if (!current) return;
@@ -1910,6 +1924,8 @@
         onWatch: () => { if (activeViewerTitle) window.location.href = createStremioUri(activeViewerTitle); },
         onLetterboxd: () => { if (activeViewerTitle) window.open(createLetterboxdUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
         onImdb: () => { if (activeViewerTitle) window.open(createImdbUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
+        onWatchLater: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'watch_later', { confirm: true }); },
+        onFavorite: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'favorite', { confirm: true }); },
         onClose: () => titleDialog.close(),
       });
     } catch (error) {

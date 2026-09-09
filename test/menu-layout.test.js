@@ -6,6 +6,7 @@ const page = readFileSync(require.resolve('../public/index.html'), 'utf8');
 const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
 const css = readFileSync(require.resolve('../public/styles.css'), 'utf8');
 const balcony = readFileSync(require.resolve('../public/balcony.mjs'), 'utf8');
+const sessionSupport = readFileSync(require.resolve('../public/session-support.js'), 'utf8');
 
 test('normal browsing exposes subscription choices from the compact browse controls', () => {
   const header = page.match(/<header id="store-header"[\s\S]*?<\/header>/)?.[0] || '';
@@ -258,7 +259,7 @@ test('the member destination is a detailed Member Section rather than a generic 
 test('VHS inspection offers the basket as a floating action and labels its tape-back action consistently', () => {
   assert.match(app, /basket\.textContent = 'Botar na cesta';/);
   assert.match(app, /memberActions\.append\(basket\)/);
-  assert.match(app, /utilityActions\.append\(savedActions, titleReview, teaser\)/);
+  assert.match(app, /utilityActions\.append\(streamingAction, savedActions, titleReview, teaser\)/);
   assert.match(app, /savedActions\.className = 'title-saved-actions';/);
   assert.match(app, /basket\.addEventListener\('click', \(\) => \{[\s\S]*toggleCounter\(current\)/);
   const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
@@ -272,7 +273,14 @@ test('VHS inspection saves star and plus actions to their matching list with con
   assert.match(app, /async function saveTitleCollection\(title, collection, \{ confirm = false \} = \{\}\)/);
   assert.match(app, /if \(!active && result\.membership && confirm\) showSavedCollectionAdded\(title, collection\)/);
   assert.match(app, /saveTitleCollection\(activeViewerTitle, collection, \{ confirm: true \}\)/);
+  assert.match(app, /onWatchLater: \(\) => \{ if \(activeViewerTitle\) saveTitleCollection\(activeViewerTitle, 'watch_later', \{ confirm: true \}\); \}/);
+  assert.match(app, /onFavorite: \(\) => \{ if \(activeViewerTitle\) saveTitleCollection\(activeViewerTitle, 'favorite', \{ confirm: true \}\); \}/);
   assert.match(app, /function showSavedCollectionAdded\(title, collection\)/);
   assert.match(app, /const label = collection === 'favorite' \? 'Favoritos' : 'Assistir depois'/);
   assert.match(app, /\$\('#saved-added-dialog'\)\.addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\)/);
+});
+
+test('tape inspection omits the support prompt while other dialogs retain their support entries', () => {
+  assert.match(sessionSupport, /dialog\.id === 'title-dialog'/);
+  assert.match(sessionSupport, /support\.classList\.add\('dialog-support'\); dialog\.append\(support\)/);
 });
