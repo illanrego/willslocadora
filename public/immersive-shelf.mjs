@@ -130,6 +130,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   const featuredPosterLoader = new THREE.TextureLoader();
   const featuredPosterTextures = new Set();
   const featuredPosterFrames = [];
+  let featuredRequestToken = 0;
+  let featuredYear = '';
   room.add(featuredPosterGroup);
   function clearFeaturedPosters() {
     featuredPosterTextures.forEach((texture) => texture.dispose());
@@ -179,8 +181,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   }
 
   async function loadFeaturedPosters(nextYear) {
+    const token = ++featuredRequestToken;
+    featuredYear = String(nextYear);
     const featured = await loadFeaturedTitles(nextYear);
-    if (!disposed) renderFeaturedPosters(featured);
+    if (!disposed && token === featuredRequestToken) renderFeaturedPosters(featured);
   }
 
   for (const x of [-6.05, 6.05]) {
@@ -257,6 +261,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
   let activeProviders = providers;
   const providerImages = new Map();
+  let providerLogoKey = '';
   const signCanvas = canvasTexture(1024, 240, (context) => drawSign(context, genre, year, type, activeTheme, activeProviders, providerImages));
   const sign = new THREE.Mesh(
     new THREE.BoxGeometry(7.9, 1.58, 0.22),
@@ -429,6 +434,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   }
 
   function loadProviderLogos(nextProviders) {
+    const nextKey = nextProviders.map((provider) => `${provider.id}:${provider.logoPath || ''}`).join('|');
+    if (nextKey === providerLogoKey) return;
+    providerLogoKey = nextKey;
     providerImages.clear();
     for (const provider of nextProviders) {
       if (!provider.logoPath) continue;
@@ -697,7 +705,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       const z = record.group.userData.baseZ + (active ? 0.3 : 0);
       record.group.position.z += (z - record.group.position.z) * 0.16;
       const scale = active ? 1.045 : 1;
-      record.group.scale.lerp(new THREE.Vector3(scale, scale, scale), 0.16);
+      record.group.scale.setScalar(THREE.MathUtils.lerp(record.group.scale.x, scale, 0.16));
       record.material.emissive.setHex(active ? 0x221805 : 0x000000);
     });
     renderer.render(scene, camera);
@@ -728,7 +736,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       standTransition = null;
       room.position.x = 0;
       updateSign(nextGenre, nextYear, nextType, false, nextStand);
-      if (nextYear !== year) loadFeaturedPosters(nextYear);
+      if (String(nextYear) !== featuredYear) loadFeaturedPosters(nextYear);
       renderTapes(nextTitles);
     },
     transition(nextTitles, nextGenre, nextYear, nextType, nextStand, direction, nextVisuals) {
@@ -751,6 +759,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     },
     dispose() {
       disposed = true;
+      featuredRequestToken += 1;
       cancelAnimationFrame(frame);
       observer.disconnect();
       renderer.domElement.removeEventListener('pointermove', pointerMove);

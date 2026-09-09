@@ -5,8 +5,11 @@ const { readFileSync } = require('node:fs');
 const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
 
 test('rapid title changes reuse one VHS renderer even after the dialog closes', () => {
+  const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
   assert.match(app, /if \(activeVhsViewer\) \{\s*if \(!titleDialog\.open\) titleDialog\.showModal\(\);[\s\S]*activeVhsViewer\.update\(/);
   assert.doesNotMatch(app, /titleDialog\.addEventListener\('close',[\s\S]*activeVhsViewer\?\.dispose\(\)/);
+  assert.doesNotMatch(app, /activeVhsViewer\.setActive/);
+  assert.match(viewer, /update\(nextTitle, nextAtCounter, assets = \{\}\) \{\s*title = nextTitle;\s*resetToFront\(\);[\s\S]*Object\.keys\(assetUrls\)\.forEach[\s\S]*redraw\(\);\s*loadAsset\('poster', assets\.posterUrl\)/);
 });
 
 test('Balcony search computer faces the customer', () => {

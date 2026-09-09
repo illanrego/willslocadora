@@ -37,6 +37,16 @@ test('3D tape artwork queues, retries, and cancels slow cover loads', () => {
   assert.match(app, /posterUrl: title\.poster \|\| posterFallback\(title\),[\s\S]*posterFallbackUrl: posterTextureUrl/);
 });
 
+test('2D shelf logos retry without hiding the title fallback', () => {
+  const app = read('public/app.js');
+  assert.match(app, /const LOGO_LOAD_ATTEMPTS = 6/);
+  assert.match(app, /const LOGO_RETRY_DELAYS = \[1200, 4000, 12000, 30000, 60000\]/);
+  assert.match(app, /function loadTapeLogo\(image, tape, sources\)/);
+  assert.match(app, /const handleLoad = \(\) => \{[\s\S]*tape\.classList\.add\('has-logo'\)/);
+  assert.match(app, /const handleError = \(\) => \{[\s\S]*tape\.classList\.remove\('has-logo'\);[\s\S]*window\.setTimeout\(tryLoad/);
+  assert.doesNotMatch(app, /logo\.src = logoUrl;\s*button\.classList\.add\('has-logo'\)/);
+});
+
 test('mobile immersive shelves retain framed wall posters around the compact rack', () => {
   const immersive = read('public/immersive-shelf.mjs');
   assert.match(immersive, /function layoutFeaturedPosters\(key\)/);
@@ -45,4 +55,21 @@ test('mobile immersive shelves retain framed wall posters around the compact rac
   assert.match(immersive, /settingWall\.visible = true/);
   assert.match(immersive, /featuredPosterGroup\.visible = true/);
   assert.doesNotMatch(immersive, /featuredPosterGroup\.visible = !compact/);
+});
+
+test('long browsing sessions keep hidden shelves and repeated rendering work bounded', () => {
+  const app = read('public/app.js');
+  const immersive = read('public/immersive-shelf.mjs');
+  const featured = read('public/featured-titles.mjs');
+  assert.match(app, /metadata: createBoundedCache\(120\)/);
+  assert.match(app, /const appendToNormalShelf = append && state\.mode === 'normal'/);
+  assert.match(app, /renderShelf\(state\.titles, stand, false\)/);
+  assert.match(app, /function replaceShelfContents\([\s\S]*cancelLogoLoad\?\.\(\)/);
+  assert.doesNotMatch(immersive, /record\.group\.scale\.lerp\(new THREE\.Vector3/);
+  assert.match(immersive, /record\.group\.scale\.setScalar\(THREE\.MathUtils\.lerp/);
+  assert.match(immersive, /if \(nextKey === providerLogoKey\) return;/);
+  assert.match(immersive, /if \(!disposed && token === featuredRequestToken\) renderFeaturedPosters\(featured\)/);
+  assert.match(immersive, /if \(String\(nextYear\) !== featuredYear\) loadFeaturedPosters\(nextYear\)/);
+  assert.match(featured, /const FEATURED_YEAR_CACHE_LIMIT = 6/);
+  assert.match(featured, /while \(featuredByYear\.size > FEATURED_YEAR_CACHE_LIMIT\)/);
 });
