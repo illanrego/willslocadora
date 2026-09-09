@@ -1057,7 +1057,9 @@
   }
 
   function goToPreviousStand() {
-    goToCachedStand(state.stand - 1, -1);
+    const previousStand = state.stand - 1;
+    if (previousStand < 0) return;
+    if (!goToCachedStand(previousStand, -1)) loadShelf(previousStand, false, -1, true);
   }
 
   function goToNextStand() {
@@ -1243,7 +1245,7 @@
     }
   }
 
-  async function loadShelf(stand = 0, append = false, transitionDirection = 0) {
+  async function loadShelf(stand = 0, append = false, transitionDirection = 0, preserveStandHistory = false) {
     if (state.request) state.request.abort();
     const controller = new AbortController();
     state.request = controller;
@@ -1263,7 +1265,7 @@
     shelf.hidden = false;
     shelf.setAttribute('aria-busy', 'true');
     emptyState.hidden = true;
-    if (!append) {
+    if (!append && !preserveStandHistory) {
       state.stand = 0;
       state.hasNextStand = false;
       state.standCache.clear();
@@ -1275,22 +1277,23 @@
       const params = new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear) });
       const body = await api(`/api/shelf?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
-      if (!append) state.renderedTitleKeys = new Set();
+      if (!append && !preserveStandHistory) state.renderedTitleKeys = new Set();
       const hasAnotherSourcePage = Boolean(body.hasNextStand);
-      state.titles = body.titles.filter((title) => {
+      const nextTitles = preserveStandHistory ? body.titles : body.titles.filter((title) => {
         const key = `${title.type}:${title.id}`;
         if (state.renderedTitleKeys.has(key)) return false;
         state.renderedTitleKeys.add(key);
         return true;
       });
-      if (!state.titles.length) {
-        if (!append) {
+      if (!nextTitles.length) {
+        if (!append && !preserveStandHistory) {
           showEmpty();
           refreshImmersive();
         }
         else $('#load-more-shelf').hidden = !hasAnotherSourcePage;
         return;
       }
+      state.titles = nextTitles;
       state.stand = stand;
       state.hasNextStand = hasAnotherSourcePage;
       state.standCache.set(stand, { titles: state.titles, hasNextStand: hasAnotherSourcePage });
@@ -1302,10 +1305,10 @@
       hydrateTapeLogos();
     } catch (error) {
       if (error.name === 'AbortError') return;
-      if (!append) state.titles = [];
+      if (!append && !preserveStandHistory) state.titles = [];
       $('#shelf-status').textContent = error.message;
       $('#immersive-status').textContent = error.message;
-      if (!append) showEmpty();
+      if (!append && !preserveStandHistory) showEmpty();
     } finally {
       if (state.request === controller) state.request = null;
       shelf.setAttribute('aria-busy', 'false');

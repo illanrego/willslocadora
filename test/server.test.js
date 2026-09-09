@@ -198,7 +198,7 @@ test('server exposes the installed Three.js browser module without exposing node
   const app = await fetch(`http://127.0.0.1:${port}/app.js`);
   const appSource = await app.text();
   assert.match(appSource, /function goToPreviousStand\(\)/);
-  assert.match(appSource, /goToCachedStand\(state\.stand - 1, -1\)/);
+  assert.match(appSource, /const previousStand = state\.stand - 1;[\s\S]*goToCachedStand\(previousStand, -1\)[\s\S]*loadShelf\(previousStand, false, -1, true\)/);
   assert.match(appSource, /loadShelf\(state\.stand \+ 1, true, 1\)/);
 
   const privateModule = await fetch(`http://127.0.0.1:${port}/node_modules/three/package.json`);

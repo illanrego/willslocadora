@@ -98,7 +98,12 @@ test('long browsing sessions bound repeated rendering work without changing shar
   const immersive = read('public/immersive-shelf.mjs');
   const featured = read('public/featured-titles.mjs');
   assert.match(app, /metadata: createBoundedCache\(120\)/);
-  assert.match(app, /if \(!append\) state\.renderedTitleKeys = new Set\(\)/);
+  assert.match(app, /const previousStand = state\.stand - 1;[\s\S]*if \(!goToCachedStand\(previousStand, -1\)\) loadShelf\(previousStand, false, -1, true\);/);
+  assert.match(app, /async function loadShelf\(stand = 0, append = false, transitionDirection = 0, preserveStandHistory = false\)/);
+  assert.match(app, /if \(!append && !preserveStandHistory\) \{[\s\S]*state\.standCache\.clear\(\)/);
+  assert.match(app, /const nextTitles = preserveStandHistory \? body\.titles : body\.titles\.filter/);
+  assert.match(app, /if \(!append && !preserveStandHistory\) state\.renderedTitleKeys = new Set\(\)/);
+  assert.match(app, /if \(!append && !preserveStandHistory\) state\.titles = \[\];/);
   assert.match(app, /renderShelf\(state\.titles, stand, append\)/);
   assert.doesNotMatch(app, /appendToNormalShelf/);
   assert.match(app, /function replaceShelfContents\([\s\S]*cancelLogoLoad\?\.\(\)/);
