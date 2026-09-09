@@ -148,6 +148,9 @@
       setYear,
       setMusicTrack,
       setVolume,
+      isActive(channel) {
+        return active.has(channel);
+      },
       stopAll() {
         stop('music');
         stop('ambience');

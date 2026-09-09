@@ -54,6 +54,22 @@ test('mobile storefront keeps genre, year, and streaming controls outside the co
   assert.match(app, /function handleProviderChange\(event\)/);
 });
 
+test('normal and immersive modes expose one shared set of preferences', () => {
+  assert.match(page, /id="normal-settings-toggle"[^>]*aria-controls="normal-settings"[^>]*aria-expanded="false"/);
+  assert.match(page, /id="normal-settings"[^>]*hidden/);
+  assert.equal((page.match(/data-audio-toggle="ambience"/g) || []).length, 2);
+  assert.equal((page.match(/data-audio-toggle="music"/g) || []).length, 2);
+  assert.equal((page.match(/data-lighting-control="brightness"/g) || []).length, 2);
+  assert.equal((page.match(/data-lighting-control="warmth"/g) || []).length, 2);
+  assert.equal((page.match(/data-locale-toggle/g) || []).length, 2);
+  assert.match(page, /id="immersive-locale-toggle"[^>]*data-locale-toggle/);
+  assert.match(app, /document\.querySelectorAll\('\[data-locale-toggle\]'\)\.forEach/);
+  assert.match(app, /document\.querySelectorAll\('\[data-audio-toggle\]'\)\.forEach/);
+  assert.match(app, /document\.querySelectorAll\('\[data-lighting-control\]'\)\.forEach/);
+  assert.doesNotMatch(app, /storeAudio\?\.stopAll\(\)/);
+  assert.match(css, /\.normal-settings \{ display: grid;/);
+});
+
 test('dialog and member cards use the uniform raised Locadora frame instead of accent-edge stripes', () => {
   const cardFrameStart = css.indexOf('.panel-dialog .counter-item, .panel-dialog .source-item {');
   const cardFrameEnd = css.indexOf('.panel-dialog button:not(:disabled)', cardFrameStart);
