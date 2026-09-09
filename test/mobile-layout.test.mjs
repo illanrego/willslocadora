@@ -72,6 +72,15 @@ test('mobile immersive shelves keep the desktop stand-number plaque visible in c
   assert.match(immersive, /standMarker\.scale\.set\(1, 1, 1\)/);
 });
 
+test('mobile immersive drag changes the camera perspective without translating the shelf room', () => {
+  const immersive = read('public/immersive-shelf.mjs');
+  assert.match(immersive, /pointerTargetX = THREE\.MathUtils\.clamp\(dragPointerBaseX/);
+  assert.match(immersive, /pointerTargetY = THREE\.MathUtils\.clamp\(dragPointerBaseY/);
+  assert.doesNotMatch(immersive, /dragOffsetTarget = THREE\.MathUtils\.clamp/);
+  assert.doesNotMatch(immersive, /room\.position\.x \+= \(dragOffsetTarget/);
+  assert.doesNotMatch(immersive, /room\.position\.y \+= \(dragOffsetTargetY/);
+});
+
 test('long browsing sessions bound repeated rendering work without changing shared shelf history', () => {
   const app = read('public/app.js');
   const immersive = read('public/immersive-shelf.mjs');
