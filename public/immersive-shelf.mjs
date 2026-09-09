@@ -276,7 +276,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     new THREE.BoxGeometry(1.36, 0.9, 0.16),
     [edge, edge, edge, edge, new THREE.MeshStandardMaterial({ map: standCanvas.texture, roughness: 0.58 }), edge],
   );
-  standMarker.position.set(4.88, 4.88, 0.18);
+  standMarker.position.set(4.2, 4.88, 0.18);
   standMarker.castShadow = true;
   room.add(standMarker);
 
@@ -384,7 +384,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       fitLamps(true, dropY, (sw * 7.9) / 2);
     } else {
       standMarker.scale.set(1, 1, 1);
-      standMarker.position.set(4.88, 4.88, 0.18);
+      standMarker.position.set(4.2, 4.88, 0.18);
       sign.scale.set(1, 1, 1);
       sign.position.y = 5.15;
       fitLamps(false);
