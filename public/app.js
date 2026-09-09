@@ -1255,6 +1255,7 @@
       balcony = null;
       $('#balcony-stage').replaceChildren();
       $('#immersive-toggle').focus();
+      if (state.titles.length) renderShelf(state.titles, state.stand, false);
       hydrateTapeLogos();
     }
   }
@@ -1311,7 +1312,7 @@
       state.stand = stand;
       state.hasNextStand = hasAnotherSourcePage;
       state.standCache.set(stand, { titles: state.titles, hasNextStand: hasAnotherSourcePage });
-      renderShelf(state.titles, stand, append);
+      if (state.mode === 'normal') renderShelf(state.titles, stand, append);
       refreshImmersive(transitionDirection);
       $('#shelf-status').textContent = append ? `${state.titles.length} ${t('moreTapes')}` : `${state.titles.length} ${t('tapesFound')}`;
       $('#load-more-shelf').hidden = !hasAnotherSourcePage;

@@ -125,8 +125,8 @@ test('long browsing sessions bound repeated rendering work without changing shar
   assert.match(app, /const nextTitles = preserveStandHistory \? body\.titles : body\.titles\.filter/);
   assert.match(app, /if \(!append && !preserveStandHistory\) state\.renderedTitleKeys = new Set\(\)/);
   assert.match(app, /if \(!append && !preserveStandHistory\) state\.titles = \[\];/);
-  assert.match(app, /renderShelf\(state\.titles, stand, append\)/);
-  assert.doesNotMatch(app, /appendToNormalShelf/);
+  assert.match(app, /if \(state\.mode === 'normal'\) renderShelf\(state\.titles, stand, append\)/);
+  assert.match(app, /if \(state\.titles\.length\) renderShelf\(state\.titles, state\.stand, false\)/);
   assert.match(app, /function replaceShelfContents\([\s\S]*cancelLogoLoad\?\.\(\)/);
   assert.doesNotMatch(immersive, /record\.group\.scale\.lerp\(new THREE\.Vector3/);
   assert.match(immersive, /record\.group\.scale\.setScalar\(THREE\.MathUtils\.lerp/);
