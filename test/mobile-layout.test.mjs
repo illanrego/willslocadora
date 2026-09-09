@@ -68,7 +68,7 @@ test('mobile immersive shelves keep the desktop stand-number plaque visible in c
   const immersive = read('public/immersive-shelf.mjs');
   assert.match(immersive, /standMarker\.visible = true/);
   assert.match(immersive, /const markerScale = sw \* 0\.72/);
-  assert.match(immersive, /standMarker\.position\.set\(\(sw \* 7\.9\) \/ 2 \+ markerScale \* 1\.1, sign\.position\.y - 0\.42, 0\.18\)/);
+  assert.match(immersive, /standMarker\.position\.set\(\(sw \* 7\.9\) \/ 2 \+ markerScale \* 0\.65, sign\.position\.y - 0\.42, 0\.18\)/);
   assert.match(immersive, /standMarker\.scale\.set\(1, 1, 1\)/);
 });
 
