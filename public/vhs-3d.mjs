@@ -665,13 +665,20 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   renderer.domElement.addEventListener('keydown', keyDown);
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const immediateMotion = window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
 
   function render(time) {
     if (disposed) return;
-    camera.position.z += (targetCameraDistance - camera.position.z) * 0.14;
-    group.rotation.x += (targetX - group.rotation.x) * 0.12;
-    group.rotation.y += (targetY - group.rotation.y) * 0.12;
-    group.position.y = reducedMotion ? 0 : Math.sin(time * 0.0014) * 0.035;
+    if (reducedMotion || immediateMotion) {
+      camera.position.z = targetCameraDistance;
+      group.rotation.x = targetX;
+      group.rotation.y = targetY;
+    } else {
+      camera.position.z += (targetCameraDistance - camera.position.z) * 0.14;
+      group.rotation.x += (targetX - group.rotation.x) * 0.12;
+      group.rotation.y += (targetY - group.rotation.y) * 0.12;
+    }
+    group.position.y = reducedMotion || immediateMotion ? 0 : Math.sin(time * 0.0014) * 0.035;
     renderer.render(scene, camera);
     frame = requestAnimationFrame(render);
   }

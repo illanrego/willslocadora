@@ -682,7 +682,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const compactView = activeLayoutKey !== 'desktop';
     const cameraTargetX = compactView ? mobilePanX : pointerTargetX;
     const cameraTargetY = compactView ? compactRoomOffsetY + 0.55 + mobilePanY : pointerTargetY;
-    if (!reducedMotion) {
+    if (!reducedMotion && !compactView) {
       camera.position.x += (cameraTargetX - camera.position.x) * 0.07;
       camera.position.y += (cameraTargetY - camera.position.y) * 0.07;
       camera.position.z += (targetCameraDistance - camera.position.z) * 0.12;
@@ -692,7 +692,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       camera.position.z = targetCameraDistance;
     }
     mobilePanLookAt.set(mobilePanX, compactRoomOffsetY + 0.25 + mobilePanY, 0);
-    cameraLookAt.lerp(compactView ? mobilePanLookAt : sectionZoom ? sectionFocus : homeLookAt, reducedMotion ? 1 : 0.12);
+    cameraLookAt.lerp(compactView ? mobilePanLookAt : sectionZoom ? sectionFocus : homeLookAt, reducedMotion || compactView ? 1 : 0.12);
     camera.lookAt(cameraLookAt);
     if (standTransition) {
       const targetX = standTransition.phase === 'out' ? -standTransition.direction * 14 : 0;
@@ -748,7 +748,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     },
     transition(nextTitles, nextGenre, nextYear, nextType, nextStand, direction, nextVisuals) {
       applyVisuals(nextVisuals);
-      if (reducedMotion || !direction) {
+      if (reducedMotion || layoutKey() !== 'desktop' || !direction) {
         this.update(nextTitles, nextGenre, nextYear, nextType, nextStand);
         return;
       }
