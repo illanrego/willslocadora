@@ -303,6 +303,13 @@ test('VHS inspection saves star and plus actions to their matching list with con
   assert.match(app, /\$\('#saved-added-dialog'\)\.addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\)/);
 });
 
+test('mobile VHS inspection uses its red tape button for streamings and keeps only the labeled reviews action floating', () => {
+  assert.match(app, /onAvailability: \(\) => \{\s*if \(activeViewerTitle\) sessionSupport\.openStreamings\(activeViewerTitle\);\s*\}/);
+  assert.match(app, /titleReview\.textContent = 'Avaliações';/);
+  assert.doesNotMatch(app, /reviewIcon\.textContent = '☆'/);
+  assert.match(css, /\.title-utility-actions > \.title-streaming-action \{ display: none; \}/);
+});
+
 test('tape inspection omits the support prompt while other dialogs retain their support entries', () => {
   assert.match(sessionSupport, /dialog\.id === 'title-dialog'/);
   assert.match(sessionSupport, /support\.classList\.add\('dialog-support'\); dialog\.append\(support\)/);

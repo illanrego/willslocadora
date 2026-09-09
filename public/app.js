@@ -1956,11 +1956,7 @@
     streamingAction.append(streamingIcon, streamingLabel);
     const titleReview = document.createElement('button');
     titleReview.type = 'button'; titleReview.className = 'title-review-action title-icon-action'; titleReview.setAttribute('aria-label', 'Ver avaliações desta fita');
-    const reviewIcon = document.createElement('span');
-    reviewIcon.className = 'title-action-icon'; reviewIcon.setAttribute('aria-hidden', 'true'); reviewIcon.textContent = '☆';
-    const reviewLabel = document.createElement('span');
-    reviewLabel.className = 'title-action-label'; reviewLabel.textContent = 'Avaliações';
-    titleReview.append(reviewIcon, reviewLabel);
+    titleReview.textContent = 'Avaliações';
     titleReview.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
     const teaser = document.createElement('button');
     teaser.type = 'button'; teaser.className = 'title-review-teaser'; teaser.hidden = true;

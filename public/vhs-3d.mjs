@@ -8,8 +8,8 @@ const ACTIONS = {
   watch: { x: 676, y: 1328, width: 276, height: 104 },
   letterboxd: { x: 856, y: 200, width: 96, height: 86 },
   imdb: { x: 856, y: 292, width: 96, height: 86 },
-  watchLater: { x: 856, y: 384, width: 96, height: 86 },
-  favorite: { x: 856, y: 476, width: 96, height: 86 },
+  favorite: { x: 696, y: 218, width: 64, height: 64 },
+  watchLater: { x: 776, y: 218, width: 64, height: 64 },
 };
 const PROVIDER_LOGOS = Object.freeze({
   Netflix: '/images/providers/netflix.svg',
@@ -118,16 +118,15 @@ function drawImdbSticker(context) {
   });
 }
 
-function drawSavedSticker(context, rect, symbol, active) {
-  drawSticker(context, rect, (centerX, centerY) => {
-    context.fillStyle = active ? LOCADORA_PALETTE.ink : LOCADORA_PALETTE.cream;
-    context.font = `900 ${symbol === '★' ? 48 : 56}px Arial Black, sans-serif`;
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(symbol, centerX, centerY + (symbol === '★' ? 2 : 1));
-    context.textAlign = 'left';
-    context.textBaseline = 'alphabetic';
-  }, active ? LOCADORA_PALETTE.yellow : LOCADORA_PALETTE.ink);
+function drawSavedIcon(context, rect, symbol, active) {
+  context.save();
+  context.fillStyle = active ? LOCADORA_PALETTE.yellow : LOCADORA_PALETTE.cream;
+  context.globalAlpha = active ? 1 : 0.78;
+  context.font = `900 ${symbol === '★' ? 45 : 52}px Arial Black, sans-serif`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(symbol, rect.x + rect.width / 2, rect.y + rect.height / 2 + (symbol === '★' ? 2 : 1));
+  context.restore();
 }
 
 function drawFront(context, title, copy) {
@@ -221,8 +220,8 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   drawLetterboxdSticker(context);
   drawImdbSticker(context);
   if (showSavedActions) {
-    drawSavedSticker(context, ACTIONS.watchLater, '＋', savedCollections.has('watch_later'));
-    drawSavedSticker(context, ACTIONS.favorite, '★', savedCollections.has('favorite'));
+    drawSavedIcon(context, ACTIONS.favorite, '★', savedCollections.has('favorite'));
+    drawSavedIcon(context, ACTIONS.watchLater, '＋', savedCollections.has('watch_later'));
   }
 
   context.fillStyle = LOCADORA_PALETTE.yellow;
