@@ -208,13 +208,14 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   const compactRack = new THREE.Group();
   compactRack.visible = false;
   room.add(compactRack);
-  const compactBacking = new THREE.Mesh(new THREE.BoxGeometry(7.1, 9.4, 0.35), backingMaterial);
-  compactBacking.position.z = -0.45;
+  const compactRackCenterY = 1;
+  const compactBacking = new THREE.Mesh(new THREE.BoxGeometry(7.1, 7.4, 0.35), backingMaterial);
+  compactBacking.position.set(0, compactRackCenterY, -0.45);
   compactBacking.receiveShadow = true;
   compactRack.add(compactBacking);
   const compactPost = (x) => {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.32, 9.85, 0.72), wood);
-    post.position.set(x, -0.12, -0.02);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.32, 7.85, 0.72), wood);
+    post.position.set(x, compactRackCenterY, -0.02);
     post.castShadow = true;
     compactRack.add(post);
     return post;
