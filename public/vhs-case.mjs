@@ -6,6 +6,11 @@ const TEXTURE_RETRY_DELAYS = [1200, 4000, 12000, 30000, 60000];
 const textureLoadQueue = [];
 let activeTextureLoads = 0;
 
+function queueTextureLoad(job) {
+  if (job.priority) textureLoadQueue.unshift(job);
+  else textureLoadQueue.push(job);
+}
+
 function pumpTextureLoads() {
   while (activeTextureLoads < TEXTURE_LOAD_CONCURRENCY && textureLoadQueue.length) {
     const job = textureLoadQueue.shift();
@@ -27,7 +32,7 @@ function pumpTextureLoads() {
         const delay = TEXTURE_RETRY_DELAYS[Math.min(job.attempt - 1, TEXTURE_RETRY_DELAYS.length - 1)];
         job.retryTimer = window.setTimeout(() => {
           job.retryTimer = 0;
-          textureLoadQueue.push(job);
+          queueTextureLoad(job);
           pumpTextureLoads();
         }, delay);
       }
@@ -36,11 +41,11 @@ function pumpTextureLoads() {
   }
 }
 
-function loadTextureWithRetry(sources, onLoad) {
+function loadTextureWithRetry(sources, onLoad, priority = false) {
   const urls = [...new Set(sources.filter(Boolean))];
   if (!urls.length) return () => {};
-  const job = { urls, onLoad, attempt: 0, cancelled: false, retryTimer: 0 };
-  textureLoadQueue.push(job);
+  const job = { urls, onLoad, priority, attempt: 0, cancelled: false, retryTimer: 0 };
+  queueTextureLoad(job);
   pumpTextureLoads();
   return () => {
     job.cancelled = true;
@@ -214,7 +219,7 @@ export function createVhsSpine(title, { width = .4, height = 1.42, depth = .3, p
       logoImage = logo.image;
       draw();
       logo.dispose();
-    });
+    }, true);
   };
   loadLogo(activeLogoUrl, fallbackLogoUrl);
   return {

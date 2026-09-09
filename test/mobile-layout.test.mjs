@@ -37,11 +37,15 @@ test('3D tape artwork queues, retries, and cancels slow cover loads', () => {
   assert.match(cases, /const TEXTURE_LOAD_CONCURRENCY = 6/);
   assert.match(cases, /const TEXTURE_LOAD_ATTEMPTS = 6/);
   assert.match(cases, /const TEXTURE_RETRY_DELAYS = \[1200, 4000, 12000, 30000, 60000\]/);
-  assert.match(cases, /function loadTextureWithRetry\(sources, onLoad\)/);
+  assert.match(cases, /function loadTextureWithRetry\(sources, onLoad, priority = false\)/);
+  assert.match(cases, /function queueTextureLoad\(job\) \{\s*if \(job\.priority\) textureLoadQueue\.unshift\(job\)/);
+  assert.match(cases, /loadTextureWithRetry\(\[url, fallbackUrl\],[\s\S]*\}, true\);/);
   assert.match(cases, /job\.cancelled = true/);
   assert.match(cases, /loadTextureWithRetry\(\[posterUrl, fallbackPosterUrl\]/);
   assert.match(cases, /dispose\(\) \{ disposed = true; cancelPosterLoad\(\);/);
   assert.match(app, /posterUrl: title\.poster \|\| posterFallback\(title\),[\s\S]*posterFallbackUrl: posterTextureUrl/);
+  assert.match(app, /logoUrl: posterTextureUrl\(title\.logo\),\s*logoFallbackUrl: title\.logo \|\| ''/);
+  assert.match(app, /immersiveShelf\?\.setLogo\?\.\(title\.id, logoUrl, title\.logo\)/);
 });
 
 test('2D shelf logos retry without hiding the title fallback', () => {

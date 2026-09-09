@@ -1000,7 +1000,7 @@
           await loadTitleMetadata(title);
           if (!title.logo) continue;
           const logoUrl = posterTextureUrl(title.logo);
-          immersiveShelf?.setLogo?.(title.id, title.logo, logoUrl);
+          immersiveShelf?.setLogo?.(title.id, logoUrl, title.logo);
           const tile = shelf?.querySelector(`.vhs-item[data-title-id="${CSS.escape(title.id)}"]`);
           const vhs = tile?.querySelector('.vhs-case');
           const logoImg = tile?.querySelector('.case-logo');
@@ -1026,8 +1026,8 @@
       ...title,
       posterUrl: title.poster || posterFallback(title),
       posterFallbackUrl: posterTextureUrl(title.poster || posterFallback(title)),
-      logoUrl: title.logo || '',
-      logoFallbackUrl: posterTextureUrl(title.logo),
+      logoUrl: posterTextureUrl(title.logo),
+      logoFallbackUrl: title.logo || '',
     }));
   }
 
