@@ -57,13 +57,14 @@ test('mobile immersive shelves retain framed wall posters around the compact rac
   assert.doesNotMatch(immersive, /featuredPosterGroup\.visible = !compact/);
 });
 
-test('long browsing sessions keep hidden shelves and repeated rendering work bounded', () => {
+test('long browsing sessions bound repeated rendering work without changing shared shelf history', () => {
   const app = read('public/app.js');
   const immersive = read('public/immersive-shelf.mjs');
   const featured = read('public/featured-titles.mjs');
   assert.match(app, /metadata: createBoundedCache\(120\)/);
-  assert.match(app, /const appendToNormalShelf = append && state\.mode === 'normal'/);
-  assert.match(app, /renderShelf\(state\.titles, stand, false\)/);
+  assert.match(app, /if \(!append\) state\.renderedTitleKeys = new Set\(\)/);
+  assert.match(app, /renderShelf\(state\.titles, stand, append\)/);
+  assert.doesNotMatch(app, /appendToNormalShelf/);
   assert.match(app, /function replaceShelfContents\([\s\S]*cancelLogoLoad\?\.\(\)/);
   assert.doesNotMatch(immersive, /record\.group\.scale\.lerp\(new THREE\.Vector3/);
   assert.match(immersive, /record\.group\.scale\.setScalar\(THREE\.MathUtils\.lerp/);

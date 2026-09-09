@@ -1050,8 +1050,6 @@
     state.stand = stand;
     state.titles = cached.titles;
     state.hasNextStand = cached.hasNextStand;
-    state.renderedTitleKeys = new Set(state.titles.map((title) => `${title.type}:${title.id}`));
-    if (state.mode !== 'normal') renderShelf(state.titles, stand, false);
     refreshImmersive(direction);
     syncImmersiveStandControls();
     hydrateTapeLogos();
@@ -1277,8 +1275,7 @@
       const params = new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear) });
       const body = await api(`/api/shelf?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
-      const appendToNormalShelf = append && state.mode === 'normal';
-      if (!appendToNormalShelf) state.renderedTitleKeys = new Set();
+      if (!append) state.renderedTitleKeys = new Set();
       const hasAnotherSourcePage = Boolean(body.hasNextStand);
       state.titles = body.titles.filter((title) => {
         const key = `${title.type}:${title.id}`;
@@ -1297,7 +1294,7 @@
       state.stand = stand;
       state.hasNextStand = hasAnotherSourcePage;
       state.standCache.set(stand, { titles: state.titles, hasNextStand: hasAnotherSourcePage });
-      renderShelf(state.titles, stand, appendToNormalShelf);
+      renderShelf(state.titles, stand, append);
       refreshImmersive(transitionDirection);
       $('#shelf-status').textContent = append ? `${state.titles.length} ${t('moreTapes')}` : `${state.titles.length} ${t('tapesFound')}`;
       $('#load-more-shelf').hidden = !hasAnotherSourcePage;
