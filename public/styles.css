@@ -1557,6 +1557,8 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
 }
 
 /* Genre/year has its own disclosure, independent of the Estante menu. */
+.immersive-independent-pickers .immersive-format { grid-column: 1 / -1; width: 100%; min-width: 0; }
+.immersive-independent-pickers .immersive-format button { min-height: 32px; cursor: pointer; }
 .immersive-browse-panel { position: absolute; z-index: 7; top: max(.55rem, env(safe-area-inset-top)); left: max(.55rem, env(safe-area-inset-left)); width: min(360px, calc(100% - 7.5rem)); border: 1px solid #b78636; border-radius: 7px; background: rgba(16,24,39,.96); color: var(--cream); box-shadow: 0 4px 12px #0005; }
 .immersive-browse-panel summary { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; padding: .5rem .65rem; cursor: pointer; list-style: none; font: 900 .62rem/1.2 "Courier New", monospace; text-transform: uppercase; }
 .immersive-browse-panel summary::-webkit-details-marker { display: none; }
@@ -1596,4 +1598,27 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .immersive-primary-actions .immersive-account-button > span { display: block; }
   .immersive-primary-actions .immersive-basket-button .immersive-basket-label { display: block; margin: 0; min-width: 0; min-height: 0; background: transparent; font-size: .54rem; }
   .immersive-primary-actions .immersive-basket-button #immersive-basket-count { position: absolute; top: .1rem; right: .35rem; width: 15px; height: 15px; min-width: 15px; min-height: 15px; margin: 0; font-size: .5rem; }
+}
+
+/* Counter controls share a compact scale on desktop and phones. */
+.balcony-hud #balcony-panel-open { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; }
+.balcony-hud #balcony-panel-open svg { display: block; flex: 0 0 20px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.balcony-hud #balcony-return-shelf { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }
+.balcony-hud .balcony-back-icon { font: 400 1.5rem/1 Arial, sans-serif; }
+@media (min-width: 601px) {
+  .balcony-hud { top: 1rem; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100% - 2rem); flex-wrap: wrap; justify-content: center; gap: .5rem; padding: .5rem; border: 1px solid #b78636; border-radius: 8px; box-shadow: 0 4px 16px #0005; }
+  .balcony-hud p { display: none !important; }
+  .balcony-hud #balcony-return-shelf { order: -1; }
+  .balcony-hud button { min-height: 40px; }
+  .balcony-hud .balcony-zoom { order: 2; }
+  .balcony-member-actions { top: auto; bottom: 1rem; right: 1rem; left: auto; transform: none; }
+  .balcony-room .scene-inspection-controls { top: 5.5rem; }
+}
+@media (max-width: 600px) {
+  .immersive-independent-pickers .immersive-format { grid-column: 1 / -1; }
+  .immersive-room:has(.immersive-browse-panel[open]) .immersive-hud:not(.is-collapsed) { top: calc(max(.55rem, env(safe-area-inset-top)) + 8.2rem); max-height: calc(100dvh - 14rem - env(safe-area-inset-bottom)); }
+  .balcony-hud { padding: .3rem; gap: .25rem; border-radius: 8px; box-shadow: 0 4px 12px #0005; }
+  .balcony-hud #balcony-panel-open svg { width: 18px; height: 18px; flex-basis: 18px; }
+  .balcony-member-actions { left: 50%; right: auto; width: min(224px, calc(100% - 1.1rem)); transform: translateX(-50%); padding: .2rem; gap: .25rem; border-radius: 9px; }
+  .balcony-room .balcony-member-actions button { min-height: 40px; padding: .4rem .6rem; font-size: .58rem; }
 }

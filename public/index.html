@@ -182,14 +182,14 @@
                 <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
               </label>
             <button id="immersive-go" type="button" data-i18n="go">Ir</button>
+            <div class="immersive-format" role="group" aria-label="Immersive shelf format">
+              <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
+              <button data-type="series" type="button" data-i18n="series">Séries</button>
+            </div>
           </div>
         </details>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
-              <div class="immersive-format" role="group" aria-label="Immersive shelf format">
-                <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
-                <button data-type="series" type="button" data-i18n="series">Séries</button>
-              </div>
             <nav class="immersive-menu-actions" aria-label="Immersive actions">
               <button id="immersive-filters-toggle" type="button" aria-controls="immersive-filters" aria-expanded="false"><span aria-hidden="true">⌕</span><span data-i18n="brazilStreaming">Seus streamings</span></button>
               <button id="immersive-settings-toggle" type="button" aria-controls="immersive-settings" aria-expanded="false"><span aria-hidden="true">⚙</span><span data-i18n="settings">Ajustes</span></button>
