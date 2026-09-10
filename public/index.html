@@ -390,13 +390,14 @@
   </div>
   <p id="basket-added-message" class="basket-notice" role="status" aria-live="polite" aria-atomic="true"></p>
   <dialog id="donation-dialog" class="panel-dialog donation-dialog" aria-labelledby="donation-heading">
-    <form method="dialog" class="panel-header"><h2 id="donation-heading" data-i18n="supportTitle">Mantenha as luzes acesas</h2><button class="dialog-close" data-i18n-aria-label="close" aria-label="Fechar">×</button></form>
-    <p class="panel-copy" data-i18n="supportCopy">A Locadora é grátis. Se quiser, deixe uma contribuição por Pix — qualquer valor ajuda a manter este cantinho aberto.</p>
+    <form method="dialog" class="panel-header"><h2 id="donation-heading" data-i18n="supportTitle">Me pague um café</h2><button class="dialog-close" data-i18n-aria-label="close" aria-label="Fechar">×</button></form>
+    <p class="donation-free" data-i18n="supportFree">A LOCADORA É GRÁTIS</p>
+    <p class="panel-copy" data-i18n="supportCopy">Não precisa rebobinar, nem pagar, mas se quiser pode me pagar um café.</p>
     <img id="donation-qr" class="donation-qr" hidden alt="QR Code Pix">
     <div id="donation-key-controls" hidden>
-      <label for="donation-key" data-i18n="pixKey">Chave Pix</label>
-      <input id="donation-key" readonly aria-describedby="donation-status">
-      <button id="donation-copy" class="account-action" type="button" data-i18n="copyPix">Copiar chave Pix</button>
+      <label for="donation-key" data-i18n="pixKey">Pix copia e cola</label>
+      <textarea id="donation-key" readonly rows="4" spellcheck="false" aria-describedby="donation-status"></textarea>
+      <button id="donation-copy" class="account-action" type="button" data-i18n="copyPix">Copiar código Pix</button>
     </div>
     <p id="donation-status" class="panel-copy" role="status" aria-live="polite"></p>
   </dialog>
