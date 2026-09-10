@@ -920,9 +920,6 @@
       node.querySelector('.case-year').textContent = title.year || '—';
       node.querySelector('.case-label strong').textContent = title.name;
       node.querySelector('.case-label small').textContent = `${title.year || 'Year unknown'} · ${title.type}`;
-      const letterboxd = node.querySelector('.letterboxd-sticker');
-      letterboxd.href = createLetterboxdUrl(title);
-      letterboxd.setAttribute('aria-label', `Open ${title.name} on Letterboxd`);
       button.setAttribute('aria-label', `Inspect ${title.name}, ${title.year || 'year unknown'}`);
       button.addEventListener('click', () => openTitleFromOrigin(title, { source: 'shelf', mode: state.mode }, true, posterTextureUrl(image.currentSrc || image.src)));
       article.dataset.titleId = title.id;
