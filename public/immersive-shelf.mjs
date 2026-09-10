@@ -462,11 +462,16 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const columns = compact ? 10 : COLUMNS;
     activeColumns = columns;
     const spacingX = compact ? mobileSpineWidth + mobileSpineGap : 1.11;
-    const spacingY = compact ? 1.74 : 2.05;
+    // Rows pitch to the board pitch (1.75) so all four tiers seat evenly.
+    const spacingY = compact ? 1.75 : 2.05;
     if (compact) fitCompactRack(columns, spacingX, mobileSpineWidth, mobileRackWidth);
     applyLayoutDecorations(compact);
     const xOrigin = compact ? -((columns - 1) * spacingX) / 2 : -5;
-    const yOrigin = compact ? (landscape ? 2.72 : 3.45) : 2.9;
+    // Seat each row on the top face of its support board, not its centre line:
+    // board top = 2.75 + 0.14 (half the 0.28 board) and half the 1.42 spine = 0.71,
+    // so the top row centre is 2.75 + 0.14 + 0.71 = 3.60. The compact rack is the
+    // same object in portrait and landscape, so both share this origin.
+    const yOrigin = compact ? 3.6 : 2.9;
     nextTitles.slice(0, MAX_TAPES).forEach((title, index) => {
       const row = Math.floor(index / columns);
       const column = index % COLUMNS;
