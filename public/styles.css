@@ -1154,6 +1154,8 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
 }
 .donation-free { width: max-content; max-width: 100%; margin: .85rem auto 0; padding: .35rem .65rem; border: 2px solid var(--yellow); color: var(--black); background: var(--yellow); box-shadow: 3px 3px 0 var(--red); font: 900 .78rem/1 "Courier New", monospace; letter-spacing: .08em; text-align: center; }
 .donation-qr { display: block; width: min(240px, 100%); height: auto; margin: 1.2rem auto; background: white; }
+.donation-qr-label { display: block; margin: 1.2rem auto 0; color: var(--yellow); font: 900 .72rem/1 "Courier New", monospace; letter-spacing: .1em; text-align: center; text-transform: uppercase; }
+.donation-qr-label[hidden] { display: none; }
 .donation-qr[hidden], #donation-key-controls[hidden] { display: none; }
 #donation-key-controls { display: grid; gap: .75rem; }
 #donation-key { width: 100%; min-width: 0; padding: .75rem; resize: vertical; color: var(--blue-deep); background: var(--cream); border: 1px solid #b49d79; cursor: copy; font: 700 .7rem/1.35 "Courier New", monospace; overflow-wrap: anywhere; }

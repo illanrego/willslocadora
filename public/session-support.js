@@ -51,6 +51,7 @@
       $('#donation-key').value = settings.pixKey;
       const qr = $('#donation-qr');
       qr.alt = t('pixQrAlt'); qr.hidden = !settings.qrImage;
+      $('#donation-qr-label').hidden = !settings.qrImage;
       qr.onerror = () => { qr.hidden = true; $('#donation-status').textContent = t('pixQrFailed'); };
       if (settings.qrImage) qr.src = settings.qrImage;
       $('#donation-status').textContent = settings.pixKey ? '' : t('pixUnavailable');
