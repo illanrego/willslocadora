@@ -1555,3 +1555,20 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   #auth-dialog .password-field { flex-direction: row; }
   #auth-dialog .password-visibility-toggle { min-width: 76px; padding: .45rem .4rem; font-size: .56rem; }
 }
+
+/* Genre/year has its own disclosure, independent of the Estante menu. */
+.immersive-browse-panel { position: absolute; z-index: 7; top: max(.55rem, env(safe-area-inset-top)); left: max(.55rem, env(safe-area-inset-left)); width: min(360px, calc(100% - 7.5rem)); border: 1px solid #b78636; border-radius: 7px; background: rgba(16,24,39,.96); color: var(--cream); box-shadow: 0 4px 12px #0005; }
+.immersive-browse-panel summary { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; padding: .5rem .65rem; cursor: pointer; list-style: none; font: 900 .62rem/1.2 "Courier New", monospace; text-transform: uppercase; }
+.immersive-browse-panel summary::-webkit-details-marker { display: none; }
+.immersive-browse-panel summary:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+.immersive-browse-panel:not([open]) .browse-panel-chevron { transform: rotate(180deg); }
+.immersive-independent-pickers { display: grid; grid-template-columns: minmax(0, 1fr) 48px; gap: .4rem; padding: 0 .5rem .5rem; }
+.immersive-independent-pickers .immersive-genre-picker { grid-column: 1 / -1; }
+.immersive-independent-pickers .immersive-year-picker { width: auto; grid-column: 1; }
+.immersive-independent-pickers .immersive-picker { padding: .2rem .35rem; }
+.immersive-independent-pickers select, .immersive-independent-pickers input { height: 32px; width: 100%; }
+.immersive-independent-pickers #immersive-go { grid-column: 2; min-width: 0; min-height: 38px; padding: .3rem; border: 1px solid #ffe178; border-radius: 3px; color: var(--black); background: var(--yellow); cursor: pointer; font: 900 .65rem/1 "Courier New", monospace; }
+@media (max-width: 1000px) {
+  .immersive-room:has(.immersive-browse-panel[open]) .immersive-hud:not(.is-collapsed) { top: calc(max(.55rem, env(safe-area-inset-top)) + 9rem); max-height: calc(100dvh - 15rem - env(safe-area-inset-bottom)); }
+  .immersive-room:has(.immersive-browse-panel:not([open])) .immersive-hud:not(.is-collapsed) { top: calc(max(.55rem, env(safe-area-inset-top)) + 3.25rem); }
+}
