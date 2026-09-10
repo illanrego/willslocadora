@@ -9,7 +9,8 @@ test('rapid title changes reuse one VHS renderer even after the dialog closes', 
   assert.match(app, /if \(activeVhsViewer\) \{\s*if \(!titleDialog\.open\) titleDialog\.showModal\(\);[\s\S]*activeVhsViewer\.update\(/);
   assert.doesNotMatch(app, /titleDialog\.addEventListener\('close',[\s\S]*activeVhsViewer\?\.dispose\(\)/);
   assert.doesNotMatch(app, /activeVhsViewer\.setActive/);
-  assert.match(viewer, /update\(nextTitle, nextAtCounter, assets = \{\}\) \{\s*title = nextTitle;\s*resetToFront\(\);[\s\S]*Object\.keys\(assetUrls\)\.forEach[\s\S]*redraw\(\);\s*loadAsset\('poster', assets\.posterUrl\)/);
+  assert.match(viewer, /update\(nextTitle, nextAtCounter, assets = \{\}, \{ preserveView = false \} = \{\}\)/);
+  assert.match(viewer, /if \(!preserveView\) \{\s*resetToFront\(\);[\s\S]*Object\.keys\(assetUrls\)\.forEach/);
 });
 
 test('Balcony search computer faces the customer', () => {
@@ -22,7 +23,14 @@ test('Balcony search computer faces the customer', () => {
 test('reused VHS viewer resets to the new tape front without retaining its previous title logo', () => {
   const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
   assert.match(viewer, /function resetToFront\(\) \{[\s\S]*group\.rotation\.y = 0;[\s\S]*\}/);
-  assert.match(viewer, /update\(nextTitle, nextAtCounter, assets = \{\}\) \{\s*title = nextTitle;\s*resetToFront\(\);[\s\S]*logoImage = null;[\s\S]*redraw\(\);/);
+  assert.match(viewer, /update\(nextTitle, nextAtCounter, assets = \{\}, \{ preserveView = false \} = \{\}\)[\s\S]*if \(!preserveView\) \{\s*resetToFront\(\);[\s\S]*logoImage = null;[\s\S]*redraw\(\);/);
+});
+
+test('same-tape metadata and basket refreshes preserve the inspected back cover', () => {
+  const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
+  assert.match(app, /loadTitleMetadata\(title\)\.then\([\s\S]*activeVhsViewer\?\.update\(title,[\s\S]*\{ preserveView: true \}\)/);
+  assert.match(app, /activeVhsViewer\?\.update\(current,[\s\S]*\{ preserveView: true \}\)/);
+  assert.match(viewer, /loadProviderAssets\(title, preserveView\)/);
 });
 
 test('VHS canvas changes to a pointer over clickable back-cover actions', () => {

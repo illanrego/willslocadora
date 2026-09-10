@@ -434,10 +434,12 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       texture.dispose();
     }, undefined, () => {});
   }
-  function loadProviderAssets(nextTitle) {
-    providerImages.length = 0;
+  function loadProviderAssets(nextTitle, preserveExisting = false) {
+    const providers = nextTitle.availabilityBR?.providers || [];
+    if (preserveExisting) providerImages.length = providers.length;
+    else providerImages.length = 0;
     redraw();
-    for (const [index, provider] of (nextTitle.availabilityBR?.providers || []).entries()) {
+    for (const [index, provider] of providers.entries()) {
       const tmdbLogo = (nextTitle.availabilityBR?.providerLogos || []).find((entry) => entry.name === provider)?.logo;
       loadAsset(`provider-${index}`, tmdbLogo || PROVIDER_LOGOS[provider] || '');
     }
@@ -696,20 +698,21 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       currentSavedCollections = new Set(nextCollections);
       redraw();
     },
-    update(nextTitle, nextAtCounter, assets = {}) {
+    update(nextTitle, nextAtCounter, assets = {}, { preserveView = false } = {}) {
       title = nextTitle;
-      resetToFront();
       currentAtCounter = nextAtCounter;
-      posterImage = null;
-      backdropImage = null;
-      logoImage = null;
-      providerImages.length = 0;
-      Object.keys(assetUrls).forEach((key) => { delete assetUrls[key]; });
+      if (!preserveView) {
+        resetToFront();
+        posterImage = null;
+        backdropImage = null;
+        logoImage = null;
+        Object.keys(assetUrls).forEach((key) => { delete assetUrls[key]; });
+      }
       redraw();
       loadAsset('poster', assets.posterUrl);
       loadAsset('backdrop', assets.backdropUrl);
       loadAsset('logo', assets.logoUrl);
-      loadProviderAssets(title);
+      loadProviderAssets(title, preserveView);
     },
     dispose() {
       disposed = true;

@@ -1948,7 +1948,7 @@
       const existingTeaser = detail.querySelector('.title-review-teaser');
       if (existingTeaser) refreshTitleReviewTeaser(title, existingTeaser);
       if (hydrate) loadTitleMetadata(title).then(() => {
-        if (token === viewerToken && titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
+        if (token === viewerToken && titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl), { preserveView: true });
       }).catch(() => {});
       return;
     }
@@ -1975,7 +1975,7 @@
       const current = activeViewerTitle;
       if (!current) return;
       toggleCounter(current);
-      activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))));
+      activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))), { preserveView: true });
     });
     const savedActions = document.createElement('div');
     savedActions.className = 'title-saved-actions';
@@ -2023,7 +2023,7 @@
           const current = activeViewerTitle;
           if (!current) return;
           toggleCounter(current);
-          activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))));
+          activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))), { preserveView: true });
         },
         onAvailability: () => {
           if (activeViewerTitle) sessionSupport.openStreamings(activeViewerTitle);
@@ -2045,7 +2045,7 @@
 
     if (hydrate) {
       loadTitleMetadata(title).then(() => {
-        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
+        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl), { preserveView: true });
       }).catch(() => {});
     }
   }
