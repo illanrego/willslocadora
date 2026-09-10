@@ -1592,7 +1592,7 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .immersive-primary-actions { left: 50%; right: auto; transform: translateX(-50%); width: min(228px, calc(100% - 1.1rem)); gap: .2rem; padding: .2rem; border-radius: 9px; }
   .immersive-primary-actions > .immersive-basket-button,
   .immersive-primary-actions > .immersive-balcony-button,
-  .immersive-primary-actions > .immersive-account-button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 44px; gap: .15rem; padding: .2rem; font-size: .54rem; }
+  .immersive-primary-actions > .immersive-account-button { position: relative; inset: auto; width: 100%; min-width: 0; margin: 0; transform: none; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 44px; gap: .15rem; padding: .2rem; font-size: .54rem; }
   .immersive-primary-actions svg { width: 18px; height: 18px; flex-shrink: 0; margin: 0; }
   .immersive-primary-actions .immersive-balcony-button > span,
   .immersive-primary-actions .immersive-account-button > span { display: block; }
@@ -1601,6 +1601,11 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
 }
 
 /* Counter controls share a compact scale on desktop and phones. */
+.immersive-hud.is-collapsed #immersive-hud-toggle .immersive-menu-close-icon { display: none; }
+.immersive-hud.is-collapsed #immersive-hud-toggle .immersive-menu-open-icon { display: grid; }
+@media (min-width: 601px) {
+  .immersive-2d-button { top: auto; bottom: 1rem; left: auto; right: 1rem; }
+}
 .balcony-hud #balcony-panel-open { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; }
 .balcony-hud #balcony-panel-open svg { display: block; flex: 0 0 20px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .balcony-hud #balcony-return-shelf { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }

@@ -155,14 +155,19 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   }
   loadFeaturedTitles(year).then((titles) => { if (!disposed) renderFeaturedPosters(titles); });
   const overheadFocus = COUNTER_POSITION.clone(); const customerCamera = new THREE.Vector3(); const overheadCamera = new THREE.Vector3(); const targetCamera = new THREE.Vector3(); const targetLookAt = new THREE.Vector3();
-  function zoomProgress() { return THREE.MathUtils.smoothstep((zoom - 1) / (1.65 - 1), 0, 1); }
+  let mobileLayout = false;
+  function zoomProgress() {
+    const tiltStart = mobileLayout ? 2 : 1;
+    const tiltEnd = mobileLayout ? 2.8 : 1.65;
+    return THREE.MathUtils.smoothstep((zoom - tiltStart) / (tiltEnd - tiltStart), 0, 1);
+  }
   function updatePointer(event) { const rect = renderer.domElement.getBoundingClientRect(); pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1); pointerX = pointer.x * .34; pointerY = pointer.y * .18; }
   function intersect(event) { updatePointer(event); raycaster.setFromCamera(pointer, camera); return raycaster.intersectObjects(interactive, true)[0]; }
   function actionTarget(object) { let target = object; while (target && !target.userData.action) target = target.parent; return target; }
   function activate(object) { const target = actionTarget(object); if (target?.userData.action === 'search') onSearch?.(); else if (target?.userData.action === 'title') onTitleSelect(tapeRecords[target.userData.index]?.title); else if (target?.userData.action === 'bag') onBagSelect(); else if (target?.userData.action === 'counter') onCounterSelect?.(); else if (target?.userData.action === 'tip') onTip(); else if (target?.userData.action === 'collective-awards') { focusFrame(awardsFrame); onCollectiveAwards?.(); } }
   function click(event) { const hit = intersect(event); if (!hit) { closeFocus(); return; } const index = hit.object.userData.index; if (Number.isInteger(index)) selected = index; activate(hit.object); }
   function move(event) { const hit = intersect(event); const target = actionTarget(hit?.object); hovered = Number.isInteger(hit?.object.userData.index) ? hit.object.userData.index : -1; hoveredInteractive = clickableCues.includes(target) ? target : null; renderer.domElement.style.cursor = target ? 'pointer' : 'default'; }
-  function adjustZoom(amount) { zoom = THREE.MathUtils.clamp(zoom + amount, .72, 1.65); return zoom; }
+  function adjustZoom(amount) { zoom = THREE.MathUtils.clamp(zoom + amount, .72, mobileLayout ? 2.8 : 1.65); return zoom; }
   function wheel(event) { updatePointer(event); event.preventDefault(); adjustZoom(event.deltaY < 0 ? .1 : -.1); }
   function keyDown(event) { if (event.key === 'Escape' && focusedFrame) { closeFocus(); event.preventDefault(); return; } if (event.key === '+' || event.key === '=') { adjustZoom(.12); event.preventDefault(); return; } if (event.key === '-' || event.key === '_') { adjustZoom(-.12); event.preventDefault(); return; } if (!tapeRecords.length) return; if (event.key === 'ArrowLeft') selected = Math.max(0, selected - 1); else if (event.key === 'ArrowRight') selected = Math.min(tapeRecords.length - 1, selected + 1); else if (event.key === 'ArrowUp') selected = Math.max(0, selected - TAPE_COLUMNS); else if (event.key === 'ArrowDown') selected = Math.min(tapeRecords.length - 1, selected + TAPE_COLUMNS); else if (event.key === 'Enter' || event.key === ' ') onTitleSelect(tapeRecords[selected]?.title); else return; event.preventDefault(); }
   function resize() {
@@ -172,6 +177,13 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
     camera.aspect = width / height;
     // Fit the 14.2-unit counter, including the CRT and returns basket, on narrow screens.
     const narrow = width <= 760;
+    mobileLayout = narrow;
+    zoom = THREE.MathUtils.clamp(zoom, .72, narrow ? 2.8 : 1.65);
+    // Bring both physical actions into the phone's central zoom corridor.
+    crt.position.x = narrow ? 2.6 : 4;
+    keyboard.position.x = narrow ? 2.6 : 4;
+    jar.position.set(narrow ? -2.3 : 2.25, COUNTER_TOP + .525, narrow ? .35 : -.2);
+    donationPlaque.position.set(narrow ? -2.3 : 1.28, COUNTER_TOP + (narrow ? 1.28 : .42), narrow ? .94 : .42);
     const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     baseDistance = narrow ? Math.max(17, 7.8 / (halfFov * camera.aspect)) : 17;
     // Backing away must not bury the counter in the original desktop fog range.
