@@ -304,8 +304,11 @@ test('VHS inspection saves star and plus actions to their matching list with con
   assert.match(app, /\$\('#saved-added-dialog'\)\.addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\)/);
 });
 
-test('mobile VHS inspection uses its red tape button for streamings and keeps only the labeled reviews action floating', () => {
-  assert.match(app, /onAvailability: \(\) => \{\s*if \(activeViewerTitle\) sessionSupport\.openStreamings\(activeViewerTitle\);\s*\}/);
+test('mobile VHS inspection routes the red tape streamings button through the rent-or-watch gate', () => {
+  assert.match(app, /onAvailability: \(\) => \{\s*if \(activeViewerTitle\) openStreamingGate\(activeViewerTitle\);\s*\}/);
+  assert.match(app, /function openStreamingGate\(title\)/);
+  assert.match(app, /\$\('#streaming-gate-dialog'\)\.showModal\(\)/);
+  assert.match(app, /\$\('#streaming-gate-dialog'\)\.addEventListener\('close',/);
   assert.match(app, /titleReview\.textContent = 'Avaliações';/);
   assert.doesNotMatch(app, /reviewIcon\.textContent = '☆'/);
   assert.doesNotMatch(app, /title-streaming-action/);

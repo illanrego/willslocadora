@@ -74,7 +74,7 @@
 
     // Each modal needs its own reachable entry: the page dock is inert behind it.
     for (const dialog of document.querySelectorAll('dialog')) {
-      if (dialog === donation || dialog.id === 'title-dialog' || dialog.querySelector('[data-support], #tip-jar, #return-tip-jar, #basket-donation')) continue;
+      if (dialog === donation || dialog.id === 'title-dialog' || dialog.id === 'streaming-gate-dialog' || dialog.querySelector('[data-support], #tip-jar, #return-tip-jar, #basket-donation')) continue;
       const support = button(t('support'), openDonation); support.dataset.i18n = 'support';
       support.classList.add('dialog-support'); dialog.append(support);
     }

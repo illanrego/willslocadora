@@ -81,6 +81,7 @@
   const sourcesDialog = $('#sources-dialog');
   let activeVhsViewer = null;
   let activeViewerTitle = null;
+  let streamingGateTitle = null;
   let viewerToken = 0;
   let immersiveShelf = null;
   let immersiveToken = 0;
@@ -1635,6 +1636,39 @@
     openReturnWindow();
   }
 
+  function openStreamingGate(title) {
+    streamingGateTitle = title;
+    $('#streaming-gate-title').textContent = title.name;
+    if (!$('#streaming-gate-dialog').open) $('#streaming-gate-dialog').showModal();
+  }
+
+  function closeStreamingGate() {
+    streamingGateTitle = null;
+    if ($('#streaming-gate-dialog').open) $('#streaming-gate-dialog').close();
+  }
+
+  function quickRentFromGate() {
+    const title = streamingGateTitle;
+    if (!title) return;
+    closeStreamingGate();
+    // Quick rent acts on just this tape. A signed-in member rents it directly; a
+    // guest adds it to the basket and steps to the counter to finish the package.
+    if (state.member.configured && state.member.signedIn && state.member.profile) {
+      balconySelection = prepareCounterSelection([title]);
+      rentCounter();
+      return;
+    }
+    toggleCounter(title);
+    openRentalDesk();
+  }
+
+  function watchStreamingsFromGate() {
+    const title = streamingGateTitle;
+    if (!title) return;
+    closeStreamingGate();
+    sessionSupport.openStreamings(title);
+  }
+
   function showRentalConfirmation(rental) {
     const dialog = $('#rental-confirmation-dialog');
     const list = $('#rental-confirmation-list');
@@ -2044,7 +2078,7 @@
           activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))), { preserveView: true });
         },
         onAvailability: () => {
-          if (activeViewerTitle) sessionSupport.openStreamings(activeViewerTitle);
+          if (activeViewerTitle) openStreamingGate(activeViewerTitle);
         },
         onWatch: () => { if (activeViewerTitle) window.location.href = createStremioUri(activeViewerTitle); },
         onLetterboxd: () => { if (activeViewerTitle) window.open(createLetterboxdUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
@@ -2210,6 +2244,9 @@
     $('#balcony-zoom-in').addEventListener('click', () => balcony?.zoomIn());
     $('#balcony-zoom-out').addEventListener('click', () => balcony?.zoomOut());
     $('#rent-counter').addEventListener('click', rentCounter);
+    $('#streaming-gate-rent').addEventListener('click', quickRentFromGate);
+    $('#streaming-gate-watch').addEventListener('click', watchStreamingsFromGate);
+    $('#streaming-gate-dialog').addEventListener('close', () => { streamingGateTitle = null; });
     $('#return-selected-rentals').addEventListener('click', returnSelectedRentals);
     $('#rental-confirmation-dialog').addEventListener('close', () => setMode('normal'));
     $('#rental-confirmation-dialog').addEventListener('cancel', (event) => event.preventDefault());
