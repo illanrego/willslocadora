@@ -1277,6 +1277,14 @@
     }
   }
 
+  function setLoadMoreShelfLoading(loading) {
+    const button = $('#load-more-shelf');
+    button.disabled = loading;
+    button.classList.toggle('is-loading', loading);
+    button.setAttribute('aria-busy', String(loading));
+    button.textContent = t(loading ? 'openingStand' : 'loadStand');
+  }
+
   async function loadShelf(stand = 0, append = false, transitionDirection = 0, preserveStandHistory = false) {
     if (state.request) state.request.abort();
     const controller = new AbortController();
@@ -1291,6 +1299,7 @@
     $('#immersive-provider-summary').textContent = `${providerLabel || t('allCatalogues')} · ${state.ignoreStoreYear ? t('allYears') : `${t('storeYearCaption')} ${state.year}`}`;
     $('#shelf-status').textContent = append ? t('openingStand') : t('openingBoxes');
     $('#immersive-status').textContent = append ? t('openingStand') : t('openingBoxes');
+    setLoadMoreShelfLoading(append);
     $('#immersive-previous-stand').disabled = true;
     $('#immersive-next-stand').disabled = true;
     immersiveShelf?.setLoading(genreLabel(genre), state.year, state.type, stand);
@@ -1342,7 +1351,10 @@
       $('#immersive-status').textContent = error.message;
       if (!append && !preserveStandHistory) showEmpty();
     } finally {
-      if (state.request === controller) state.request = null;
+      if (state.request === controller) {
+        state.request = null;
+        setLoadMoreShelfLoading(false);
+      }
       shelf.setAttribute('aria-busy', 'false');
       $('#immersive-previous-stand').disabled = false;
       $('#immersive-next-stand').disabled = false;

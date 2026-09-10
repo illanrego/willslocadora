@@ -17,6 +17,18 @@ test('mobile 2D shelves show poster+logo-backed tape spines with a vertical titl
   assert.match(styles, /\.case-spine \{[^}]*background: rgba\(8, 5, 4, \.32\);/);
 });
 
+test('loading another 2D stand exposes progress on the triggering button', () => {
+  const app = read('public/app.js');
+  const styles = read('public/styles.css');
+  assert.match(app, /function setLoadMoreShelfLoading\(loading\)/);
+  assert.match(app, /button\.disabled = loading/);
+  assert.match(app, /button\.textContent = t\(loading \? 'openingStand' : 'loadStand'\)/);
+  assert.match(app, /setLoadMoreShelfLoading\(append\)/);
+  assert.match(app, /if \(state\.request === controller\) \{[\s\S]*setLoadMoreShelfLoading\(false\)/);
+  assert.match(styles, /\.load-more-shelf\.is-loading::before/);
+  assert.match(styles, /@keyframes shelf-loading-spin/);
+});
+
 test('mobile 3D fallback spine titles read from top to bottom', () => {
   const cases = read('public/vhs-case.mjs');
   assert.match(cases, /drawSpineLabel\(context, title, logoImage, labelScale = 1\)/);
