@@ -311,6 +311,13 @@ test('mobile VHS inspection uses its red tape button for streamings and keeps on
   assert.doesNotMatch(app, /title-streaming-action/);
 });
 
+test('a mobile tape action cannot immediately dismiss the dialog it opens', () => {
+  assert.match(app, /const dialogBackdropPresses = new WeakSet\(\)/);
+  assert.match(app, /dialog\.addEventListener\('pointerdown',[\s\S]*event\.target === dialog[\s\S]*dialogBackdropPresses\.add\(dialog\)/);
+  assert.match(app, /const beganOnBackdrop = dialogBackdropPresses\.delete\(dialog\)/);
+  assert.match(app, /event\.target === dialog && beganOnBackdrop/);
+});
+
 test('tape inspection omits the support prompt while other dialogs retain their support entries', () => {
   assert.match(sessionSupport, /dialog\.id === 'title-dialog'/);
   assert.match(sessionSupport, /support\.classList\.add\('dialog-support'\); dialog\.append\(support\)/);

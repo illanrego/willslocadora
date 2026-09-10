@@ -2326,9 +2326,16 @@
     }
     $('#retry-shelf').addEventListener('click', loadShelf);
     $('#load-more-shelf').addEventListener('click', goToNextStand);
+    const dialogBackdropPresses = new WeakSet();
     for (const dialog of document.querySelectorAll('dialog')) {
+      dialog.addEventListener('pointerdown', (event) => {
+        if (event.target === dialog) dialogBackdropPresses.add(dialog);
+        else dialogBackdropPresses.delete(dialog);
+      });
+      dialog.addEventListener('pointercancel', () => dialogBackdropPresses.delete(dialog));
       dialog.addEventListener('click', (event) => {
-        if (event.target === dialog && dialog.id !== 'rental-confirmation-dialog') dialog.close();
+        const beganOnBackdrop = dialogBackdropPresses.delete(dialog);
+        if (event.target === dialog && beganOnBackdrop && dialog.id !== 'rental-confirmation-dialog') dialog.close();
       });
     }
   }
