@@ -944,6 +944,7 @@
 
   const LOGO_LOAD_ATTEMPTS = 6;
   const LOGO_RETRY_DELAYS = [1200, 4000, 12000, 30000, 60000];
+  const LOGO_LOAD_TIMEOUT_MS = 12000;
 
   function loadTapeLogo(image, tape, sources) {
     const urls = [...new Set(sources.filter(Boolean))];
@@ -951,37 +952,53 @@
     image.cancelLogoLoad?.();
     let attempt = 0;
     let retryTimer = 0;
+    let loadTimer = 0;
     let cancelled = false;
+    const clearTimers = () => {
+      if (retryTimer) window.clearTimeout(retryTimer);
+      if (loadTimer) window.clearTimeout(loadTimer);
+      retryTimer = 0;
+      loadTimer = 0;
+    };
     const clearListeners = () => {
       image.removeEventListener('load', handleLoad);
       image.removeEventListener('error', handleError);
     };
     const handleLoad = () => {
       if (cancelled) return;
+      clearTimers();
       tape.classList.add('has-logo');
       image.classList.toggle('is-landscape', (image.naturalWidth || 0) > (image.naturalHeight || 0));
       clearListeners();
     };
-    const handleError = () => {
-      if (cancelled) return;
+    const retryLoad = () => {
+      if (cancelled || retryTimer) return;
+      if (loadTimer) window.clearTimeout(loadTimer);
+      loadTimer = 0;
       tape.classList.remove('has-logo');
       attempt += 1;
       if (attempt >= LOGO_LOAD_ATTEMPTS) return clearListeners();
       retryTimer = window.setTimeout(tryLoad, LOGO_RETRY_DELAYS[Math.min(attempt - 1, LOGO_RETRY_DELAYS.length - 1)]);
     };
+    const handleError = () => retryLoad();
     const tryLoad = () => {
       retryTimer = 0;
-      if (cancelled || !image.isConnected) return;
+      if (cancelled) return;
+      image.loading = 'eager';
       image.src = urls[attempt % urls.length];
+      loadTimer = window.setTimeout(() => {
+        if (image.complete && image.naturalWidth) handleLoad();
+        else retryLoad();
+      }, LOGO_LOAD_TIMEOUT_MS);
     };
     image.cancelLogoLoad = () => {
       cancelled = true;
-      if (retryTimer) window.clearTimeout(retryTimer);
+      clearTimers();
       clearListeners();
     };
     image.addEventListener('load', handleLoad);
     image.addEventListener('error', handleError);
-    image.src = urls[0];
+    tryLoad();
   }
 
   // Lazy background logo enrichment: fetch metadata for each shelf title so its logo

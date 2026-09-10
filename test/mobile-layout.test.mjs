@@ -72,15 +72,21 @@ test('3D tape artwork queues, retries, and cancels slow cover loads', () => {
 
 test('2D shelf logos retry without hiding the title fallback', () => {
   const app = read('public/app.js');
+  const html = read('public/index.html');
   assert.match(app, /const LOGO_METADATA_ATTEMPTS = 4/);
   assert.match(app, /const LOGO_METADATA_RETRY_DELAYS = \[1500, 5000, 15000\]/);
   assert.match(app, /await Promise\.all\(Array\.from\(\{ length: Math\.min\(CONCURRENCY, pending\.length\) \}, worker\)\)/);
   assert.match(app, /if \(token === logoHydrationToken\) retry\.push\(title\)/);
   assert.match(app, /const LOGO_LOAD_ATTEMPTS = 6/);
   assert.match(app, /const LOGO_RETRY_DELAYS = \[1200, 4000, 12000, 30000, 60000\]/);
+  assert.match(app, /const LOGO_LOAD_TIMEOUT_MS = 12000/);
   assert.match(app, /function loadTapeLogo\(image, tape, sources\)/);
+  assert.match(app, /image\.loading = 'eager';[\s\S]*loadTimer = window\.setTimeout/);
+  assert.match(app, /if \(image\.complete && image\.naturalWidth\) handleLoad\(\);[\s\S]*else retryLoad\(\)/);
+  assert.match(html, /<img class="case-logo" alt="" loading="eager">/);
   assert.match(app, /const handleLoad = \(\) => \{[\s\S]*tape\.classList\.add\('has-logo'\)/);
-  assert.match(app, /const handleError = \(\) => \{[\s\S]*tape\.classList\.remove\('has-logo'\);[\s\S]*window\.setTimeout\(tryLoad/);
+  assert.match(app, /const retryLoad = \(\) => \{[\s\S]*tape\.classList\.remove\('has-logo'\);[\s\S]*window\.setTimeout\(tryLoad/);
+  assert.match(app, /const handleError = \(\) => retryLoad\(\)/);
   assert.doesNotMatch(app, /logo\.src = logoUrl;\s*button\.classList\.add\('has-logo'\)/);
 });
 
