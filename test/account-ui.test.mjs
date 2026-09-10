@@ -78,6 +78,9 @@ test('catalogue search keeps its Cesta action available with active rentals unti
 test('yellow actions use dark text and return submission retains a selected subset', () => {
   const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
   assert.match(styles, /\.yellow-action[\s\S]*color: var\(--black\)/);
+  assert.match(styles, /\.account-action \{[^}]*color: var\(--black\);[^}]*background: var\(--yellow\)/);
+  assert.match(styles, /\.counter-search-button \{[^}]*color: var\(--black\);[^}]*background: var\(--yellow\)/);
+  assert.doesNotMatch(styles, /color: var\(--ink\); background: var\(--yellow\)/);
   assert.match(app, /const submitted = \[\.\.\.pendingReturns\.entries\(\)\]/);
 });
 
