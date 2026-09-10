@@ -67,7 +67,7 @@
     stand: 0,
     metadata: createBoundedCache(120),
     renderedTitleKeys: new Set(),
-    mode: 'normal',
+    mode: 'immersive',
     hasNextStand: false,
     standCache: createBoundedStandCache(3),
   };
@@ -1211,6 +1211,27 @@
     }
   }
 
+  let ambienceAutostartPending = true;
+  let ambienceAutostartInFlight = false;
+  const ambienceAutostartEvents = ['pointerdown', 'keydown', 'touchstart'];
+
+  async function startDefaultAmbience() {
+    if (!ambienceAutostartPending || ambienceAutostartInFlight || !storeAudio || storeAudio.isActive('ambience')) return;
+    ambienceAutostartInFlight = true;
+    try {
+      const active = await storeAudio.toggle('ambience');
+      syncAudioControls('ambience', active);
+      if (!active) return;
+      ambienceAutostartPending = false;
+      ambienceAutostartEvents.forEach((eventName) => document.removeEventListener(eventName, startDefaultAmbience));
+    } catch {
+      // Audible autoplay is commonly blocked until a user gesture; keep trying on the next one.
+      syncAudioControls('ambience', false);
+    } finally {
+      ambienceAutostartInFlight = false;
+    }
+  }
+
   async function selectMusicTrack(event) {
     const trackId = event.currentTarget.value;
     document.querySelectorAll('[data-music-track]').forEach((select) => { select.value = trackId; });
@@ -2159,6 +2180,8 @@
     syncLightingControls();
     syncAudioControls('ambience');
     syncAudioControls('music');
+    ambienceAutostartEvents.forEach((eventName) => document.addEventListener(eventName, startDefaultAmbience, { passive: true }));
+    void startDefaultAmbience();
     $('#year-back').addEventListener('click', () => stepYear(-1));
     $('#year-forward').addEventListener('click', () => stepYear(1));
     $('#year-form').addEventListener('submit', (event) => {
@@ -2345,5 +2368,6 @@
   window.addEventListener('pagehide', disposeVhsViewer, { once: true });
   loadProviderRegistry();
   saveCounter();
+  setMode('immersive');
   setYear(state.year);
 })();

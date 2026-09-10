@@ -111,6 +111,8 @@ h1 { margin: 0; max-width: 1200px; font: 900 clamp(4rem, 10vw, 10rem)/.76 Impact
   linear-gradient(#48362b, #2a201a 65%, #1b1411); }
 .fluorescent { width: min(70%, 780px); height: 9px; margin: -1.5rem auto 2.5rem; background: #fff4c4; box-shadow: 0 0 8px white, 0 0 50px rgba(255,244,196,.35); }
 .shelf-heading { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: 1.6rem; }
+.shelf-home-actions { display: flex; justify-content: flex-end; margin: -.8rem 0 1.25rem; }
+.shelf-mode-button { min-height: 40px; padding: .55rem .8rem; }
 .shelf-heading p { margin: 0 0 .3rem; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; font-size: .68rem; }
 .shelf-heading h2 { margin: 0; font: 900 clamp(2rem, 5vw, 4rem)/.9 Impact, sans-serif; text-transform: uppercase; letter-spacing: .02em; }
 #shelf-status { max-width: 220px; text-align: right; color: var(--cyan); }
