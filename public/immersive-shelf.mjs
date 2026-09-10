@@ -281,6 +281,39 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   sign.castShadow = true;
   room.add(sign);
 
+  // A solid hanging shop sign, with the same red lettering and gold offset as the header.
+  const brandCanvas = canvasTexture(1536, 256, (context) => {
+    context.fillStyle = '#101827';
+    context.fillRect(0, 0, 1536, 256);
+    context.strokeStyle = '#c99a2e';
+    context.lineWidth = 8;
+    context.strokeRect(12, 12, 1512, 232);
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.font = '900 158px Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif';
+    context.fillStyle = '#c99a2e';
+    context.fillText("WILL'S LOCADORA", 778, 140, 1400);
+    context.fillStyle = '#9e3634';
+    context.fillText("WILL'S LOCADORA", 768, 130, 1400);
+  });
+  const hangingBrand = new THREE.Group();
+  const brandEdge = new THREE.MeshStandardMaterial({ color: 0x896429, roughness: 0.7 });
+  const brandFace = new THREE.MeshStandardMaterial({ map: brandCanvas.texture, roughness: 0.65 });
+  const brandBoard = new THREE.Mesh(
+    new THREE.BoxGeometry(6.1, 1.02, 0.28),
+    [brandEdge, brandEdge, brandEdge, brandEdge, brandFace, brandFace],
+  );
+  hangingBrand.add(brandBoard);
+  const ropeMaterial = new THREE.MeshStandardMaterial({ color: 0xb69b70, roughness: 1 });
+  const ropeGeometry = new THREE.CylinderGeometry(0.026, 0.026, 30, 6);
+  for (const x of [-2.48, 2.48]) {
+    const rope = new THREE.Mesh(ropeGeometry, ropeMaterial);
+    // End inside the thick board; the other end continues beyond the camera frame.
+    rope.position.set(x, 15.48, 0);
+    hangingBrand.add(rope);
+  }
+  room.add(hangingBrand);
+
   const standCanvas = canvasTexture(320, 160, (context) => drawStandMarker(context, stand));
   const standMarker = new THREE.Mesh(
     new THREE.BoxGeometry(1.36, 0.9, 0.16),
@@ -403,6 +436,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       sign.position.y = 5.15;
       fitLamps(false);
     }
+    const brandScale = compact ? (compactRackWidth + 0.4) / 6.1 : 1;
+    hangingBrand.scale.setScalar(brandScale);
+    hangingBrand.position.set(0, sign.position.y + 0.79 * sign.scale.y + 0.22 + 0.51 * brandScale, 0.28);
   }
 
   function clearTapes() {
@@ -792,6 +828,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       clearTapes();
       clearFeaturedPosters();
       signCanvas.texture.dispose();
+      brandCanvas.texture.dispose();
       standCanvas.texture.dispose();
       const geometries = new Set();
       const materials = new Set();
