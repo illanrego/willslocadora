@@ -231,7 +231,7 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 
 dialog { color: var(--ink); background: #211914; border: 1px solid #765640; box-shadow: 0 30px 100px #000; }
 dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
-.dialog-close { width: 44px; height: 44px; border: 1px solid #6a5547; background: #17110e; cursor: pointer; font-size: 1.5rem; }
+.dialog-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 1px solid #6a5547; background: #17110e; cursor: pointer; font: 400 1.25rem/1 Arial, sans-serif; }
 .title-dialog { width: min(920px, calc(100% - 2rem)); max-height: 90vh; padding: 0; overflow: auto; }
 .title-dialog > .dialog-close, .title-dialog-close { position: absolute; z-index: 7; top: 1rem; right: 1rem; margin: 0; }
 .title-dialog-close .dialog-close { min-width: 42px; min-height: 42px; border: 1px solid var(--cream); color: var(--cream); background: var(--red); font: 900 1.35rem/1 "Courier New", monospace; cursor: pointer; }
@@ -995,9 +995,9 @@ dialog.panel-dialog {
 .title-utility-actions button, .vhs-focus-controls button, .balcony-room .balcony-hud button,
 .balcony-room .balcony-member-actions button, .balcony-room .scene-inspection-controls button,
 .tape-fallback-action {
-  color: var(--blue-deep) !important;
-  background: var(--cream) !important;
-  border: 2px solid var(--red) !important;
+  color: var(--control-ink, #082a29) !important;
+  background: var(--control-fill, #73c5ba) !important;
+  border: 2px solid var(--control-edge, #28766d) !important;
   border-radius: 4px;
   box-shadow: 4px 5px 0 var(--blue-deep), 0 0 16px rgba(0,0,0,.2);
   font-weight: 900;
@@ -1005,7 +1005,7 @@ dialog.panel-dialog {
 .immersive-basket-button, .immersive-balcony-button, .immersive-account-button { min-height: 52px; }
 .immersive-account-button { min-width: 118px; }
 .immersive-account-button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.immersive-basket-button .immersive-basket-label { color: var(--blue-deep) !important; background: transparent !important; }
+.immersive-basket-button .immersive-basket-label { color: inherit !important; background: transparent !important; }
 .immersive-basket-button #immersive-basket-count { color: var(--cream) !important; background: var(--red) !important; }
 .immersive-room .immersive-zoom button { border-radius: 50%; }
 .immersive-room .immersive-format button.is-active,
@@ -1034,7 +1034,31 @@ dialog.panel-dialog {
   outline: 0;
 }
 .immersive-basket-button:hover .immersive-basket-label, .immersive-basket-button:focus-visible .immersive-basket-label { color: var(--cream) !important; }
-.title-utility-actions .title-review-teaser strong, .title-utility-actions .title-review-teaser span { color: var(--blue-deep) !important; }
+.title-utility-actions .title-review-teaser strong, .title-utility-actions .title-review-teaser span { color: inherit !important; }
+
+/* Action colors follow the same destinations in both store modes. */
+.immersive-basket-button, .title-member-actions .title-basket-action,
+#counter-open, #take-basket-counter, #rent-counter {
+  --control-fill: #efbf45; --control-ink: #302100; --control-edge: #aa7616;
+}
+.immersive-balcony-button, #balcony-panel-open {
+  --control-fill: #ae383b; --control-ink: #ffffff; --control-edge: #e67570;
+}
+.immersive-account-button, #account-open, #balcony-account-open {
+  --control-fill: #286ca1; --control-ink: #ffffff; --control-edge: #72b4df;
+}
+#watchlist-open, #balcony-watchlist-open {
+  --control-fill: #39794d; --control-ink: #ffffff; --control-edge: #8bc591;
+}
+#counter-open, #take-basket-counter, #rent-counter,
+.header-actions #account-open, .header-actions #watchlist-open {
+  color: var(--control-ink) !important;
+  background: var(--control-fill) !important;
+  border-color: var(--control-edge) !important;
+}
+#counter-open .basket-spines { color: inherit; }
+#counter-open:hover, #take-basket-counter:hover, #rent-counter:hover,
+.header-actions #account-open:hover, .header-actions #watchlist-open:hover { filter: brightness(1.12); }
 
 /* Balcão actions form one visible top rail instead of being tucked into corners. */
 .balcony-hud {
@@ -1077,9 +1101,9 @@ dialog.panel-dialog {
 .balcony-dialog .counter-search-button, .balcony-dialog .tip-jar-button,
 .returns-dialog .tip-jar-button, .balcony-dialog .return-choices button,
 .returns-dialog .return-choices button {
-  color: var(--blue-deep) !important;
-  background: var(--cream) !important;
-  border: 2px solid var(--red) !important;
+  color: var(--control-ink, #082a29) !important;
+  background: var(--control-fill, #73c5ba) !important;
+  border: 2px solid var(--control-edge, #28766d) !important;
   border-radius: 4px;
   box-shadow: 4px 5px 0 var(--blue-deep);
 }
