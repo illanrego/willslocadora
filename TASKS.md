@@ -1,9 +1,18 @@
 # Will’s Locadora — live ship board
 
-Last updated: 2026-07-22
+Last updated: 2026-09-11
 Status legend: [ ] todo · [~] in progress · [x] done
 
 The public-MVP authority is [MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md](MVP_PUBLIC_PRODUCT_AND_ARCHITECTURE.md). Historical local-first work remains documented in `PRODUCT_SPEC.md` and `ARCHITECTURE.md`.
+
+## 2026-09-11 roadmap trackers
+
+The detailed handoff trackers live in [.hermes/plans/2026-09-11-locadora-master-tracker.md](.hermes/plans/2026-09-11-locadora-master-tracker.md). Start there, then use the focused documents:
+
+- [ ] Catalogue blocks, admin catalogue/users/reviews/metrics: [.hermes/plans/2026-09-11-locadora-catalogue-admin-tracker.md](.hermes/plans/2026-09-11-locadora-catalogue-admin-tracker.md)
+- [ ] Deployment, cache propagation, test repair, and live acceptance: [.hermes/plans/2026-09-11-locadora-launch-reliability-tracker.md](.hermes/plans/2026-09-11-locadora-launch-reliability-tracker.md)
+- [ ] Milestones, curated catalogue, portability, and bounded community work: [.hermes/plans/2026-09-11-locadora-community-growth-tracker.md](.hermes/plans/2026-09-11-locadora-community-growth-tracker.md)
+- [ ] Explicitly deferred ideas and product boundaries: [.hermes/plans/2026-09-11-locadora-parked-roadmap.md](.hermes/plans/2026-09-11-locadora-parked-roadmap.md)
 
 ## Done — public browse foundation
 
