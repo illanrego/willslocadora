@@ -17,7 +17,7 @@ test('Balcony wall keeps collective history but removes the temporary owner bann
 });
 
 test('Balcony makes search and current-rental-decision review readable and clickable inside the 3D scene', () => {
-  assert.match(balcony, /PESQUISAR TÍTULOS/);
+  assert.match(balcony, /labelTexture\('PESQUISAR TÍTULOS', \{[^}]*fontSize: 84/);
   assert.match(balcony, /ESCOLHER \/ ALUGAR FITAS/);
   assert.doesNotMatch(balcony, /rental\.rented/);
   assert.match(balcony, /userData\.action = 'counter'/);
@@ -41,6 +41,7 @@ test('mobile Balcony pinch gestures use the same zoom path as its buttons', () =
   assert.match(balcony, /function pointerMoveGesture\(event\)[\s\S]*activePointers\.size !== 2[\s\S]*Math\.hypot[\s\S]*adjustZoom/);
   assert.match(balcony, /addEventListener\('pointerdown', pointerDown\)[\s\S]*addEventListener\('pointerup', pointerUp\)[\s\S]*addEventListener\('pointercancel', pointerCancel\)/);
   assert.match(balcony, /removeEventListener\('pointerdown', pointerDown\)[\s\S]*removeEventListener\('pointerup', pointerUp\)[\s\S]*removeEventListener\('pointercancel', pointerCancel\)/);
+  assert.match(balcony, /baseDistance \/ maxZoom\(\)/);
 });
 
 test('VHS title viewing has an explicit close control', () => {
