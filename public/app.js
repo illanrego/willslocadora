@@ -945,7 +945,7 @@
       button.setAttribute('aria-label', `Inspect ${title.name}, ${title.year || 'year unknown'}`);
       const blockAction = node.querySelector('.vhs-block-action');
       blockAction.hidden = !state.admin;
-      blockAction.setAttribute('aria-label', `Bloquear ${title.name}`);
+      blockAction.setAttribute('aria-label', `Retirar ${title.name} da prateleira`);
       blockAction.addEventListener('click', (event) => { event.stopPropagation(); blockCatalogueTitle(title, blockAction); });
       button.addEventListener('click', () => openTitleFromOrigin(title, { source: 'shelf', mode: state.mode }, true, posterTextureUrl(image.currentSrc || image.src)));
       article.dataset.titleId = title.id;
@@ -957,7 +957,7 @@
 
   async function blockCatalogueTitle(title, action) {
     if (!state.admin || action.disabled) return;
-    const reason = window.prompt(`Motivo para bloquear ${title.name}:`)?.trim() || '';
+    const reason = window.prompt(`Motivo para retirar ${title.name} da prateleira:`)?.trim() || '';
     if (!reason) return;
     action.disabled = true;
     try {
