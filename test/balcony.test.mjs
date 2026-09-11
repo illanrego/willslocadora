@@ -35,6 +35,14 @@ test('the physical return basket opens the dedicated return window', () => {
   assert.match(balcony, /returned \|\| \[\]\)\.slice\(-MAX_RETURN_DISPLAY\)/);
 });
 
+test('mobile Balcony pinch gestures use the same zoom path as its buttons', () => {
+  assert.match(balcony, /renderer\.domElement\.style\.touchAction = 'none'/);
+  assert.match(balcony, /const activePointers = new Map\(\)/);
+  assert.match(balcony, /function pointerMoveGesture\(event\)[\s\S]*activePointers\.size !== 2[\s\S]*Math\.hypot[\s\S]*adjustZoom/);
+  assert.match(balcony, /addEventListener\('pointerdown', pointerDown\)[\s\S]*addEventListener\('pointerup', pointerUp\)[\s\S]*addEventListener\('pointercancel', pointerCancel\)/);
+  assert.match(balcony, /removeEventListener\('pointerdown', pointerDown\)[\s\S]*removeEventListener\('pointerup', pointerUp\)[\s\S]*removeEventListener\('pointercancel', pointerCancel\)/);
+});
+
 test('VHS title viewing has an explicit close control', () => {
   assert.match(page, /id="title-dialog"[\s\S]*aria-label="Close title"/);
 });

@@ -67,6 +67,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.shadowMap.enabled = true;
   renderer.domElement.className = 'immersive-canvas'; renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute('aria-label', 'Locadora counter. Use arrow keys to choose a counter tape, Enter to inspect it, and plus or minus to zoom.');
+  renderer.domElement.style.touchAction = 'none';
   container.replaceChildren(renderer.domElement);
   const inspector = inspectionControls(container);
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x07101b); scene.fog = new THREE.Fog(0x07101b, 12, 31);
@@ -127,7 +128,8 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   });
   counterObject.userData.action = 'counter'; interactive.push(counterObject);
   const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let selected = 0; let hovered = -1; let hoveredInteractive = null; let disposed = false; let frame = 0; let zoom = 1; let baseDistance = 17; let pointerX = 0; let pointerY = 0; let focusedFrame = null;
+  const activePointers = new Map();
+  let selected = 0; let hovered = -1; let hoveredInteractive = null; let disposed = false; let frame = 0; let zoom = 1; let baseDistance = 17; let pointerX = 0; let pointerY = 0; let focusedFrame = null; let pinchPrevDist = 0;
   const focusPosition = new THREE.Vector3(0, 2.65, 5.2);
   const focusRotation = new THREE.Euler(0, 0, 0);
   function focusFrame(next) {
@@ -169,6 +171,30 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
   function move(event) { const hit = intersect(event); const target = actionTarget(hit?.object); hovered = Number.isInteger(hit?.object.userData.index) ? hit.object.userData.index : -1; hoveredInteractive = clickableCues.includes(target) ? target : null; renderer.domElement.style.cursor = target ? 'pointer' : 'default'; }
   function adjustZoom(amount) { zoom = THREE.MathUtils.clamp(zoom + amount, .72, mobileLayout ? 2.8 : 1.65); return zoom; }
   function wheel(event) { updatePointer(event); event.preventDefault(); adjustZoom(event.deltaY < 0 ? .1 : -.1); }
+  function pointerDown(event) {
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    renderer.domElement.setPointerCapture?.(event.pointerId);
+    pinchPrevDist = 0;
+  }
+  function pointerMoveGesture(event) {
+    if (!activePointers.has(event.pointerId)) return;
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointers.size !== 2) return;
+    const [a, b] = [...activePointers.values()];
+    const dist = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinchPrevDist > 0) adjustZoom(((dist - pinchPrevDist) / pinchPrevDist) * .9);
+    pinchPrevDist = dist;
+  }
+  function pointerUp(event) {
+    activePointers.delete(event.pointerId);
+    if (renderer.domElement.hasPointerCapture?.(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
+    pinchPrevDist = activePointers.size === 2 ? pinchPrevDist : 0;
+  }
+  function pointerCancel(event) {
+    activePointers.delete(event.pointerId);
+    if (renderer.domElement.hasPointerCapture?.(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
+    pinchPrevDist = 0;
+  }
   function keyDown(event) { if (event.key === 'Escape' && focusedFrame) { closeFocus(); event.preventDefault(); return; } if (event.key === '+' || event.key === '=') { adjustZoom(.12); event.preventDefault(); return; } if (event.key === '-' || event.key === '_') { adjustZoom(-.12); event.preventDefault(); return; } if (!tapeRecords.length) return; if (event.key === 'ArrowLeft') selected = Math.max(0, selected - 1); else if (event.key === 'ArrowRight') selected = Math.min(tapeRecords.length - 1, selected + 1); else if (event.key === 'ArrowUp') selected = Math.max(0, selected - TAPE_COLUMNS); else if (event.key === 'ArrowDown') selected = Math.min(tapeRecords.length - 1, selected + TAPE_COLUMNS); else if (event.key === 'Enter' || event.key === ' ') onTitleSelect(tapeRecords[selected]?.title); else return; event.preventDefault(); }
   function resize() {
     const width = Math.max(container.clientWidth, 1);
@@ -193,7 +219,7 @@ export function createBalcony({ container, rental, year, copy, onCounterSelect, 
     camera.position.z = baseDistance / zoom;
     camera.updateProjectionMatrix();
   }
-  const observer = new ResizeObserver(resize); observer.observe(container); renderer.domElement.addEventListener('click', click); renderer.domElement.addEventListener('pointermove', move); renderer.domElement.addEventListener('keydown', keyDown); renderer.domElement.addEventListener('wheel', wheel, { passive: false }); inspector.close.addEventListener('click', closeFocus); inspector.zoomIn.addEventListener('click', () => adjustZoom(.12)); inspector.zoomOut.addEventListener('click', () => adjustZoom(-.12)); resize();
+  const observer = new ResizeObserver(resize); observer.observe(container); renderer.domElement.addEventListener('click', click); renderer.domElement.addEventListener('pointermove', move); renderer.domElement.addEventListener('keydown', keyDown); renderer.domElement.addEventListener('wheel', wheel, { passive: false }); renderer.domElement.addEventListener('pointerdown', pointerDown); renderer.domElement.addEventListener('pointermove', pointerMoveGesture); renderer.domElement.addEventListener('pointerup', pointerUp); renderer.domElement.addEventListener('pointercancel', pointerCancel); inspector.close.addEventListener('click', closeFocus); inspector.zoomIn.addEventListener('click', () => adjustZoom(.12)); inspector.zoomOut.addEventListener('click', () => adjustZoom(-.12)); resize();
   function render() { if (disposed) return; const overhead = zoomProgress(); const parallax = 1 - overhead; customerCamera.set(pointerX * parallax, 5.8 + pointerY * parallax, baseDistance / zoom); overheadCamera.set(overheadFocus.x, overheadFocus.y + Math.max(10, baseDistance / 1.65), overheadFocus.z); targetCamera.lerpVectors(customerCamera, overheadCamera, overhead); targetLookAt.lerpVectors(homeLookAt, overheadFocus, overhead); [awardsFrame].forEach((item) => { const active = item === focusedFrame; const targetPosition = active ? focusPosition : item.userData.homePosition; const targetRotation = active ? focusRotation : item.userData.homeRotation; const targetScale = active ? 1.7 : 1; if (reducedMotion) { item.position.copy(targetPosition); item.rotation.copy(targetRotation); item.scale.setScalar(targetScale); } else { item.position.lerp(targetPosition, .14); item.rotation.x += (targetRotation.x - item.rotation.x) * .14; item.rotation.y += (targetRotation.y - item.rotation.y) * .14; item.rotation.z += (targetRotation.z - item.rotation.z) * .14; item.scale.setScalar(THREE.MathUtils.lerp(item.scale.x, targetScale, .14)); } }); if (focusedFrame) { targetCamera.set(0, 3.3, Math.max(9, 15 / zoom)); targetLookAt.copy(focusPosition); } if (reducedMotion || overhead >= 1) { camera.position.copy(targetCamera); cameraLookAt.copy(targetLookAt); } else { camera.position.lerp(targetCamera, .12); cameraLookAt.lerp(targetLookAt, .12); } camera.lookAt(cameraLookAt); tapeRecords.forEach(({ vhs }, index) => { const active = index === selected || index === hovered; const targetZ = vhs.group.userData.baseZ + (active ? .22 : 0); const targetScale = active ? 1.05 : 1; if (reducedMotion) { vhs.group.position.z = targetZ; vhs.group.scale.setScalar(targetScale); } else { vhs.group.position.z += (targetZ - vhs.group.position.z) * .16; const nextScale = THREE.MathUtils.lerp(vhs.group.scale.x, targetScale, .16); vhs.group.scale.setScalar(nextScale); } vhs.material.emissive.setHex(active ? 0x221805 : 0); }); clickableCues.forEach((item) => { const targetScale = item === hoveredInteractive ? 1.065 : 1; const nextScale = reducedMotion ? targetScale : THREE.MathUtils.lerp(item.scale.x, targetScale, .18); item.scale.setScalar(nextScale); }); renderer.render(scene, camera); frame = requestAnimationFrame(render); } render();
-  return { zoomIn() { return adjustZoom(.12); }, zoomOut() { return adjustZoom(-.12); }, dispose() { disposed = true; cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener('click', click); renderer.domElement.removeEventListener('pointermove', move); renderer.domElement.removeEventListener('keydown', keyDown); renderer.domElement.removeEventListener('wheel', wheel); tapeRecords.forEach(({ vhs }) => vhs.dispose()); posterTextures.forEach((texture) => texture.dispose()); scene.traverse((object) => { object.geometry?.dispose(); if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose()); else object.material?.dispose(); }); renderer.dispose(); renderer.domElement.remove(); } };
+  return { zoomIn() { return adjustZoom(.12); }, zoomOut() { return adjustZoom(-.12); }, dispose() { disposed = true; cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener('click', click); renderer.domElement.removeEventListener('pointermove', move); renderer.domElement.removeEventListener('keydown', keyDown); renderer.domElement.removeEventListener('wheel', wheel); renderer.domElement.removeEventListener('pointerdown', pointerDown); renderer.domElement.removeEventListener('pointermove', pointerMoveGesture); renderer.domElement.removeEventListener('pointerup', pointerUp); renderer.domElement.removeEventListener('pointercancel', pointerCancel); tapeRecords.forEach(({ vhs }) => vhs.dispose()); posterTextures.forEach((texture) => texture.dispose()); scene.traverse((object) => { object.geometry?.dispose(); if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose()); else object.material?.dispose(); }); renderer.dispose(); renderer.domElement.remove(); } };
 }
