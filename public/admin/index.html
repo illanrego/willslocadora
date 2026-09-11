@@ -8,7 +8,13 @@
   <link rel="stylesheet" href="./admin.css">
 </head>
 <body class="admin-page">
-  <main class="admin-shell">
+  <main id="admin-gate" class="admin-gate" aria-labelledby="admin-gate-heading">
+    <span class="eyebrow">WILL'S LOCADORA</span>
+    <h1 id="admin-gate-heading">Área restrita</h1>
+    <p id="admin-gate-status">Verificando acesso…</p>
+    <a class="admin-back" href="../">Voltar à Locadora</a>
+  </main>
+  <main id="admin-app" class="admin-shell" hidden>
     <header class="admin-header">
       <div>
         <span class="eyebrow">WILL'S LOCADORA · ADMIN</span>

@@ -1,6 +1,9 @@
 (() => {
   'use strict';
 
+  const app = document.querySelector('#admin-app');
+  const gate = document.querySelector('#admin-gate');
+  const gateStatus = document.querySelector('#admin-gate-status');
   const status = document.querySelector('#admin-status');
   const body = document.querySelector('#users-body');
   const search = document.querySelector('#user-search');
@@ -21,6 +24,17 @@
   const refreshMetrics = document.querySelector('#refresh-metrics');
   let users = [];
   let blocks = [];
+
+  function showGate(message) {
+    app.hidden = true;
+    gate.hidden = false;
+    gateStatus.textContent = message;
+  }
+
+  function showAdmin() {
+    gate.hidden = true;
+    app.hidden = false;
+  }
 
   function setStatus(message, tone = '') {
     status.textContent = message;
@@ -164,16 +178,15 @@
     try {
       await window.LocadoraAccount.init();
       if (!window.LocadoraAccount.state().signedIn) throw new Error('Entre na Carteirinha primeiro e abra esta página novamente.');
-      const [result] = await Promise.all([
-        window.LocadoraAccount.request('/v1/admin/users'),
-        loadCatalogue(),
-      ]);
+      const result = await window.LocadoraAccount.request('/v1/admin/users');
+      showAdmin();
+      await Promise.all([loadCatalogue(), loadReviews(), loadMetrics()]);
       users = Array.isArray(result.users) ? result.users : [];
       render();
       setStatus(`${users.length} usuário(s) encontrado(s).`, 'success');
     } catch (error) {
       body.replaceChildren();
-      setStatus(error.message || 'Acesso negado ou serviço indisponível.', 'error');
+      showGate(error.message || 'Acesso restrito ao proprietário da locadora.');
     } finally { refresh.disabled = false; }
   }
 

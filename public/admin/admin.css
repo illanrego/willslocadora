@@ -1,4 +1,7 @@
 .admin-page { min-height: 100vh; margin: 0; color: var(--cream); background: #15100e; }
+.admin-gate { width: min(560px, calc(100% - 2rem)); margin: 18vh auto 0; padding: 2rem; border: 1px solid #6f5c48; border-radius: 8px; background: #211a16; box-shadow: 0 8px 30px #0006; }
+.admin-gate h1 { margin: .35rem 0 .6rem; }
+.admin-gate p { margin: 0 0 1.25rem; color: #c6b89f; }
 .admin-shell { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 3rem 0 4rem; }
 .admin-header, .admin-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .admin-header { margin-bottom: 2rem; }
