@@ -161,6 +161,7 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-stand-button { position: absolute; z-index: 4; top: 50%; min-height: 46px; padding: .7rem 1rem; border: 2px solid var(--cream); color: var(--cream); background: rgba(158, 54, 52, .94); box-shadow: 0 5px 16px rgba(0,0,0,.5); cursor: pointer; font: 900 .7rem/1 "Courier New", monospace; letter-spacing: .08em; text-transform: uppercase; transform: translateY(-50%); }
 .immersive-previous-stand { left: 3rem; }
 .immersive-next-stand { right: 4.8rem; }
+.immersive-stand-label { display: none; }
 .immersive-stand-button:hover, .immersive-stand-button:focus-visible { color: var(--blue-deep); background: var(--yellow); }
 .immersive-stand-button:disabled { opacity: .55; cursor: wait; }
 .immersive-hud { position: absolute; z-index: 5; top: .5rem; left: 50%; width: min(900px, calc(100% - 1rem)); padding: .3rem; color: var(--cream); background: rgba(16, 24, 39, .94); border: 1px solid rgba(246,235,204,.28); border-bottom: 3px solid var(--red); box-shadow: 0 5px 20px rgba(0,0,0,.55); transform: translateX(-50%); }
@@ -1369,7 +1370,6 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     opacity: .7;
     font: 400 1.8rem/1 Arial, sans-serif;
   }
-  .immersive-stand-label { display: none; }
   .immersive-previous-stand { left: max(.35rem, env(safe-area-inset-left)); }
   .immersive-next-stand { right: max(.35rem, env(safe-area-inset-right)); }
 }
