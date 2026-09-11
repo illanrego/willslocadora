@@ -26,6 +26,37 @@ test('public worker exposes the Brazil provider registry with exact CORS', async
   });
 });
 
+test('public worker exposes only the catalogue policy version and filters blocked search titles', async () => {
+  const worker = createLocadoraWorker({
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      if (url.pathname === '/3/search/tv') return Response.json({ results: [] });
+      assert.equal(url.pathname, '/3/search/movie');
+      return Response.json({ results: [
+        { id: 603, title: 'The Matrix', release_date: '1999-03-31' },
+        { id: 604, title: 'The Matrix Reloaded', release_date: '2003-05-15' },
+      ] });
+    },
+  });
+  const catalogueEnv = { ...env, CATALOGUE_POLICY: { async get() { return { version: 4, activeKeys: ['movie:603'] }; } } };
+  const version = await worker.fetch(new Request('https://api.example/v1/catalogue-policy'), catalogueEnv, context());
+  assert.equal(version.status, 200);
+  assert.deepEqual(await version.json(), { version: 4 });
+  const response = await worker.fetch(new Request('https://api.example/v1/search?q=matrix&locale=en-US'), catalogueEnv, context());
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).titles.map((title) => title.id), ['tmdb:604']);
+});
+
+test('public worker returns a neutral unavailable response for blocked title metadata', async () => {
+  let upstreamCalls = 0;
+  const worker = createLocadoraWorker({ fetchImpl: async () => { upstreamCalls += 1; throw new Error('must not fetch blocked title'); } });
+  const catalogueEnv = { ...env, CATALOGUE_POLICY: { async get() { return { version: 7, activeKeys: ['movie:603'] }; } } };
+  const response = await worker.fetch(new Request('https://api.example/v1/title?type=movie&id=tmdb%3A603&locale=pt-BR'), catalogueEnv, context());
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { error: 'Catalogue title unavailable' });
+  assert.equal(upstreamCalls, 0);
+});
+
 test('public worker rejects unknown origins and invalid shelf requests before calling upstreams', async () => {
   let upstreamCalls = 0;
   const worker = createLocadoraWorker({ fetchImpl: async () => { upstreamCalls += 1; throw new Error('not needed'); } });
@@ -175,4 +206,5 @@ test('public worker uses TMDB Brazil flatrate discovery for provider-filtered sh
   assert.equal(discovery.searchParams.get('with_watch_monetization_types'), 'flatrate');
   assert.equal(discovery.searchParams.get('with_watch_providers'), '119|307');
   assert.equal(discovery.searchParams.get('with_genres'), '10766');
+  assert.equal(discovery.searchParams.get('include_adult'), 'false');
 });

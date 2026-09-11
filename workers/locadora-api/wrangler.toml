@@ -6,6 +6,9 @@ compatibility_date = "2026-07-22"
 [vars]
 ALLOWED_ORIGINS = "https://illanrego.github.io,https://sitedoillan.com.br,https://www.sitedoillan.com.br,https://willslocadora.sitedoillan.com.br,http://127.0.0.1:4173"
 
+# Provision and bind the shared CATALOGUE_POLICY KV namespace before deploying
+# catalogue moderation. The Worker keeps the binding optional for local tests.
+
 [[ratelimits]]
 name = "CATALOG_RATE_LIMITER"
 namespace_id = "24001"

@@ -14,6 +14,9 @@ RESEND_FROM_EMAIL = "Will's Locadora <contato@mail.sitedoillan.com.br>"
 binding = "HYPERDRIVE"
 id = "e505f45c414a4fff8171530f30a64158"
 
+# Provision and bind the shared CATALOGUE_POLICY KV namespace before deploying
+# catalogue moderation. The Worker keeps the binding optional for local tests.
+
 [[ratelimits]]
 name = "AUTH_RATE_LIMITER"
 namespace_id = "24002"

@@ -2,6 +2,7 @@ import { watchIdentity, createWatchLinkService, WATCH_TTL, WATCH_FAILURE_TTL } f
 
 const TMDB_ROOT = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_HOST = 'image.tmdb.org';
+const CATALOGUE_POLICY_KEY = 'catalogue-policy-v1';
 const MAX_TITLES = 40;
 const LOCALES = new Set(['pt-BR', 'en-US']);
 
@@ -37,6 +38,7 @@ function cacheKey(url, parameters = []) {
   for (const name of parameters) {
     for (const value of url.searchParams.getAll(name).sort()) key.searchParams.append(name, value);
   }
+  if (url.searchParams.has('_policy')) key.searchParams.set('_policy', url.searchParams.get('_policy'));
   return new Request(key, { method: 'GET' });
 }
 
@@ -59,6 +61,20 @@ async function edgeCached(url, parameters, policy, ctx, load) {
   const fresh = await load();
   if (fresh.ok && edge && ctx?.waitUntil) ctx.waitUntil(edge.put(key, fresh.clone()));
   return applyPublicHeaders(fresh, policy, edge ? 'MISS' : null);
+}
+
+async function readCataloguePolicy(env) {
+  if (!env.CATALOGUE_POLICY || typeof env.CATALOGUE_POLICY.get !== 'function') return { version: 0, blocked: new Set() };
+  let value;
+  try { value = await env.CATALOGUE_POLICY.get(CATALOGUE_POLICY_KEY, 'json'); }
+  catch (error) { console.error('catalogue policy read failed', error?.message || 'unknown KV error'); throw new Error('Catalogue policy unavailable'); }
+  if (!value || !Number.isInteger(Number(value.version)) || Number(value.version) < 0 || !Array.isArray(value.activeKeys)) throw new Error('Catalogue policy unavailable');
+  const activeKeys = value.activeKeys.filter((key) => /^(movie|series):[1-9][0-9]*$/.test(key));
+  return { version: Number(value.version), blocked: new Set(activeKeys) };
+}
+
+function isBlocked(cataloguePolicy, type, tmdbId) {
+  return cataloguePolicy.blocked.has(`${type}:${tmdbId}`);
 }
 
 function allowedOrigins(env) {
@@ -119,7 +135,7 @@ function createTmdb(env, fetchImpl) {
   return { request };
 }
 
-async function shelf(filters, env, fetchImpl) {
+async function shelf(filters, env, fetchImpl, cataloguePolicy) {
   const tmdb = createTmdb(env, fetchImpl);
   const tmdbType = filters.type === 'series' ? 'tv' : 'movie';
   const genreMap = tmdbType === 'tv' ? TV_GENRES : MOVIE_GENRES;
@@ -128,7 +144,7 @@ async function shelf(filters, env, fetchImpl) {
   const providerIds = filters.providers.map((id) => PROVIDERS_BY_ID.get(id).tmdbProviderId).sort((a, b) => a - b);
   const firstPage = filters.stand * 2 + 1;
   const loadPage = (page) => {
-    const query = new URLSearchParams({ page: String(page), [`${dateKey}.gte`]: `${filters.ignoreStoreYear ? 1920 : filters.year - (providerIds.length ? 19 : 4)}-01-01`, [`${dateKey}.lte`]: `${filters.ignoreStoreYear ? 2026 : filters.year}-12-31` });
+    const query = new URLSearchParams({ page: String(page), include_adult: 'false', [`${dateKey}.gte`]: `${filters.ignoreStoreYear ? 1920 : filters.year - (providerIds.length ? 19 : 4)}-01-01`, [`${dateKey}.lte`]: `${filters.ignoreStoreYear ? 2026 : filters.year}-12-31` });
     if (genreIds.length) query.set('with_genres', genreIds.join('|'));
     if (providerIds.length) {
       query.set('watch_region', 'BR');
@@ -144,7 +160,7 @@ async function shelf(filters, env, fetchImpl) {
   });
   const selectedNames = filters.providers.map((id) => PROVIDERS_BY_ID.get(id).canonicalName);
   const genreName = (id) => tmdbType === 'tv' ? TV_GENRE_NAMES[id] : Object.keys(MOVIE_GENRES).find((name) => MOVIE_GENRES[name] === id);
-  const titles = discovered.flatMap((title, index) => /^tt\d+$/.test(imdbIds[index] || '') ? [{
+  const titles = discovered.flatMap((title, index) => /^tt\d+$/.test(imdbIds[index] || '') && !isBlocked(cataloguePolicy, filters.type, title.id) ? [{
     id: `tmdb:${title.id}`, imdbId: imdbIds[index], type: filters.type, name: title.title || title.name || 'Untitled', year: yearFromDate(title.release_date || title.first_air_date),
     genres: (title.genre_ids || []).map(genreName).filter(Boolean), poster: imageUrl(title.poster_path, 'w500'), background: imageUrl(title.backdrop_path, 'w1280'),
     description: title.overview || '', imdbRating: title.vote_average ? String(title.vote_average) : '', director: [], writer: [], cast: [], source: 'tmdb-discover',
@@ -153,7 +169,7 @@ async function shelf(filters, env, fetchImpl) {
   return { titles, hasNextStand: discovered.length === MAX_TITLES };
 }
 
-async function searchCatalogue({ query, locale }, env, fetchImpl) {
+async function searchCatalogue({ query, locale }, env, fetchImpl, cataloguePolicy) {
   const value = String(query || '').trim();
   if (value.length < 2 || value.length > 80 || !LOCALES.has(locale)) throw new Error('Invalid catalogue search');
   const tmdb = createTmdb(env, fetchImpl);
@@ -170,11 +186,11 @@ async function searchCatalogue({ query, locale }, env, fetchImpl) {
     genres: [],
     source: 'tmdb-search',
   }))).filter((title) => /^tmdb:\d+$/.test(title.id));
-  const unique = [...new Map(titles.map((title) => [`${title.type}:${title.id}`, title])).values()];
+  const unique = [...new Map(titles.filter((title) => !isBlocked(cataloguePolicy, title.type, title.id.slice(5))).map((title) => [`${title.type}:${title.id}`, title])).values()];
   return { query: value, titles: unique.slice(0, 12) };
 }
 
-async function titleMeta({ type, id, locale }, env, fetchImpl) {
+async function titleMeta({ type, id, locale }, env, fetchImpl, cataloguePolicy) {
   if (!['movie', 'series'].includes(type) || !/^[a-zA-Z0-9:_-]+$/.test(id) || !LOCALES.has(locale)) throw new Error('Invalid title metadata request');
   const tmdb = createTmdb(env, fetchImpl);
   const tmdbType = type === 'series' ? 'tv' : 'movie';
@@ -184,6 +200,7 @@ async function titleMeta({ type, id, locale }, env, fetchImpl) {
     tmdbId = String((type === 'series' ? found.tv_results : found.movie_results)?.[0]?.id || '');
   } else if (/^tmdb:\d+$/.test(id)) tmdbId = id.slice(5);
   if (!tmdbId) return { id, type };
+  if (isBlocked(cataloguePolicy, type, tmdbId)) throw new Error('Catalogue title unavailable');
 
   const append = `${type === 'series' ? 'credits,watch/providers,content_ratings' : 'credits,watch/providers,release_dates'},images,external_ids`;
   const title = await tmdb.request(`/${tmdbType}/${tmdbId}?append_to_response=${append}`, locale);
@@ -207,12 +224,12 @@ async function titleMeta({ type, id, locale }, env, fetchImpl) {
   };
 }
 
-async function featured(year, env, fetchImpl) {
+async function featured(year, env, fetchImpl, cataloguePolicy) {
   if (!Number.isInteger(year) || year < 1920 || year > 2026) throw new Error('Invalid featured year');
   const tmdb = createTmdb(env, fetchImpl);
-  const query = new URLSearchParams({ sort_by: 'popularity.desc', 'primary_release_date.gte': `${year}-01-01`, 'primary_release_date.lte': `${year}-12-31`, 'vote_count.gte': '20' });
+  const query = new URLSearchParams({ sort_by: 'popularity.desc', include_adult: 'false', 'primary_release_date.gte': `${year}-01-01`, 'primary_release_date.lte': `${year}-12-31`, 'vote_count.gte': '20' });
   const data = await tmdb.request(`/discover/movie?${query}`);
-  return (data.results || []).slice(0, 3).map((title) => ({
+  return (data.results || []).filter((title) => !isBlocked(cataloguePolicy, 'movie', title.id)).slice(0, 3).map((title) => ({
     id: `tmdb:${title.id}`, type: 'movie', name: title.title || 'Untitled', year: yearFromDate(title.release_date),
     poster: imageUrl(title.poster_path, 'w500'), background: imageUrl(title.backdrop_path, 'w1280'), description: title.overview || '', genres: [],
   }));
@@ -246,7 +263,10 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
         if (!allowed.success) return json({ error: 'Too many catalogue requests; try again shortly' }, 429, { ...policy.headers, 'cache-control': 'no-store', 'retry-after': '60' });
       }
       try {
+        const cataloguePolicy = await readCataloguePolicy(env);
+        url.searchParams.set('_policy', String(cataloguePolicy.version));
         if (url.pathname === '/v1/health') return json({ ok: true, service: 'locadora-api' }, 200, policy.headers);
+        if (url.pathname === '/v1/catalogue-policy') return json({ version: cataloguePolicy.version }, 200, { ...policy.headers, 'cache-control': 'no-store' });
         if (url.pathname === '/v1/watch-links') {
           const identity = watchIdentity(url.searchParams.get('type'), url.searchParams.get('id'));
           const key = new Request(`${url.origin}/v1/watch-links?${new URLSearchParams({ type: identity.type, id: identity.id })}`);
@@ -267,7 +287,7 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
         if (url.pathname === '/v1/featured') {
           return await edgeCached(url, ['year'], policy, ctx, async () => {
             const year = Number(url.searchParams.get('year'));
-            const titles = await featured(year, env, fetchImpl);
+            const titles = await featured(year, env, fetchImpl, cataloguePolicy);
             return json({ titles, year }, 200, { 'cache-control': browserAndEdgeCache(86400, 604800) });
           });
         }
@@ -279,13 +299,13 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
         }
         if (url.pathname === '/v1/search') {
           return await edgeCached(url, ['q', 'locale'], policy, ctx, async () => {
-            const result = await searchCatalogue({ query: url.searchParams.get('q') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl);
+            const result = await searchCatalogue({ query: url.searchParams.get('q') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl, cataloguePolicy);
             return json(result, 200, { 'cache-control': browserAndEdgeCache(900, 3600, 86400) });
           });
         }
         if (url.pathname === '/v1/title') {
           return await edgeCached(url, ['type', 'id', 'locale'], policy, ctx, async () => {
-            const meta = await titleMeta({ type: url.searchParams.get('type'), id: url.searchParams.get('id') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl);
+            const meta = await titleMeta({ type: url.searchParams.get('type'), id: url.searchParams.get('id') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl, cataloguePolicy);
             return json({ meta }, 200, { 'cache-control': browserAndEdgeCache(86400, 604800) });
           });
         }
@@ -293,15 +313,16 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
           const filters = validShelf(url);
           if (!filters) return json({ error: 'Invalid shelf filters' }, 400, policy.headers);
           return await edgeCached(url, ['genre', 'year', 'type', 'stand', 'providers', 'ignoreStoreYear'], policy, ctx, async () => {
-            const shelfPage = await shelf(filters, env, fetchImpl);
+            const shelfPage = await shelf(filters, env, fetchImpl, cataloguePolicy);
             return json({ titles: shelfPage.titles, hasNextStand: shelfPage.hasNextStand, year: filters.year, genre: filters.genre, type: filters.type, stand: filters.stand, providers: filters.providers, ignoreStoreYear: filters.ignoreStoreYear }, 200, { 'cache-control': browserAndEdgeCache(3600, 86400, 604800) });
           });
         }
         return json({ error: 'Not found' }, 404, policy.headers);
       } catch (error) {
         const message = error instanceof Error ? error.message : '';
-        const status = /^(Invalid|Image URL is not allowed)/.test(message) ? 400 : 502;
+        const status = /^(Invalid|Image URL is not allowed)/.test(message) ? 400 : message === 'Catalogue title unavailable' ? 404 : 502;
         const publicError = /TMDB is not configured/.test(message) ? 'Catalogue service is not configured'
+          : message === 'Catalogue title unavailable' ? 'Catalogue title unavailable'
           : status === 400 ? message : 'Catalogue service is temporarily unavailable';
         return json({ error: publicError }, status, policy.headers);
       }
