@@ -8,6 +8,7 @@ const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache
 const HISTORY_PAGE_SIZE = 20;
 const DEFAULT_RESEND_FROM = "Will's Locadora <contato@mail.sitedoillan.com.br>";
 const DEFAULT_ADMIN_EMAIL = 'emaildoillan@protonmail.com';
+export const CATALOGUE_POLICY_KEY = 'catalogue-policy-v1';
 
 function allowedOrigins(value) {
   return new Set(String(value || '').split(',').map((origin) => origin.trim()).filter(Boolean));
@@ -238,6 +239,47 @@ function normalizeReview(value) {
   return { rating, body };
 }
 
+export function normalizeCatalogueBlock(value) {
+  const tmdbId = Number(value?.tmdbId);
+  const type = value?.type === 'movie' || value?.type === 'series' ? value.type : '';
+  const reason = String(value?.reason || '').trim().replace(/\s+/g, ' ');
+  if (!Number.isSafeInteger(tmdbId) || tmdbId < 1 || !type || reason.length < 1 || reason.length > 500) return null;
+  return { type, tmdbId, canonicalKey: `${type}:${tmdbId}`, reason };
+}
+
+function mapCatalogueBlockRow(row) {
+  return {
+    id: row.id,
+    type: row.title_type,
+    tmdbId: Number(row.tmdb_id),
+    canonicalKey: row.canonical_key,
+    reason: row.reason,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    removedBy: row.removed_by,
+    removedAt: row.removed_at,
+    active: !row.removed_at,
+  };
+}
+
+export async function publishCataloguePolicy(repository, env) {
+  const activeKeys = await repository.listActiveCatalogueKeys();
+  const binding = env.CATALOGUE_POLICY;
+  if (!binding || typeof binding.get !== 'function' || typeof binding.put !== 'function') {
+    return { version: 0, activeKeys };
+  }
+  let previousVersion = 0;
+  try {
+    const previous = await binding.get(CATALOGUE_POLICY_KEY, 'json');
+    previousVersion = Number(previous?.version) || 0;
+  } catch (error) {
+    console.warn('catalogue policy read failed before publish', error?.message || 'unknown KV error');
+  }
+  const policy = { version: previousVersion + 1, activeKeys, updatedAt: new Date().toISOString() };
+  await binding.put(CATALOGUE_POLICY_KEY, JSON.stringify(policy), { expirationTtl: 60 * 60 * 24 * 30 });
+  return policy;
+}
+
 async function readJson(request) {
   try { return await request.json(); }
   catch { return null; }
@@ -374,6 +416,51 @@ export function createSupabaseRepository(env) {
         reviewCount: reviews.get(user.id) || 0,
       }));
     },
+    async listCatalogueBlocks({ query = '', active = 'all', limit = 50, offset = 0 } = {}) {
+      let request = database.from('catalogue_blocks')
+        .select('id, title_type, tmdb_id, canonical_key, reason, created_by, created_at, removed_by, removed_at', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+      if (active === 'active') request = request.is('removed_at', null);
+      if (active === 'history') request = request.not('removed_at', 'is', null);
+      const value = String(query).trim();
+      if (value) {
+        const escaped = value.replace(/[%,]/g, '');
+        request = request.or(`canonical_key.ilike.%${escaped}%,reason.ilike.%${escaped}%`);
+      }
+      const result = await request;
+      databaseError(result.error);
+      return { blocks: (result.data || []).map(mapCatalogueBlockRow), total: result.count || 0, limit, offset };
+    },
+    async createCatalogueBlock(adminId, block) {
+      const existing = await database.from('catalogue_blocks')
+        .select('id, title_type, tmdb_id, canonical_key, reason, created_by, created_at, removed_by, removed_at')
+        .eq('title_type', block.type).eq('tmdb_id', block.tmdbId).is('removed_at', null).maybeSingle();
+      databaseError(existing.error);
+      if (existing.data) return mapCatalogueBlockRow(existing.data);
+      const result = await database.from('catalogue_blocks').insert({
+        title_type: block.type,
+        tmdb_id: block.tmdbId,
+        reason: block.reason,
+        created_by: adminId,
+      }).select('id, title_type, tmdb_id, canonical_key, reason, created_by, created_at, removed_by, removed_at').single();
+      databaseError(result.error);
+      return mapCatalogueBlockRow(result.data);
+    },
+    async restoreCatalogueBlock(adminId, type, tmdbId) {
+      const result = await database.from('catalogue_blocks').update({
+        removed_at: new Date().toISOString(),
+        removed_by: adminId,
+      }).eq('title_type', type).eq('tmdb_id', tmdbId).is('removed_at', null)
+        .select('id, title_type, tmdb_id, canonical_key, reason, created_by, created_at, removed_by, removed_at').maybeSingle();
+      databaseError(result.error);
+      return result.data ? mapCatalogueBlockRow(result.data) : null;
+    },
+    async listActiveCatalogueKeys() {
+      const result = await database.from('catalogue_blocks').select('canonical_key').is('removed_at', null).order('canonical_key');
+      databaseError(result.error);
+      return (result.data || []).map((row) => row.canonical_key);
+    },
     async revokeUserSessions(userId) {
       const result = await database.from('session').delete({ count: 'exact' }).eq('userId', userId);
       databaseError(result.error);
@@ -455,7 +542,9 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
       }
       const isAdminUsersRequest = request.method === 'GET' && url.pathname === '/v1/admin/users';
       const adminRevokeMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/admin\/users\/([^/]+)\/revoke-sessions$/) : null;
-      if (isAdminUsersRequest || adminRevokeMatch) {
+      const isCatalogueBlocksRequest = (request.method === 'GET' || request.method === 'POST') && url.pathname === '/v1/admin/catalogue/blocks';
+      const catalogueRestoreMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/admin\/catalogue\/blocks\/(movie|series)\/([1-9][0-9]*)\/restore$/) : null;
+      if (isAdminUsersRequest || adminRevokeMatch || isCatalogueBlocksRequest || catalogueRestoreMatch) {
         if (env.AUTH_RATE_LIMITER) {
           const client = request.headers.get('cf-connecting-ip') || 'unknown-client';
           const allowed = await env.AUTH_RATE_LIMITER.limit({ key: `${client}:/v1/admin` });
@@ -471,9 +560,31 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
         try {
           const repository = createRepository(env);
           if (isAdminUsersRequest) return response(request, env, { users: await repository.listAdminUsers() });
-          const userId = decodeURIComponent(adminRevokeMatch[1]);
-          if (!userId || userId.length > 128) return response(request, env, { error: 'Invalid user ID' }, 400);
-          return response(request, env, await repository.revokeUserSessions(userId));
+          if (adminRevokeMatch) {
+            const userId = decodeURIComponent(adminRevokeMatch[1]);
+            if (!userId || userId.length > 128) return response(request, env, { error: 'Invalid user ID' }, 400);
+            return response(request, env, await repository.revokeUserSessions(userId));
+          }
+          if (isCatalogueBlocksRequest && request.method === 'GET') {
+            const active = url.searchParams.get('active') || 'all';
+            const limit = Number(url.searchParams.get('limit') || 50);
+            const offset = Number(url.searchParams.get('offset') || 0);
+            if (!['all', 'active', 'history'].includes(active) || !Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0 || offset > 10000) {
+              return response(request, env, { error: 'Invalid catalogue block pagination' }, 400);
+            }
+            return response(request, env, { ...(await repository.listCatalogueBlocks({ query: url.searchParams.get('q') || '', active, limit, offset })) });
+          }
+          if (catalogueRestoreMatch) {
+            const restored = await repository.restoreCatalogueBlock(adminUser.id, catalogueRestoreMatch[1], Number(catalogueRestoreMatch[2]));
+            if (!restored) return response(request, env, { error: 'Active catalogue block not found' }, 404);
+            const policy = await publishCataloguePolicy(repository, env);
+            return response(request, env, { block: restored, policyVersion: policy.version });
+          }
+          const block = normalizeCatalogueBlock(await readJson(request));
+          if (!block) return response(request, env, { error: 'Catalogue blocks need a movie or series type, positive TMDB id, and a reason up to 500 characters' }, 400);
+          const created = await repository.createCatalogueBlock(adminUser.id, block);
+          const policy = await publishCataloguePolicy(repository, env);
+          return response(request, env, { block: created, policyVersion: policy.version }, 201);
         } catch (error) {
           console.error('admin request failed', error);
           return response(request, env, { error: error.message || 'The Locadora archive is unavailable' }, error.status || 503);

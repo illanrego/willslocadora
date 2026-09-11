@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLocadoraDataWorker, databaseError, isReservedWillUsername, mapActiveRentalRow, sendResendEmail } from '../workers/locadora-data/src/index.mjs';
+import { createLocadoraDataWorker, databaseError, isReservedWillUsername, mapActiveRentalRow, normalizeCatalogueBlock, sendResendEmail } from '../workers/locadora-data/src/index.mjs';
 
 function jsonRequest(path, { method = 'GET', token = 'valid-token', body } = {}) {
   return new Request(`https://data.example${path}`, {
@@ -72,6 +72,39 @@ test('admin routes reject a non-admin session before touching the repository', a
   const response = await worker.fetch(jsonRequest('/v1/admin/users'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
   assert.equal(response.status, 403);
   assert.deepEqual(await response.json(), { error: 'Admin access required' });
+});
+
+test('catalogue block input is canonical and rejects malformed owner actions', () => {
+  assert.deepEqual(normalizeCatalogueBlock({ type: 'movie', tmdbId: '603', reason: 'Foreign adult title' }), {
+    type: 'movie', tmdbId: 603, canonicalKey: 'movie:603', reason: 'Foreign adult title',
+  });
+  assert.equal(normalizeCatalogueBlock({ type: 'tv', tmdbId: 603, reason: 'bad type' }), null);
+  assert.equal(normalizeCatalogueBlock({ type: 'movie', tmdbId: 0, reason: 'bad id' }), null);
+  assert.equal(normalizeCatalogueBlock({ type: 'movie', tmdbId: 603, reason: '   ' }), null);
+});
+
+test('owner catalogue routes list, block, publish, and restore policy state', async () => {
+  const calls = [];
+  const blocks = [{ id: 'block-1', type: 'movie', tmdbId: 603, canonicalKey: 'movie:603', reason: 'Unsuitable title', active: true }];
+  const worker = createLocadoraDataWorker({
+    adminAuthenticate: async () => ({ id: 'admin-1', email: 'emaildoillan@protonmail.com' }),
+    createRepository: () => ({
+      async listCatalogueBlocks(input) { calls.push(['list', input]); return { blocks, total: 1, limit: input.limit, offset: input.offset }; },
+      async createCatalogueBlock(userId, block) { calls.push(['create', userId, block]); return blocks[0]; },
+      async restoreCatalogueBlock(userId, type, tmdbId) { calls.push(['restore', userId, type, tmdbId]); return { ...blocks[0], active: false, removedBy: userId }; },
+      async listActiveCatalogueKeys() { calls.push(['keys']); return ['movie:603']; },
+    }),
+  });
+  const list = await worker.fetch(jsonRequest('/v1/admin/catalogue/blocks?active=active&limit=10&q=603'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(list.status, 200);
+  assert.equal((await list.json()).blocks[0].canonicalKey, 'movie:603');
+  const create = await worker.fetch(jsonRequest('/v1/admin/catalogue/blocks', { method: 'POST', body: { type: 'movie', tmdbId: 603, reason: 'Unsuitable title' } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(create.status, 201);
+  assert.equal((await create.json()).policyVersion, 0);
+  const restore = await worker.fetch(jsonRequest('/v1/admin/catalogue/blocks/movie/603/restore', { method: 'POST', body: {} }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(restore.status, 200);
+  assert.equal((await restore.json()).block.active, false);
+  assert.deepEqual(calls.map(([name]) => name), ['list', 'create', 'keys', 'restore', 'keys']);
 });
 
 test('Resend email adapter sends only through the Worker-side API with a sending key', async () => {
