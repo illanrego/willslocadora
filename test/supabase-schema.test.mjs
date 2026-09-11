@@ -109,3 +109,16 @@ test('saved collections migration preserves watchlist rows and isolates collecti
   assert.match(collectionMigration, /create or replace function public\.return_rental_item/i);
   assert.match(collectionMigration, /saved_title_memberships[\s\S]*collection = 'watch_later'/i);
 });
+
+test('catalogue blocks are reversible, owner-attributed, and unique while active', () => {
+  const blockMigration = readFileSync(new URL('../supabase/migrations/20260911_catalogue_blocks.sql', import.meta.url), 'utf8');
+  assert.match(blockMigration, /create table public\.catalogue_blocks/i);
+  assert.match(blockMigration, /title_type text not null check \(title_type in \('movie', 'series'\)\)/i);
+  assert.match(blockMigration, /tmdb_id bigint not null check \(tmdb_id > 0\)/i);
+  assert.match(blockMigration, /canonical_key text generated always as \(title_type \|\| ':' \|\| tmdb_id::text\) stored/i);
+  assert.match(blockMigration, /created_by text not null references public\."user"\(id\)/i);
+  assert.match(blockMigration, /removed_by text references public\."user"\(id\)/i);
+  assert.match(blockMigration, /catalogue_blocks_one_active_title[\s\S]*where removed_at is null/i);
+  assert.match(blockMigration, /catalogue_blocks_restore_pair/i);
+  assert.match(blockMigration, /enable row level security/i);
+});
