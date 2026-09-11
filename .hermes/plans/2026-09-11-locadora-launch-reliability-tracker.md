@@ -42,5 +42,7 @@ This tracker covers the boundary between code that exists locally and behavior t
 
 | Date | Endpoint/build | Result | Notes |
 | --- | --- | --- | --- |
-| pending | pending | pending | No new deployment claimed yet. |
-
+| 2026-09-11 | `npm test` | 233/236 pass | Three known stale source-contract failures: rental confirmation backdrop assertion, mobile pan assertion, and `loadProviderAssets` signature assertion. |
+| 2026-09-11 | `npm run build:pages` | pass | Pages build completed successfully after sequential execution. |
+| 2026-09-11 | Wrangler KV list | blocked | Cloudflare authentication error 10000; no namespace was provisioned or claimed live. |
+| pending | Worker deployment | pending | Migrations, shared KV binding, and live endpoint verification remain. |

@@ -22,17 +22,18 @@ This is the index for the remaining Locadora work. Future agents should update t
 | Phase | Tracker | Status | Exit condition |
 | --- | --- | --- | --- |
 | P0 | This file | [~] | Trackers committed and linked from `TASKS.md`. |
-| P1 | [catalogue/admin tracker](2026-09-11-locadora-catalogue-admin-tracker.md) | [ ] | Will can block/unblock a title and manage users, reviews, and aggregate metrics from `/admin/`. |
+| P1 | [catalogue/admin tracker](2026-09-11-locadora-catalogue-admin-tracker.md) | [~] | Code is implemented and tested; live migration/KV deployment and blocked authenticated-state filtering remain. |
 | P2 | [launch/reliability tracker](2026-09-11-locadora-launch-reliability-tracker.md) | [ ] | Migrations, Workers, caches, tests, and live account/admin flows are verified. |
 | P3 | [community/product tracker](2026-09-11-locadora-community-growth-tracker.md) | [ ] | Milestones and support/community value are backed by real state and are playtestable. |
 | P4 | [parked roadmap](2026-09-11-locadora-parked-roadmap.md) | [ ] | Revisit only after P1-P3 are stable. |
 
 ## Current known gaps
 
-- [ ] `/admin/` is currently a user directory with session revocation, not a full operations panel.
-- [ ] There is no owner-managed catalogue blocklist.
-- [ ] Public catalogue discovery does not yet share an owner policy snapshot.
-- [ ] Review visibility/moderation is not complete.
+- [x] `/admin/` now includes catalogue blocks, review moderation, aggregate metrics, users, and session revocation.
+- [x] Owner-managed catalogue blocklist code exists, keyed by type and TMDB id.
+- [~] Public catalogue policy filtering exists in code, but the shared KV namespace is not provisioned/bound yet.
+- [x] Review visibility/moderation API and admin controls exist; live migration/deployment remains.
+- [ ] Authenticated Cesta/saved/rental state does not yet hide or reject blocked canonical keys.
 - [ ] Milestone labels are still largely static scene content rather than measured product state.
 - [ ] The full Better Auth/Supabase deployment and live account loop still need operator verification.
 - [ ] `npm test` has three known stale source-contract failures; see `P2-05`.
@@ -61,4 +62,4 @@ This is the index for the remaining Locadora work. Future agents should update t
 | Date | Agent/commit | Update |
 | --- | --- | --- |
 | 2026-09-11 | planning | Created the roadmap trackers and captured the owner-only moderation/admin scope. |
-
+| 2026-09-11 | implementation | P1 code slices pushed through `71726dc`; full suite is 233/236 with three known stale assertions, Pages build passes. |
