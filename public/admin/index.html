@@ -54,6 +54,29 @@
         </table>
       </div>
     </section>
+    <section class="admin-panel" aria-labelledby="reviews-heading">
+      <div class="admin-panel-heading">
+        <div><span class="eyebrow">MODERAÇÃO</span><h2 id="reviews-heading">Avaliações</h2></div>
+        <button id="refresh-reviews" class="account-action" type="button">Atualizar</button>
+      </div>
+      <div class="admin-filter-row">
+        <label class="admin-search" for="review-status">Exibir<select id="review-status"><option value="hidden">Ocultas</option><option value="public">Públicas</option><option value="all">Todas</option></select></label>
+      </div>
+      <div class="admin-table-wrap">
+        <table>
+          <thead><tr><th>Título</th><th>Texto</th><th>Nota</th><th>Estado</th><th>Ações</th></tr></thead>
+          <tbody id="reviews-body"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="admin-panel" aria-labelledby="metrics-heading">
+      <div class="admin-panel-heading">
+        <div><span class="eyebrow">ARQUIVO</span><h2 id="metrics-heading">Estatísticas</h2></div>
+        <button id="refresh-metrics" class="account-action" type="button">Atualizar</button>
+      </div>
+      <p id="metrics-window" class="admin-help">Últimos 30 dias</p>
+      <div id="metrics-grid" class="admin-metrics" aria-live="polite"></div>
+    </section>
     <p class="admin-note">Ações destrutivas e visualização de senhas não fazem parte deste painel. Revogar sessões desconecta o usuário dos navegadores ativos.</p>
   </main>
   <script src="../auth-config.js"></script>

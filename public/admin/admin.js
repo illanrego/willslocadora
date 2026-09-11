@@ -13,6 +13,12 @@
   const catalogueType = document.querySelector('#catalogue-type');
   const catalogueTmdbId = document.querySelector('#catalogue-tmdb-id');
   const catalogueReason = document.querySelector('#catalogue-reason');
+  const reviewsBody = document.querySelector('#reviews-body');
+  const reviewStatus = document.querySelector('#review-status');
+  const refreshReviews = document.querySelector('#refresh-reviews');
+  const metricsGrid = document.querySelector('#metrics-grid');
+  const metricsWindow = document.querySelector('#metrics-window');
+  const refreshMetrics = document.querySelector('#refresh-metrics');
   let users = [];
   let blocks = [];
 
@@ -98,6 +104,60 @@
     } finally { catalogueRefresh.disabled = false; }
   }
 
+  function renderReviews(reviews) {
+    reviewsBody.replaceChildren();
+    reviews.forEach((review) => {
+      const row = document.createElement('tr');
+      const title = document.createElement('td'); title.textContent = review.canonicalKey;
+      const text = document.createElement('td'); text.textContent = review.body;
+      const rating = document.createElement('td'); rating.textContent = `${review.rating}/5`;
+      const state = document.createElement('td'); state.textContent = review.visibility === 'hidden' ? `Oculta: ${review.moderationReason || 'sem motivo'}` : 'Pública';
+      const actions = document.createElement('td');
+      const action = document.createElement('button'); action.type = 'button'; action.className = review.visibility === 'hidden' ? 'admin-restore' : 'admin-revoke'; action.textContent = review.visibility === 'hidden' ? 'Restaurar' : 'Ocultar';
+      action.addEventListener('click', async () => {
+        let reason = '';
+        if (review.visibility !== 'hidden') {
+          reason = window.prompt('Motivo para ocultar esta avaliação:')?.trim() || '';
+          if (!reason) return;
+        }
+        action.disabled = true;
+        try {
+          await window.LocadoraAccount.request(`/v1/admin/reviews/${encodeURIComponent(review.id)}/${review.visibility === 'hidden' ? 'restore' : 'hide'}`, { method: 'POST', body: JSON.stringify({ reason }) });
+          setStatus(review.visibility === 'hidden' ? 'Avaliação restaurada.' : 'Avaliação ocultada.', 'success');
+          await loadReviews();
+        } catch (error) { setStatus(error.message || 'Não foi possível moderar a avaliação.', 'error'); }
+        finally { action.disabled = false; }
+      });
+      actions.append(action); row.append(title, text, rating, state, actions); reviewsBody.append(row);
+    });
+  }
+
+  async function loadReviews() {
+    refreshReviews.disabled = true;
+    try {
+      const result = await window.LocadoraAccount.request(`/v1/admin/reviews?visibility=${reviewStatus.value}&limit=100`);
+      renderReviews(Array.isArray(result.reviews) ? result.reviews : []);
+    } catch (error) { reviewsBody.replaceChildren(); setStatus(error.message || 'Não foi possível carregar as avaliações.', 'error'); }
+    finally { refreshReviews.disabled = false; }
+  }
+
+  async function loadMetrics() {
+    refreshMetrics.disabled = true;
+    try {
+      const result = await window.LocadoraAccount.request('/v1/admin/metrics');
+      const metrics = result.metrics || {};
+      metricsWindow.textContent = `${date(metrics.from)} até ${date(metrics.to)}`;
+      metricsGrid.replaceChildren();
+      [['Locações', metrics.rentals], ['Devoluções', metrics.returns], ['Avaliações', metrics.reviews], ['Novos usuários', metrics.newUsers], ['Títulos bloqueados', metrics.catalogueBlocks], ['Usuários ativos', metrics.activeUsers]].forEach(([label, value]) => {
+        const item = document.createElement('div'); item.className = 'admin-metric';
+        const number = document.createElement('strong'); number.textContent = String(value ?? 0);
+        const name = document.createElement('span'); name.textContent = label;
+        item.append(number, name); metricsGrid.append(item);
+      });
+    } catch (error) { metricsGrid.replaceChildren(); setStatus(error.message || 'Não foi possível carregar as estatísticas.', 'error'); }
+    finally { refreshMetrics.disabled = false; }
+  }
+
   async function load() {
     refresh.disabled = true;
     setStatus('Carregando usuários…');
@@ -135,5 +195,8 @@
     } catch (error) { setStatus(error.message || 'Não foi possível bloquear o título.', 'error'); }
     finally { submit.disabled = false; }
   });
+  reviewStatus.addEventListener('change', loadReviews);
+  refreshReviews.addEventListener('click', loadReviews);
+  refreshMetrics.addEventListener('click', loadMetrics);
   load();
 })();
