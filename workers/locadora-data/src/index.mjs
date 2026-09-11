@@ -262,6 +262,27 @@ function mapCatalogueBlockRow(row) {
   };
 }
 
+function mapAdminReviewRow(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    canonicalKey: row.canonical_key,
+    rating: Number(row.rating),
+    body: row.body_censored,
+    visibility: row.visibility,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    moderationReason: row.moderation_reason,
+    moderatedBy: row.moderated_by,
+    moderatedAt: row.moderated_at,
+  };
+}
+
+function metricsWindow(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export async function publishCataloguePolicy(repository, env) {
   const activeKeys = await repository.listActiveCatalogueKeys();
   const binding = env.CATALOGUE_POLICY;
@@ -461,6 +482,44 @@ export function createSupabaseRepository(env) {
       databaseError(result.error);
       return (result.data || []).map((row) => row.canonical_key);
     },
+    async listAdminReviews({ visibility = 'all', limit = 50, offset = 0 } = {}) {
+      let request = database.from('reviews')
+        .select('id, user_id, canonical_key, rating, body_censored, visibility, created_at, updated_at, moderation_reason, moderated_by, moderated_at', { count: 'exact' })
+        .order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+      if (visibility === 'public' || visibility === 'hidden') request = request.eq('visibility', visibility);
+      const result = await request;
+      databaseError(result.error);
+      return { reviews: (result.data || []).map(mapAdminReviewRow), total: result.count || 0, limit, offset };
+    },
+    async moderateReview(adminId, reviewId, action, reason = '') {
+      const update = action === 'hide'
+        ? { visibility: 'hidden', moderation_reason: reason, moderated_by: adminId, moderated_at: new Date().toISOString() }
+        : { visibility: 'public', moderation_reason: null, moderated_by: null, moderated_at: null };
+      const result = await database.from('reviews').update(update).eq('id', reviewId)
+        .select('id, user_id, canonical_key, rating, body_censored, visibility, created_at, updated_at, moderation_reason, moderated_by, moderated_at').maybeSingle();
+      databaseError(result.error);
+      return result.data ? mapAdminReviewRow(result.data) : null;
+    },
+    async getAdminMetrics({ from, to }) {
+      const [rentals, returnedItems, reviews, users, blocks, rentalUsers] = await Promise.all([
+        database.from('rentals').select('id', { count: 'exact', head: true }).gte('opened_at', from).lt('opened_at', to),
+        database.from('rental_items').select('id', { count: 'exact', head: true }).gte('returned_at', from).lt('returned_at', to),
+        database.from('reviews').select('id', { count: 'exact', head: true }).gte('created_at', from).lt('created_at', to),
+        database.from('user').select('id', { count: 'exact', head: true }).gte('createdAt', from).lt('createdAt', to),
+        database.from('catalogue_blocks').select('id', { count: 'exact', head: true }).gte('created_at', from).lt('created_at', to),
+        database.from('rental_items').select('user_id').gte('rented_at', from).lt('rented_at', to).limit(10000),
+      ]);
+      [rentals, returnedItems, reviews, users, blocks, rentalUsers].forEach(({ error }) => databaseError(error));
+      return {
+        from, to,
+        rentals: rentals.count || 0,
+        returns: returnedItems.count || 0,
+        reviews: reviews.count || 0,
+        newUsers: users.count || 0,
+        catalogueBlocks: blocks.count || 0,
+        activeUsers: new Set((rentalUsers.data || []).map((row) => row.user_id)).size,
+      };
+    },
     async revokeUserSessions(userId) {
       const result = await database.from('session').delete({ count: 'exact' }).eq('userId', userId);
       databaseError(result.error);
@@ -544,7 +603,10 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
       const adminRevokeMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/admin\/users\/([^/]+)\/revoke-sessions$/) : null;
       const isCatalogueBlocksRequest = (request.method === 'GET' || request.method === 'POST') && url.pathname === '/v1/admin/catalogue/blocks';
       const catalogueRestoreMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/admin\/catalogue\/blocks\/(movie|series)\/([1-9][0-9]*)\/restore$/) : null;
-      if (isAdminUsersRequest || adminRevokeMatch || isCatalogueBlocksRequest || catalogueRestoreMatch) {
+      const isAdminReviewsRequest = request.method === 'GET' && url.pathname === '/v1/admin/reviews';
+      const adminReviewMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/admin\/reviews\/([^/]+)\/(hide|restore)$/) : null;
+      const isAdminMetricsRequest = request.method === 'GET' && url.pathname === '/v1/admin/metrics';
+      if (isAdminUsersRequest || adminRevokeMatch || isCatalogueBlocksRequest || catalogueRestoreMatch || isAdminReviewsRequest || adminReviewMatch || isAdminMetricsRequest) {
         if (env.AUTH_RATE_LIMITER) {
           const client = request.headers.get('cf-connecting-ip') || 'unknown-client';
           const allowed = await env.AUTH_RATE_LIMITER.limit({ key: `${client}:/v1/admin` });
@@ -579,6 +641,30 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
             if (!restored) return response(request, env, { error: 'Active catalogue block not found' }, 404);
             const policy = await publishCataloguePolicy(repository, env);
             return response(request, env, { block: restored, policyVersion: policy.version });
+          }
+          if (isAdminReviewsRequest) {
+            const visibility = url.searchParams.get('visibility') || 'all';
+            const limit = Number(url.searchParams.get('limit') || 50);
+            const offset = Number(url.searchParams.get('offset') || 0);
+            if (!['all', 'public', 'hidden'].includes(visibility) || !Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0 || offset > 10000) return response(request, env, { error: 'Invalid review pagination' }, 400);
+            return response(request, env, await repository.listAdminReviews({ visibility, limit, offset }));
+          }
+          if (isAdminMetricsRequest) {
+            const now = new Date();
+            const from = metricsWindow(url.searchParams.get('from')) || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+            const to = metricsWindow(url.searchParams.get('to')) || now.toISOString();
+            if (from >= to || new Date(to).getTime() - new Date(from).getTime() > 366 * 24 * 60 * 60 * 1000) return response(request, env, { error: 'Invalid metrics date range' }, 400);
+            return response(request, env, { metrics: await repository.getAdminMetrics({ from, to }) });
+          }
+          if (adminReviewMatch) {
+            const reviewId = decodeURIComponent(adminReviewMatch[1]);
+            if (!isUuid(reviewId)) return response(request, env, { error: 'Invalid review ID' }, 400);
+            const body = await readJson(request);
+            const reason = String(body?.reason || '').trim().replace(/\s+/g, ' ');
+            if (adminReviewMatch[2] === 'hide' && (reason.length < 1 || reason.length > 500)) return response(request, env, { error: 'A hidden review needs a reason up to 500 characters' }, 400);
+            const review = await repository.moderateReview(adminUser.id, reviewId, adminReviewMatch[2], reason);
+            if (!review) return response(request, env, { error: 'Review not found' }, 404);
+            return response(request, env, { review });
           }
           const block = normalizeCatalogueBlock(await readJson(request));
           if (!block) return response(request, env, { error: 'Catalogue blocks need a movie or series type, positive TMDB id, and a reason up to 500 characters' }, 400);

@@ -122,3 +122,14 @@ test('catalogue blocks are reversible, owner-attributed, and unique while active
   assert.match(blockMigration, /catalogue_blocks_restore_pair/i);
   assert.match(blockMigration, /enable row level security/i);
 });
+
+test('review moderation keeps hidden rows auditable and outside public visibility', () => {
+  const moderation = readFileSync(new URL('../supabase/migrations/20260912_admin_review_moderation.sql', import.meta.url), 'utf8');
+  const reviewMigration = readFileSync(new URL('../supabase/migrations/20260802_add_title_reviews.sql', import.meta.url), 'utf8');
+  assert.match(moderation, /drop constraint if exists reviews_visibility_check/i);
+  assert.match(moderation, /visibility in \('public', 'hidden'\)/i);
+  assert.match(moderation, /moderation_reason text/i);
+  assert.match(moderation, /moderated_by text references public\."user"\(id\)/i);
+  assert.match(moderation, /reviews_moderation_pair/i);
+  assert.match(reviewMigration, /visibility = 'public'/i);
+});

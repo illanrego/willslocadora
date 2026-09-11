@@ -107,6 +107,30 @@ test('owner catalogue routes list, block, publish, and restore policy state', as
   assert.deepEqual(calls.map(([name]) => name), ['list', 'create', 'keys', 'restore', 'keys']);
 });
 
+test('owner review moderation and aggregate metrics routes validate and delegate safely', async () => {
+  const calls = [];
+  const worker = createLocadoraDataWorker({
+    adminAuthenticate: async () => ({ id: 'admin-1', email: 'emaildoillan@protonmail.com' }),
+    createRepository: () => ({
+      async listAdminReviews(input) { calls.push(['listReviews', input]); return { reviews: [{ id: '11111111-1111-4111-8111-111111111111', visibility: 'hidden' }], total: 1, ...input }; },
+      async moderateReview(userId, reviewId, action, reason) { calls.push(['moderate', userId, reviewId, action, reason]); return { id: reviewId, visibility: action === 'hide' ? 'hidden' : 'public' }; },
+      async getAdminMetrics(input) { calls.push(['metrics', input]); return { ...input, rentals: 2, returns: 1, reviews: 1, newUsers: 1, catalogueBlocks: 1, activeUsers: 1 }; },
+    }),
+  });
+  const reviews = await worker.fetch(jsonRequest('/v1/admin/reviews?visibility=hidden&limit=10'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(reviews.status, 200);
+  assert.equal((await reviews.json()).reviews[0].visibility, 'hidden');
+  const invalidHide = await worker.fetch(jsonRequest('/v1/admin/reviews/11111111-1111-4111-8111-111111111111/hide', { method: 'POST', body: {} }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(invalidHide.status, 400);
+  const restore = await worker.fetch(jsonRequest('/v1/admin/reviews/11111111-1111-4111-8111-111111111111/restore', { method: 'POST', body: {} }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(restore.status, 200);
+  assert.equal((await restore.json()).review.visibility, 'public');
+  const metrics = await worker.fetch(jsonRequest('/v1/admin/metrics?from=2026-09-01T00:00:00Z&to=2026-09-11T00:00:00Z'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(metrics.status, 200);
+  assert.equal((await metrics.json()).metrics.rentals, 2);
+  assert.deepEqual(calls.map(([name]) => name), ['listReviews', 'moderate', 'metrics']);
+});
+
 test('Resend email adapter sends only through the Worker-side API with a sending key', async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];
