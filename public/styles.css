@@ -1037,6 +1037,12 @@ dialog.panel-dialog {
 .title-utility-actions .title-review-teaser strong, .title-utility-actions .title-review-teaser span { color: inherit !important; }
 
 /* Action colors follow the same destinations in both store modes. */
+.immersive-stand-button, .immersive-2d-button, .immersive-format button,
+.immersive-zoom button, .balcony-zoom button, #balcony-return-shelf,
+.vhs-focus-controls button, .scene-inspection-controls button,
+.title-utility-actions .title-review-action, .title-utility-actions .title-review-teaser {
+  --control-fill: var(--cream); --control-ink: var(--blue-deep); --control-edge: var(--red);
+}
 .immersive-basket-button, .title-member-actions .title-basket-action,
 #counter-open, #take-basket-counter, #rent-counter {
   --control-fill: #efbf45; --control-ink: #302100; --control-edge: #aa7616;
