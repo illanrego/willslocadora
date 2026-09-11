@@ -17,6 +17,29 @@
       </div>
       <a class="admin-back" href="../">Voltar à Locadora</a>
     </header>
+    <section class="admin-panel" aria-labelledby="catalogue-heading">
+      <div class="admin-panel-heading">
+        <div><span class="eyebrow">ACERVO</span><h2 id="catalogue-heading">Títulos bloqueados</h2></div>
+        <button id="refresh-catalogue" class="account-action" type="button">Atualizar</button>
+      </div>
+      <p class="admin-help">Bloqueie títulos inadequados pelo tipo e pelo ID do TMDB. O bloqueio é reversível e deixa um registro da decisão.</p>
+      <form id="catalogue-block-form" class="admin-form">
+        <label>Tipo<select id="catalogue-type"><option value="movie">Filme</option><option value="series">Série</option></select></label>
+        <label>ID TMDB<input id="catalogue-tmdb-id" inputmode="numeric" pattern="[1-9][0-9]*" required></label>
+        <label class="admin-form-wide">Motivo<input id="catalogue-reason" maxlength="500" required></label>
+        <button class="admin-primary" type="submit">Bloquear título</button>
+      </form>
+      <div class="admin-filter-row">
+        <label class="admin-search" for="catalogue-search">Buscar bloqueio<input id="catalogue-search" type="search" autocomplete="off"></label>
+        <label class="admin-search" for="catalogue-status">Exibir<select id="catalogue-status"><option value="active">Ativos</option><option value="history">Histórico</option><option value="all">Todos</option></select></label>
+      </div>
+      <div class="admin-table-wrap">
+        <table>
+          <thead><tr><th>Chave</th><th>Motivo</th><th>Criado</th><th>Estado</th><th>Ações</th></tr></thead>
+          <tbody id="catalogue-body"></tbody>
+        </table>
+      </div>
+    </section>
     <section class="admin-panel" aria-labelledby="users-heading">
       <div class="admin-panel-heading">
         <div><span class="eyebrow">CARTEIRINHAS</span><h2 id="users-heading">Usuários</h2></div>
