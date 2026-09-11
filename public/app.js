@@ -64,6 +64,7 @@
     // Anonymous browsing can stage titles at the counter, but rentals/history are server-owned after sign-in.
     rental: { rented: null, returned: [] },
     member: { configured: false, signedIn: false, profile: null, watchlist: [], savedTitles: [], localSavedTitles: loadLocalSavedTitles(), history: [], historyHasMore: false },
+    admin: false,
     request: null,
     stand: 0,
     metadata: createBoundedCache(120),
@@ -644,6 +645,7 @@
       const accountState = await window.LocadoraAccount.init();
       state.member = { ...state.member, ...accountState };
       renderAccount();
+      await refreshAdminAccess();
       if (accountState.signedIn) {
         await refreshMemberData();
         await resumePendingRental();
@@ -663,6 +665,7 @@
           refreshBalcony();
         }
         renderAccount();
+        await refreshAdminAccess();
         if (next.signedIn) {
           await refreshMemberData();
           await resumePendingRental();
@@ -672,6 +675,21 @@
       $('#account-status').textContent = error.message;
       renderAccount();
     }
+  }
+
+  async function refreshAdminAccess() {
+    state.admin = false;
+    if (state.member.signedIn !== true) {
+      if (state.mode === 'normal' && state.titles.length) renderShelf(state.titles, state.stand, false);
+      return;
+    }
+    try {
+      await window.LocadoraAccount.request('/v1/admin/users');
+      state.admin = true;
+    } catch {
+      state.admin = false;
+    }
+    if (state.mode === 'normal' && state.titles.length) renderShelf(state.titles, state.stand, false);
   }
 
   function loadLighting() {
@@ -925,12 +943,37 @@
       node.querySelector('.case-label strong').textContent = title.name;
       node.querySelector('.case-label small').textContent = `${title.year || 'Year unknown'} · ${title.type}`;
       button.setAttribute('aria-label', `Inspect ${title.name}, ${title.year || 'year unknown'}`);
+      const blockAction = node.querySelector('.vhs-block-action');
+      blockAction.hidden = !state.admin;
+      blockAction.setAttribute('aria-label', `Bloquear ${title.name}`);
+      blockAction.addEventListener('click', (event) => { event.stopPropagation(); blockCatalogueTitle(title, blockAction); });
       button.addEventListener('click', () => openTitleFromOrigin(title, { source: 'shelf', mode: state.mode }, true, posterTextureUrl(image.currentSrc || image.src)));
       article.dataset.titleId = title.id;
       grid.append(node);
     });
     section.append(standNumber, grid);
     shelf.append(section);
+  }
+
+  async function blockCatalogueTitle(title, action) {
+    if (!state.admin || action.disabled) return;
+    const reason = window.prompt(`Motivo para bloquear ${title.name}:`)?.trim() || '';
+    if (!reason) return;
+    action.disabled = true;
+    try {
+      await window.LocadoraAccount.request('/v1/admin/catalogue/blocks', {
+        method: 'POST',
+        body: JSON.stringify({ type: title.type, tmdbId: Number(title.tmdbId || String(title.id).replace(/^tmdb:/, '')), reason }),
+      });
+      const key = `${title.type}:${title.id}`;
+      state.titles = state.titles.filter((item) => `${item.type}:${item.id}` !== key);
+      state.standCache.set(state.stand, { titles: state.titles, hasNextStand: state.hasNextStand });
+      if (state.mode === 'normal') renderShelf(state.titles, state.stand, false);
+      $('#shelf-status').textContent = 'Título bloqueado e retirado desta estante.';
+    } catch (error) {
+      $('#shelf-status').textContent = error.message || 'Não foi possível bloquear este título.';
+      action.disabled = false;
+    }
   }
 
   function posterFallback(title) {
