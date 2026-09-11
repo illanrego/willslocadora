@@ -70,6 +70,14 @@ test('normal and immersive modes expose one shared set of preferences', () => {
   assert.match(css, /\.normal-settings \{ display: grid;/);
 });
 
+test('a persistent speaker control mutes and restores all store audio', () => {
+  assert.match(page, /id="audio-master-toggle"[^>]*aria-pressed="false"[^>]*aria-label="Silenciar a Locadora"/);
+  assert.match(page, /class="audio-waves"[\s\S]*class="audio-muted-mark"/);
+  assert.match(css, /\.audio-master-toggle \{[^}]*position: fixed;[^}]*bottom:/);
+  assert.match(app, /audioMuted: localStorage\.getItem\('locadora\.audioMuted'\) === 'true'/);
+  assert.match(app, /function toggleMasterAudio\(\)[\s\S]*storeAudio\?\.setMuted[\s\S]*localStorage\.setItem\('locadora\.audioMuted'/);
+});
+
 test('dialog and member cards use the uniform raised Locadora frame instead of accent-edge stripes', () => {
   const cardFrameStart = css.indexOf('.panel-dialog .counter-item, .panel-dialog .source-item {');
   const cardFrameEnd = css.indexOf('.panel-dialog button:not(:disabled)', cardFrameStart);

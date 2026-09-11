@@ -57,6 +57,7 @@
     providerPreferenceSet: localStorage.getItem('locadora.providers') !== null || localStorage.getItem('locadora.provider') !== null,
     ignoreStoreYear: window.LocadoraSessionSupport.allYearsPreference(localStorage.getItem('locadora.ignoreStoreYear')),
     lighting: loadLighting(),
+    audioMuted: localStorage.getItem('locadora.audioMuted') === 'true',
     providerRegistry: [],
     titles: [],
     counter: initialRental.counter,
@@ -102,6 +103,7 @@
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
   const sessionSupport = window.LocadoraSessionSupport.install({ translate: (key) => t(key), api, selectedProviders: () => state.providers });
   const storeAudio = window.LocadoraAudio?.createStoreAudio(state.year);
+  storeAudio?.setMuted(state.audioMuted);
 
   function disposeVhsViewer() {
     viewerToken += 1;
@@ -118,6 +120,7 @@
     document.documentElement.lang = state.locale === 'pt-BR' ? 'pt-BR' : 'en';
     document.querySelectorAll('[data-i18n]').forEach((element) => { element.textContent = t(element.dataset.i18n); });
     document.querySelectorAll('[data-i18n-aria-label]').forEach((element) => { element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel)); });
+    syncMasterAudioControl();
     const nextLocale = state.locale === 'pt-BR' ? 'en-US' : 'pt-BR';
     document.querySelectorAll('[data-locale-toggle]').forEach((localeToggle) => {
       localeToggle.querySelector('.language-toggle-label').textContent = nextLocale === 'pt-BR' ? 'PT' : 'EN';
@@ -1201,6 +1204,20 @@
     });
   }
 
+  function syncMasterAudioControl() {
+    const button = $('#audio-master-toggle');
+    const label = t(state.audioMuted ? 'unmuteStore' : 'muteStore');
+    button.setAttribute('aria-pressed', String(state.audioMuted));
+    button.setAttribute('aria-label', label);
+    button.title = label;
+  }
+
+  function toggleMasterAudio() {
+    state.audioMuted = storeAudio?.setMuted(!state.audioMuted) ?? !state.audioMuted;
+    localStorage.setItem('locadora.audioMuted', String(state.audioMuted));
+    syncMasterAudioControl();
+  }
+
   async function toggleStoreAudio(channel) {
     try {
       if (!storeAudio) throw new Error('This browser cannot play store audio.');
@@ -2263,6 +2280,7 @@
     });
     $('#immersive-zoom-in').addEventListener('click', () => immersiveShelf?.zoomIn());
     $('#immersive-zoom-out').addEventListener('click', () => immersiveShelf?.zoomOut());
+    $('#audio-master-toggle').addEventListener('click', toggleMasterAudio);
     document.querySelectorAll('[data-audio-toggle]').forEach((button) => {
       button.addEventListener('click', () => toggleStoreAudio(button.dataset.audioToggle));
     });

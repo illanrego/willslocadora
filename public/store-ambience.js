@@ -42,12 +42,14 @@
     };
     const active = new Set();
     const effectTimers = new Map();
+    const effectTracks = new Set();
     let storeYear = initialYear;
     let musicTrackId = 'night-drive';
+    let muted = false;
     const channelVolumes = { ambience: 1, music: 1 };
 
     function applyTrackVolume(track, channel) {
-      track.volume = track.baseVolume * channelVolumes[channel];
+      track.volume = track.baseVolume * channelVolumes[channel] * (muted ? 0 : 1);
     }
 
     function scheduleEffect(name) {
@@ -58,8 +60,11 @@
       effectTimers.set(name, window.setTimeout(() => {
         const track = new Audio(effect.url);
         track.currentTime = 0;
-        track.volume = effect.volume * channelVolumes.ambience;
-        track.play().catch(() => {});
+        track.baseVolume = effect.volume;
+        applyTrackVolume(track, 'ambience');
+        effectTracks.add(track);
+        track.addEventListener('ended', () => effectTracks.delete(track), { once: true });
+        track.play().catch(() => effectTracks.delete(track));
         scheduleEffect(name);
       }, delay));
     }
@@ -92,6 +97,8 @@
     function stopEffects() {
       effectTimers.forEach((timer) => clearTimeout(timer));
       effectTimers.clear();
+      effectTracks.forEach((track) => { track.pause(); track.currentTime = 0; });
+      effectTracks.clear();
     }
 
     async function start(channel) {
@@ -139,6 +146,14 @@
       if (!(channel in channelVolumes)) return;
       channelVolumes[channel] = Math.min(1, Math.max(0, Number(value)));
       loops[channel].forEach((track) => applyTrackVolume(track, channel));
+      if (channel === 'ambience') effectTracks.forEach((track) => applyTrackVolume(track, channel));
+    }
+
+    function setMuted(value) {
+      muted = Boolean(value);
+      Object.entries(loops).forEach(([channel, tracks]) => tracks.forEach((track) => applyTrackVolume(track, channel)));
+      effectTracks.forEach((track) => applyTrackVolume(track, 'ambience'));
+      return muted;
     }
 
     return {
@@ -148,6 +163,10 @@
       setYear,
       setMusicTrack,
       setVolume,
+      setMuted,
+      isMuted() {
+        return muted;
+      },
       isActive(channel) {
         return active.has(channel);
       },
