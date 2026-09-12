@@ -384,6 +384,11 @@ export function createSupabaseRepository(env) {
       databaseError(result.error);
       return result.data || { summary: { averageRating: 0, ratingCount: 0 }, reviews: [] };
     },
+    async getPublicMilestones() {
+      const result = await database.from('rental_items').select('id', { count: 'exact', head: true });
+      databaseError(result.error);
+      return { rentedTapes: result.count || 0 };
+    },
     async saveReview(userId, canonicalKey, review) {
       const result = await database.rpc('upsert_review', {
         p_user_id: userId,
@@ -721,6 +726,7 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
       }
       const isStateRequest = request.method === 'GET' && url.pathname === '/v1/state';
       const isHistoryRequest = request.method === 'GET' && url.pathname === '/v1/history';
+      const isPublicMilestonesRequest = request.method === 'GET' && url.pathname === '/v1/public/milestones';
       const usernameMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/usernames\/([a-z0-9_-]{3,24})$/) : null;
       const isProfileRequest = request.method === 'PUT' && url.pathname === '/v1/profile';
       const isWatchlistRequest = request.method === 'POST' && url.pathname === '/v1/watchlist';
@@ -732,10 +738,11 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
       const publicReviewsMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/reviews$/) : null;
       const reviewWriteMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/review$/) : null;
       const reviewEligibilityMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/review-eligibility$/) : null;
-      if (!isStateRequest && !isHistoryRequest && !usernameMatch && !isProfileRequest && !isWatchlistRequest && !isCollectionSaveRequest && !isCollectionRemoveRequest && !isRentalRequest && !returnMatch && !publicReviewsMatch && !reviewWriteMatch && !reviewEligibilityMatch) return response(request, env, { error: 'Not found' }, 404);
+      if (!isStateRequest && !isHistoryRequest && !isPublicMilestonesRequest && !usernameMatch && !isProfileRequest && !isWatchlistRequest && !isCollectionSaveRequest && !isCollectionRemoveRequest && !isRentalRequest && !returnMatch && !publicReviewsMatch && !reviewWriteMatch && !reviewEligibilityMatch) return response(request, env, { error: 'Not found' }, 404);
 
       try {
         const repository = createRepository(env);
+        if (isPublicMilestonesRequest) return response(request, env, await repository.getPublicMilestones());
         if (publicReviewsMatch) {
           const canonicalKey = `${publicReviewsMatch[1]}:${publicReviewsMatch[2]}`;
           return response(request, env, await repository.listPublicTitleReviews(canonicalKey));

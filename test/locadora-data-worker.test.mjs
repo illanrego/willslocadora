@@ -203,6 +203,21 @@ test('data Worker returns only the authenticated member state', async () => {
   });
 });
 
+test('public milestone totals do not require authentication and expose only rental tape count', async () => {
+  let authenticated = false;
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => { authenticated = true; return null; },
+    createRepository: () => ({ async getPublicMilestones() { return { rentedTapes: 37 }; } }),
+  });
+
+  const response = await worker.fetch(jsonRequest('/v1/public/milestones', { token: '' }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), 'https://www.sitedoillan.com.br');
+  assert.deepEqual(await response.json(), { rentedTapes: 37 });
+  assert.equal(authenticated, false);
+});
+
 test('data Worker mounts Better Auth routes with exact CORS headers', async () => {
   let closed = 0;
   const worker = createLocadoraDataWorker({
