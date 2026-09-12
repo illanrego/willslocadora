@@ -7,12 +7,14 @@ const script = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'
 const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
 
 test('owner-only catalogue block action is attached to normal shelf covers', () => {
-  assert.match(html, /class="vhs-block-action"[^>]*hidden/);
+  assert.match(html, /class="vhs-block-action"[^>]*hidden[^>]*>×<\/button>/);
   assert.match(script, /request\('\/v1\/admin\/users'\)/);
   assert.match(script, /blockCatalogueTitle\(title, blockAction\)/);
   assert.match(script, /request\('\/v1\/admin\/catalogue\/blocks'/);
   assert.match(script, /state\.titles = state\.titles\.filter/);
-  assert.match(styles, /\.vhs-block-action/);
+  assert.match(script, /blockAction\.textContent = '×'/);
+  assert.match(styles, /\.vhs-block-action \{[^}]*top: \.25rem;[^}]*right: \.25rem;[^}]*border-radius: 50%;/);
+  assert.match(styles, /\.vhs-block-action \{ display: none; \}/);
 });
 
 test('owner-only shelf removal is available from inspected back-cover barcode area', () => {

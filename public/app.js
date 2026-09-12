@@ -1006,7 +1006,9 @@
       button.setAttribute('aria-label', `Inspect ${title.name}, ${title.year || 'year unknown'}`);
       const blockAction = node.querySelector('.vhs-block-action');
       blockAction.hidden = !state.admin;
-      blockAction.setAttribute('aria-label', `Retirar ${title.name} da prateleira`);
+      blockAction.textContent = '×';
+      blockAction.title = t('removeFromShelf');
+      blockAction.setAttribute('aria-label', `${t('removeFromShelf')} ${title.name}`);
       blockAction.addEventListener('click', (event) => { event.stopPropagation(); blockCatalogueTitle(title, blockAction); });
       button.addEventListener('click', () => openTitleFromOrigin(title, { source: 'shelf', mode: state.mode }, true, posterTextureUrl(image.currentSrc || image.src)));
       article.dataset.titleId = title.id;
