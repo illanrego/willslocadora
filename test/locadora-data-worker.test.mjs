@@ -82,6 +82,23 @@ test('admin user directory and session revocation are protected by the admin aut
   assert.deepEqual(calls, ['user-1']);
 });
 
+test('admin user detail is owner-only and returns the small private account view', async () => {
+  const calls = [];
+  const worker = createLocadoraDataWorker({
+    adminAuthenticate: async () => ({ id: 'admin-1', email: 'emaildoillan@protonmail.com' }),
+    createRepository: () => ({
+      async getAdminUserDetail(userId) {
+        calls.push(userId);
+        return { user: { id: userId, email: 'person@example.com' }, collections: { watch_later: [], favorite: [] }, activeRental: [], history: [] };
+      },
+    }),
+  });
+  const response = await worker.fetch(jsonRequest('/v1/admin/users/user-1'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).user.email, 'person@example.com');
+  assert.deepEqual(calls, ['user-1']);
+});
+
 test('admin routes reject a non-admin session before touching the repository', async () => {
   const worker = createLocadoraDataWorker({ adminAuthenticate: async () => null, createRepository: () => assert.fail('must not create repository') });
   const response = await worker.fetch(jsonRequest('/v1/admin/users'), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });

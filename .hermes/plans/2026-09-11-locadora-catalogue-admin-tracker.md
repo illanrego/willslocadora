@@ -38,17 +38,17 @@ Give Will one private `/admin/` surface to remove unsuitable catalogue titles, m
 
 ## Existing user state
 
-- [ ] `CAT-15` Prevent new Cesta additions, saved memberships, and rental submissions for blocked canonical keys.
-- [ ] `CAT-16` Hide blocked titles from visible Cesta/saved/state responses while retaining user rows for audit and possible restoration.
-- [ ] `CAT-17` Render existing active rentals and history as a neutral `unavailable` record with no new rent/open action. Preserve title type, TMDB id, dates, and return behavior.
-- [ ] `CAT-18` Ensure block/unblock refreshes relevant client state without requiring a logout or destructive local-storage reset.
+- [x] `CAT-15` Prevent new Cesta additions, saved memberships, and rental submissions for blocked canonical keys.
+- [x] `CAT-16` Hide blocked titles from visible Cesta/saved/state responses while retaining user rows for audit and possible restoration.
+- [x] `CAT-17` Render existing active rentals and history as a neutral `unavailable` record with no new rent/open action. Preserve title type, TMDB id, dates, and return behavior.
+- [x] `CAT-18` Ensure block/unblock refreshes relevant client state without requiring a logout or destructive local-storage reset.
 
 ## Admin UI v1
 
 - [x] `ADM-01` Add tabs/sections for Catalogue, Users, Reviews, and Statistics while preserving the current session-revocation workflow.
 - [x] `ADM-02` Catalogue section: search by title/TMDB id, inspect a title, block with required reason, restore, and see active/history state.
-- [ ] `ADM-03` Add a title inspector preview using the existing public metadata path; the action must submit the canonical type/id, never a title string.
-- [ ] `ADM-04` Users section: retain search, counts, pagination, session revocation, and a small user detail view. Do not add suspension or impersonation in v1.
+- [x] `ADM-03` Add a title inspector preview using the existing public metadata path; the action must submit the canonical type/id, never a title string.
+- [x] `ADM-04` Users section: retain search, counts, pagination, session revocation, and a small user detail view. Do not add suspension or impersonation in v1.
 - [x] `ADM-05` Reviews section: list by visibility/date/title/user, hide with reason, restore, and show an audit trail. Owner-only hide/restore is sufficient for v1.
 - [x] `ADM-06` Statistics section: show aggregate rentals, returns, reviews, active users, catalogue blocks, and distinct titles over 7/30/90 days plus a custom bounded date range.
 - [x] `ADM-07` Keep admin actions keyboard accessible, readable on narrow screens, and explicit about irreversible actions. Blocks and hides are reversible.
@@ -64,7 +64,7 @@ Give Will one private `/admin/` surface to remove unsuitable catalogue titles, m
 
 - [x] `ADM-12` Unit-test owner authorization, validation, idempotency, audit history, and policy snapshot generation.
 - [x] `ADM-13` Test every public discovery route against blocked and restored movie/series keys.
-- [ ] `ADM-14` Test active/history neutral unavailable records and rejection of new actions.
+- [x] `ADM-14` Test active/history neutral unavailable records and rejection of new actions.
 - [x] `ADM-15` Test admin UI route rendering and action payloads with the existing Node/source-contract strategy.
 - [ ] `ADM-16` Acceptance: Will blocks a known unsuitable title, it disappears after policy refresh from shelves/search/featured, old rental history remains neutral, then restore makes it eligible again.
 

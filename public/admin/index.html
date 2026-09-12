@@ -33,8 +33,12 @@
         <label>Tipo<select id="catalogue-type"><option value="movie">Filme</option><option value="series">Série</option></select></label>
         <label>ID TMDB<input id="catalogue-tmdb-id" inputmode="numeric" pattern="[1-9][0-9]*" required></label>
         <label class="admin-form-wide">Motivo<input id="catalogue-reason" maxlength="500" required></label>
-        <button class="admin-primary" type="submit">Bloquear título</button>
+        <div class="admin-form-actions"><button id="catalogue-preview" class="admin-secondary" type="button">Ver prévia</button><button class="admin-primary" type="submit">Bloquear título</button></div>
       </form>
+      <section id="catalogue-preview-panel" class="catalogue-preview" aria-live="polite" hidden>
+        <img id="catalogue-preview-image" alt="">
+        <div><span class="eyebrow">PRÉVIA DO TMDB</span><h3 id="catalogue-preview-title"></h3><p id="catalogue-preview-meta"></p><p id="catalogue-preview-description"></p></div>
+      </section>
       <div class="admin-filter-row">
         <label class="admin-search" for="catalogue-search">Buscar bloqueio<input id="catalogue-search" type="search" autocomplete="off"></label>
         <label class="admin-search" for="catalogue-status">Exibir<select id="catalogue-status"><option value="active">Ativos</option><option value="history">Histórico</option><option value="all">Todos</option></select></label>
@@ -59,6 +63,7 @@
           <tbody id="users-body"></tbody>
         </table>
       </div>
+      <div id="users-pagination" class="admin-pagination" aria-live="polite"></div>
     </section>
     <section class="admin-panel" aria-labelledby="reviews-heading">
       <div class="admin-panel-heading">
@@ -85,7 +90,13 @@
     </section>
     <p class="admin-note">Ações destrutivas e visualização de senhas não fazem parte deste painel. Revogar sessões desconecta o usuário dos navegadores ativos.</p>
   </main>
+  <dialog id="user-detail-dialog" class="admin-detail-dialog" aria-labelledby="user-detail-heading">
+    <form method="dialog" class="admin-detail-header"><div><span class="eyebrow">CARTEIRINHA</span><h2 id="user-detail-heading">Detalhes do usuário</h2></div><button class="dialog-close" value="close" aria-label="Fechar detalhes">×</button></form>
+    <p id="user-detail-status" class="admin-status" role="status" aria-live="polite"></p>
+    <div id="user-detail-content"></div>
+  </dialog>
   <script src="../auth-config.js"></script>
+  <script src="../api-config.js"></script>
   <script src="../account.js"></script>
   <script src="./admin.js"></script>
 </body>

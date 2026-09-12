@@ -444,6 +444,32 @@ export function createSupabaseRepository(env) {
         reviewCount: reviews.get(user.id) || 0,
       }));
     },
+    async getAdminUserDetail(userId) {
+      const [userResult, savedResult, rentalResult] = await Promise.all([
+        database.from('user').select('id, email, username, emailVerified, createdAt, updatedAt').eq('id', userId).maybeSingle(),
+        database.from('saved_title_memberships').select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, collection, source, source_note, added_at, completed_at').eq('user_id', userId).order('added_at', { ascending: false }).limit(50),
+        database.from('rental_items').select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at, returned_at, watched_status').eq('user_id', userId).order('rented_at', { ascending: false }).limit(50),
+      ]);
+      [userResult, savedResult, rentalResult].forEach(({ error }) => databaseError(error));
+      if (!userResult.data) return null;
+      const items = rentalResult.data || [];
+      return {
+        user: {
+          id: userResult.data.id,
+          email: userResult.data.email,
+          username: userResult.data.username,
+          emailVerified: Boolean(userResult.data.emailVerified),
+          createdAt: userResult.data.createdAt,
+          updatedAt: userResult.data.updatedAt,
+        },
+        collections: {
+          watch_later: (savedResult.data || []).filter((row) => row.collection === 'watch_later' && !row.completed_at).map(mapCollectionRow),
+          favorite: (savedResult.data || []).filter((row) => row.collection === 'favorite').map(mapCollectionRow),
+        },
+        activeRental: items.filter((row) => !row.returned_at).map((row) => mapRentalItemRow(row)),
+        history: items.filter((row) => row.returned_at).map((row) => mapRentalItemRow(row)),
+      };
+    },
     async listCatalogueBlocks({ query = '', active = 'all', limit = 50, offset = 0 } = {}) {
       let request = database.from('catalogue_blocks')
         .select('id, title_type, tmdb_id, canonical_key, reason, created_by, created_at, removed_by, removed_at', { count: 'exact' })
@@ -609,13 +635,14 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
         }
       }
       const isAdminUsersRequest = request.method === 'GET' && url.pathname === '/v1/admin/users';
+      const adminUserDetailMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/admin\/users\/([^/]+)$/) : null;
       const adminRevokeMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/admin\/users\/([^/]+)\/revoke-sessions$/) : null;
       const isCatalogueBlocksRequest = (request.method === 'GET' || request.method === 'POST') && url.pathname === '/v1/admin/catalogue/blocks';
       const catalogueRestoreMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/admin\/catalogue\/blocks\/(movie|series)\/([1-9][0-9]*)\/restore$/) : null;
       const isAdminReviewsRequest = request.method === 'GET' && url.pathname === '/v1/admin/reviews';
       const adminReviewMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/admin\/reviews\/([^/]+)\/(hide|restore)$/) : null;
       const isAdminMetricsRequest = request.method === 'GET' && url.pathname === '/v1/admin/metrics';
-      if (isAdminUsersRequest || adminRevokeMatch || isCatalogueBlocksRequest || catalogueRestoreMatch || isAdminReviewsRequest || adminReviewMatch || isAdminMetricsRequest) {
+      if (isAdminUsersRequest || adminUserDetailMatch || adminRevokeMatch || isCatalogueBlocksRequest || catalogueRestoreMatch || isAdminReviewsRequest || adminReviewMatch || isAdminMetricsRequest) {
         if (env.AUTH_RATE_LIMITER) {
           const client = request.headers.get('cf-connecting-ip') || 'unknown-client';
           const allowed = await env.AUTH_RATE_LIMITER.limit({ key: `${client}:/v1/admin` });
@@ -631,6 +658,13 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
         try {
           const repository = createRepository(env);
           if (isAdminUsersRequest) return response(request, env, { users: await repository.listAdminUsers() });
+          if (adminUserDetailMatch) {
+            const userId = decodeURIComponent(adminUserDetailMatch[1]);
+            if (!userId || userId.length > 128) return response(request, env, { error: 'Invalid user ID' }, 400);
+            const detail = await repository.getAdminUserDetail(userId);
+            if (!detail) return response(request, env, { error: 'User not found' }, 404);
+            return response(request, env, detail);
+          }
           if (adminRevokeMatch) {
             const userId = decodeURIComponent(adminRevokeMatch[1]);
             if (!userId || userId.length > 128) return response(request, env, { error: 'Invalid user ID' }, 400);

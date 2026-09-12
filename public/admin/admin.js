@@ -8,6 +8,7 @@
   const body = document.querySelector('#users-body');
   const search = document.querySelector('#user-search');
   const refresh = document.querySelector('#refresh-users');
+  const usersPagination = document.querySelector('#users-pagination');
   const catalogueBody = document.querySelector('#catalogue-body');
   const catalogueSearch = document.querySelector('#catalogue-search');
   const catalogueStatus = document.querySelector('#catalogue-status');
@@ -16,6 +17,15 @@
   const catalogueType = document.querySelector('#catalogue-type');
   const catalogueTmdbId = document.querySelector('#catalogue-tmdb-id');
   const catalogueReason = document.querySelector('#catalogue-reason');
+  const cataloguePreviewButton = document.querySelector('#catalogue-preview');
+  const cataloguePreviewPanel = document.querySelector('#catalogue-preview-panel');
+  const cataloguePreviewImage = document.querySelector('#catalogue-preview-image');
+  const cataloguePreviewTitle = document.querySelector('#catalogue-preview-title');
+  const cataloguePreviewMeta = document.querySelector('#catalogue-preview-meta');
+  const cataloguePreviewDescription = document.querySelector('#catalogue-preview-description');
+  const userDetailDialog = document.querySelector('#user-detail-dialog');
+  const userDetailStatus = document.querySelector('#user-detail-status');
+  const userDetailContent = document.querySelector('#user-detail-content');
   const reviewsBody = document.querySelector('#reviews-body');
   const reviewStatus = document.querySelector('#review-status');
   const refreshReviews = document.querySelector('#refresh-reviews');
@@ -24,6 +34,79 @@
   const refreshMetrics = document.querySelector('#refresh-metrics');
   let users = [];
   let blocks = [];
+  let userPage = 0;
+  const USERS_PAGE_SIZE = 25;
+
+  async function publicRequest(path) {
+    const url = window.locadoraApiUrl ? window.locadoraApiUrl(path) : path;
+    const response = await fetch(url);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+    return body;
+  }
+
+  function titleLabel(title) {
+    return `${title.name || title.title || title.canonicalKey || 'Título'} · ${title.year || 'ano desconhecido'} · ${title.type === 'series' ? 'série' : 'filme'}`;
+  }
+
+  function detailSection(label, titles) {
+    const section = document.createElement('section'); section.className = 'admin-detail-section';
+    const heading = document.createElement('h3'); heading.textContent = label;
+    const list = document.createElement('ul'); list.className = 'admin-detail-list';
+    if (!titles.length) { const empty = document.createElement('li'); empty.textContent = 'Nenhum registro.'; list.append(empty); }
+    else titles.forEach((title) => { const item = document.createElement('li'); item.textContent = titleLabel(title); list.append(item); });
+    section.append(heading, list);
+    return section;
+  }
+
+  function renderUserDetail(detail) {
+    const user = detail.user || {};
+    userDetailContent.replaceChildren();
+    const summary = document.createElement('p');
+    summary.className = 'admin-help';
+    summary.textContent = `${user.email || '—'} · @${user.username || '—'} · ${user.emailVerified ? 'email confirmado' : 'email não confirmado'}`;
+    userDetailContent.append(summary);
+    userDetailContent.append(detailSection('Assistir depois', detail.collections?.watch_later || []));
+    userDetailContent.append(detailSection('Favoritos', detail.collections?.favorite || []));
+    userDetailContent.append(detailSection('Locação ativa', detail.activeRental || []));
+    userDetailContent.append(detailSection('Histórico recente', detail.history || []));
+  }
+
+  async function openUserDetail(user) {
+    userDetailStatus.textContent = 'Carregando detalhes…';
+    userDetailContent.replaceChildren();
+    if (!userDetailDialog.open) userDetailDialog.showModal();
+    try {
+      const detail = await window.LocadoraAccount.request(`/v1/admin/users/${encodeURIComponent(user.id)}`);
+      renderUserDetail(detail);
+      userDetailStatus.textContent = 'Detalhes privados do usuário.';
+    } catch (error) { userDetailStatus.textContent = error.message || 'Não foi possível carregar os detalhes.'; }
+  }
+
+  async function previewCatalogueTitle() {
+    const tmdbId = Number(catalogueTmdbId.value);
+    if (!Number.isSafeInteger(tmdbId) || tmdbId < 1) { setStatus('Informe um ID TMDB positivo para ver a prévia.', 'error'); return; }
+    cataloguePreviewButton.disabled = true;
+    cataloguePreviewPanel.hidden = false;
+    cataloguePreviewTitle.textContent = 'Carregando…';
+    cataloguePreviewMeta.textContent = `${catalogueType.value}:${tmdbId}`;
+    cataloguePreviewDescription.textContent = '';
+    try {
+      const result = await publicRequest(`/api/meta?${new URLSearchParams({ type: catalogueType.value, id: `tmdb:${tmdbId}`, locale: 'pt-BR' })}`);
+      const title = result.meta || {};
+      cataloguePreviewTitle.textContent = title.name || 'Título sem nome';
+      cataloguePreviewMeta.textContent = `${catalogueType.value}:${tmdbId} · ${title.year || 'ano desconhecido'} · ${title.certificationBR || 'classificação não informada'}`;
+      cataloguePreviewDescription.textContent = title.description || 'Sem sinopse disponível.';
+      cataloguePreviewImage.src = title.poster || '';
+      cataloguePreviewImage.alt = title.name ? `Capa de ${title.name}` : '';
+      setStatus(`Prévia carregada para ${catalogueType.value}:${tmdbId}.`, 'success');
+    } catch (error) {
+      cataloguePreviewTitle.textContent = 'Prévia indisponível';
+      cataloguePreviewDescription.textContent = error.message || 'Não foi possível carregar o título.';
+      cataloguePreviewImage.removeAttribute('src');
+      cataloguePreviewImage.alt = '';
+    } finally { cataloguePreviewButton.disabled = false; }
+  }
 
   function showGate(message) {
     app.hidden = true;
@@ -50,7 +133,10 @@
   function render() {
     const query = search.value.trim().toLowerCase();
     body.replaceChildren();
-    users.filter((user) => !query || `${user.email} ${user.username}`.toLowerCase().includes(query)).forEach((user) => {
+    const filtered = users.filter((user) => !query || `${user.email} ${user.username}`.toLowerCase().includes(query));
+    const pageCount = Math.max(1, Math.ceil(filtered.length / USERS_PAGE_SIZE));
+    userPage = Math.min(userPage, pageCount - 1);
+    filtered.slice(userPage * USERS_PAGE_SIZE, (userPage + 1) * USERS_PAGE_SIZE).forEach((user) => {
       const row = document.createElement('tr');
       const email = document.createElement('td'); email.textContent = user.email || '—';
       const username = document.createElement('td'); username.textContent = `@${user.username || '—'}`;
@@ -59,6 +145,8 @@
       const rentals = document.createElement('td'); rentals.textContent = `${user.rentalCount} (${user.activeRentalCount} ativas)`;
       const reviews = document.createElement('td'); reviews.textContent = `${user.reviewCount} · ${user.watchedCount} vistas`;
       const actions = document.createElement('td');
+      const detail = document.createElement('button'); detail.type = 'button'; detail.className = 'admin-secondary'; detail.textContent = 'Detalhes';
+      detail.addEventListener('click', () => openUserDetail(user));
       const revoke = document.createElement('button'); revoke.type = 'button'; revoke.className = 'admin-revoke'; revoke.textContent = 'Revogar sessões';
       revoke.addEventListener('click', async () => {
         if (!window.confirm(`Desconectar ${user.email} de todos os navegadores?`)) return;
@@ -69,10 +157,19 @@
         } catch (error) { setStatus(error.message || 'Não foi possível revogar as sessões.', 'error'); }
         finally { revoke.disabled = false; }
       });
-      actions.append(revoke);
+      actions.append(detail, revoke);
       row.append(email, username, created, rentals, reviews, actions);
       body.append(row);
     });
+    usersPagination.replaceChildren();
+    if (pageCount > 1) {
+      const previous = document.createElement('button'); previous.type = 'button'; previous.className = 'admin-secondary'; previous.textContent = 'Anterior'; previous.disabled = userPage === 0;
+      previous.addEventListener('click', () => { userPage -= 1; render(); });
+      const next = document.createElement('button'); next.type = 'button'; next.className = 'admin-secondary'; next.textContent = 'Próxima'; next.disabled = userPage >= pageCount - 1;
+      next.addEventListener('click', () => { userPage += 1; render(); });
+      const label = document.createElement('span'); label.textContent = `Página ${userPage + 1} de ${pageCount} · ${filtered.length} usuário(s)`;
+      usersPagination.append(previous, label, next);
+    } else if (filtered.length) usersPagination.textContent = `${filtered.length} usuário(s)`;
   }
 
   function renderCatalogue() {
@@ -190,11 +287,14 @@
     } finally { refresh.disabled = false; }
   }
 
-  search.addEventListener('input', render);
+  search.addEventListener('input', () => { userPage = 0; render(); });
   refresh.addEventListener('click', load);
   catalogueSearch.addEventListener('input', renderCatalogue);
   catalogueStatus.addEventListener('change', loadCatalogue);
   catalogueRefresh.addEventListener('click', loadCatalogue);
+  cataloguePreviewButton.addEventListener('click', previewCatalogueTitle);
+  catalogueType.addEventListener('change', () => { cataloguePreviewPanel.hidden = true; });
+  catalogueTmdbId.addEventListener('input', () => { cataloguePreviewPanel.hidden = true; });
   catalogueForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const tmdbId = Number(catalogueTmdbId.value);

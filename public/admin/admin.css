@@ -15,12 +15,14 @@
 .admin-form { display: grid; grid-template-columns: minmax(120px, .7fr) minmax(120px, .7fr) minmax(220px, 1.6fr) auto; align-items: end; gap: .75rem; margin: 1.2rem 0; }
 .admin-form label { color: #c6b89f; font-size: .78rem; }
 .admin-form input, .admin-form select, .admin-filter-row select { display: block; width: 100%; margin-top: .35rem; padding: .65rem .75rem; color: var(--cream); background: #120e0c; border: 1px solid #806b55; border-radius: 4px; }
+.admin-form-actions { display: flex; gap: .45rem; align-items: stretch; }
 .admin-filter-row { display: flex; gap: 1rem; align-items: end; }
 .admin-filter-row .admin-search { flex: 1; margin-bottom: 0; }
 .admin-filter-row .admin-search:last-child { max-width: 180px; }
 .admin-primary, .admin-restore { padding: .55rem .7rem; color: #17100b; background: #d6b45d; border: 1px solid #f1d77c; border-radius: 4px; cursor: pointer; }
+.admin-secondary { padding: .55rem .7rem; color: var(--cream); background: #30231d; border: 1px solid #806b55; border-radius: 4px; cursor: pointer; }
 .admin-restore { color: var(--cream); background: #24564e; border-color: #69b2a0; }
-.admin-primary:disabled, .admin-restore:disabled { opacity: .55; cursor: wait; }
+.admin-primary:disabled, .admin-secondary:disabled, .admin-restore:disabled { opacity: .55; cursor: wait; }
 .admin-revoke { padding: .35rem .5rem; color: var(--cream); background: #3a2420; border: 1px solid #b46c57; border-radius: 3px; cursor: pointer; }
 .admin-metrics { display: grid; grid-template-columns: repeat(6, 1fr); gap: .7rem; }
 .admin-metric { padding: .8rem; border: 1px solid #4a392c; background: #17110e; }
@@ -38,6 +40,19 @@
 .admin-status[data-tone="error"] { color: #f09a7b; }
 .admin-status[data-tone="success"] { color: #c8dc9a; }
 .admin-note { margin-top: 1rem; font-size: .8rem; }
+.catalogue-preview { display: grid; grid-template-columns: 88px 1fr; gap: .8rem; max-width: 720px; margin: .8rem 0 1.2rem; padding: .8rem; border: 1px solid #4a392c; background: #17110e; }
+.catalogue-preview img { width: 88px; aspect-ratio: 2 / 3; object-fit: cover; background: #2a211c; }
+.catalogue-preview h3 { margin: .2rem 0; }
+.catalogue-preview p { margin: .35rem 0 0; color: #c6b89f; font-size: .82rem; }
+.admin-detail-dialog { width: min(680px, calc(100% - 2rem)); max-height: min(720px, calc(100% - 2rem)); padding: 1.2rem; color: var(--cream); background: #211a16; border: 1px solid #806b55; border-radius: 8px; }
+.admin-detail-dialog::backdrop { background: #080605b8; }
+.admin-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.admin-detail-header h2 { margin: .3rem 0 .5rem; }
+.admin-detail-section { margin-top: 1rem; padding-top: .8rem; border-top: 1px solid #4a392c; }
+.admin-detail-section h3 { margin: 0 0 .5rem; color: var(--yellow); font-size: .9rem; }
+.admin-detail-list { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; color: #c6b89f; font-size: .82rem; }
+.admin-detail-list li { padding: .45rem .55rem; background: #17110e; }
+.admin-pagination { display: flex; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: .8rem; color: #c6b89f; font-size: .8rem; }
 @media (max-width: 680px) { .admin-shell { width: min(100% - 1rem, 1180px); padding-top: 1.5rem; } .admin-header { flex-direction: column; } .admin-panel { padding: .8rem; } }
-@media (max-width: 820px) { .admin-form { grid-template-columns: 1fr 1fr; } .admin-form-wide { grid-column: 1 / -1; } .admin-primary { grid-column: 1 / -1; justify-self: start; } .admin-metrics { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 820px) { .admin-form { grid-template-columns: 1fr 1fr; } .admin-form-wide { grid-column: 1 / -1; } .admin-form-actions { grid-column: 1 / -1; justify-self: start; } .admin-metrics { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 520px) { .admin-filter-row { align-items: stretch; flex-direction: column; gap: 0; } .admin-filter-row .admin-search:last-child { max-width: none; } .admin-metrics { grid-template-columns: repeat(2, 1fr); } }
