@@ -26,8 +26,8 @@ This tracker covers the boundary between code that exists locally and behavior t
 - [x] `REL-11` Rental-confirmation source assertion already matches the current `beganOnBackdrop` behavior.
 - [x] `REL-12` Repair the stale mobile-layout assertion to include the current compact-room offset contract.
 - [x] `REL-13` Repair the stale server assertion for the current `loadProviderAssets` signature.
-- [ ] `REL-14` Run `npm test`, `npm run build:pages`, and `git diff --check` before each relevant commit.
-- [ ] `REL-15` Add focused tests for each new migration/API/cache contract before broad test repair is declared complete.
+- [x] `REL-14` Run `npm test`, `npm run build:pages`, and `git diff --check` before each relevant commit.
+- [x] `REL-15` Add focused tests for each new migration/API/cache contract before broad test repair is declared complete.
 
 ## Live acceptance checklist
 
@@ -46,4 +46,6 @@ This tracker covers the boundary between code that exists locally and behavior t
 | 2026-09-11 | `npm run build:pages` | pass | Pages build completed successfully after sequential execution. |
 | 2026-09-12 | source-contract assertions | updated | REL-12 and REL-13 now describe the current compact-room and provider-asset contracts; REL-11 was already current. |
 | 2026-09-11 | Wrangler KV list | blocked | Cloudflare authentication error 10000; no namespace was provisioned or claimed live. |
+| 2026-09-12 | `npm test` | 245/245 pass | Focused blocked-state, admin-route, migration, and repaired source-contract tests pass. |
+| 2026-09-12 | `npm run build:pages` + `git diff --check` | pass | Static Pages build completed and the worktree has no whitespace errors. |
 | pending | Worker deployment | pending | Migrations, shared KV binding, and live endpoint verification remain. |

@@ -1,6 +1,6 @@
 # Locadora Catalogue and Admin Tracker
 
-Status: ready for implementation  
+Status: code implementation complete; live verification pending
 Priority: highest  
 Owner: Will only  
 Last updated: 2026-09-11
@@ -17,7 +17,7 @@ Give Will one private `/admin/` surface to remove unsuitable catalogue titles, m
   - A check constraint allowing only `movie` and `series`, with a positive TMDB id.
   - An audit-friendly history instead of destructive deletion.
 - [x] `CAT-02` Define one canonical key helper shared by private Worker, public Worker, and tests. Use `movie:<id>` or `series:<id>` consistently with existing title state contracts.
-- [~] `CAT-03` Add a versioned safe policy snapshot in a shared Cloudflare KV namespace bound to both Workers. Code exists; the namespace is not provisioned because Wrangler authentication is currently unavailable.
+- [x] `CAT-03` Add a versioned safe policy snapshot in a shared Cloudflare KV namespace bound to both Workers. Code exists and the namespace/binding was provisioned by the operator; live endpoint verification remains in the launch tracker.
 - [x] `CAT-04` Define propagation behavior: policy changes must become visible to public requests within the configured KV/cache window, targeted at 60 seconds or less. Never rely only on browser cache expiry.
 
 ## Private Worker API
@@ -77,3 +77,6 @@ Give Will one private `/admin/` surface to remove unsuitable catalogue titles, m
 | Admin UI v1 | `0c2cfda`, `71726dc` | Pages build passes |
 | Review moderation | `89f9211` | Local Worker/schema tests pass; migration not applied live |
 | Aggregate metrics | `89f9211`, `71726dc` | Local Worker/UI/build tests pass |
+| Blocked authenticated member state | `537b3dd`, `0f77fa7`, `ca07407` | Local Worker/UI/schema tests pass; new forward migration and private Worker deployment remain |
+| Admin title preview and user detail tools | `c0ba15c` | Local Worker/UI/source-contract tests and Pages build pass; deployment remains |
+| Reliability contract repair | `57723e1`, `4cb716c` | Full suite passes after stale source assertions were aligned |

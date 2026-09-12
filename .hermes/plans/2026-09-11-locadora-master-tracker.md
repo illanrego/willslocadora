@@ -22,7 +22,7 @@ This is the index for the remaining Locadora work. Future agents should update t
 | Phase | Tracker | Status | Exit condition |
 | --- | --- | --- | --- |
 | P0 | This file | [~] | Trackers committed and linked from `TASKS.md`. |
-| P1 | [catalogue/admin tracker](2026-09-11-locadora-catalogue-admin-tracker.md) | [~] | Code is implemented and tested; live migration/KV deployment and blocked authenticated-state filtering remain. |
+| P1 | [catalogue/admin tracker](2026-09-11-locadora-catalogue-admin-tracker.md) | [~] | Code is implemented and tested; live migration, Worker deployment, and endpoint acceptance remain. |
 | P2 | [launch/reliability tracker](2026-09-11-locadora-launch-reliability-tracker.md) | [ ] | Migrations, Workers, caches, tests, and live account/admin flows are verified. |
 | P3 | [community/product tracker](2026-09-11-locadora-community-growth-tracker.md) | [ ] | Milestones and support/community value are backed by real state and are playtestable. |
 | P4 | [parked roadmap](2026-09-11-locadora-parked-roadmap.md) | [ ] | Revisit only after P1-P3 are stable. |
@@ -31,12 +31,12 @@ This is the index for the remaining Locadora work. Future agents should update t
 
 - [x] `/admin/` now includes catalogue blocks, review moderation, aggregate metrics, users, and session revocation.
 - [x] Owner-managed catalogue blocklist code exists, keyed by type and TMDB id.
-- [~] Public catalogue policy filtering exists in code, but the shared KV namespace is not provisioned/bound yet.
+- [x] Public catalogue policy filtering exists in code, and the shared KV namespace/binding was provisioned by the operator; live endpoint acceptance remains.
 - [x] Review visibility/moderation API and admin controls exist; live migration/deployment remains.
-- [ ] Authenticated Cesta/saved/rental state does not yet hide or reject blocked canonical keys.
+- [x] Authenticated Cesta/saved/rental state hides or rejects blocked canonical keys while preserving neutral active/history records and returns.
 - [ ] Milestone labels are still largely static scene content rather than measured product state.
 - [ ] The full Better Auth/Supabase deployment and live account loop still need operator verification.
-- [ ] `npm test` has three known stale source-contract failures; see `P2-05`.
+- [x] Stale source-contract failures were repaired; the full suite now passes 245/245.
 
 ## Working rules for future agents
 
@@ -49,11 +49,11 @@ This is the index for the remaining Locadora work. Future agents should update t
 
 ## Suggested implementation order
 
-- [ ] P1: catalogue block policy and admin catalogue screen.
-- [ ] P1: admin users, reviews, and aggregate statistics screens.
+- [x] P1: catalogue block policy and admin catalogue screen.
+- [x] P1: admin users, reviews, and aggregate statistics screens.
 - [ ] P2: schema/policy propagation, cache versioning, and API tests.
 - [ ] P2: deploy private/public Workers and verify live endpoints.
-- [ ] P2: repair stale tests and complete the account/admin playtest.
+- [~] P2: repair stale tests and complete the account/admin playtest.
 - [ ] P3: make milestones and support indicators real, then add import/export.
 - [ ] P4: reconsider broader community and recommendation ideas only after evidence from use.
 
