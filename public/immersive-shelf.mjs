@@ -79,7 +79,38 @@ function featuredMovies(titles) {
   return titles.filter((title) => title.type === 'movie').slice(0, 3);
 }
 
-export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect, onSwipe }) {
+export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect, onSwipe, plaqueOptions, onConfigure }) {
+  let draft = { genre, year, type, ignoreStoreYear: Boolean(plaqueOptions?.ignoreStoreYear) };
+  function drawPlaque() {
+    const context = signCanvas.canvas.getContext('2d');
+    context.fillStyle = '#e7d8b1';
+    context.fillRect(0, 0, 1024, 240);
+    context.strokeStyle = activeTheme.trim;
+    context.lineWidth = 16;
+    context.strokeRect(8, 8, 1008, 224);
+    context.fillStyle = activeTheme.sign;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.font = '900 64px Impact, Arial, sans-serif';
+    context.fillText(draft.genre.toUpperCase(), 512, 70, 790);
+    context.font = '900 64px Arial';
+    context.fillText('‹', 55, 70); context.fillText('›', 969, 70);
+    context.fillText('‹', 55, 174); context.fillText('›', 390, 174);
+    context.font = draft.ignoreStoreYear ? '900 30px Arial' : '900 76px Courier New';
+    context.fillText(draft.ignoreStoreYear ? plaqueOptions.allYears : String(draft.year), 223, 174, 250);
+    context.font = '900 38px Arial';
+    context.fillText(draft.type === 'series' ? plaqueOptions.series : plaqueOptions.movies, 625, 174, 290);
+    context.fillStyle = '#9e3634'; context.fillRect(825, 125, 170, 95);
+    context.fillStyle = '#fff4d1'; context.font = '900 48px Arial';
+    context.fillText(plaqueOptions.go, 910, 174);
+    signCanvas.texture.needsUpdate = true;
+  }
+  function plaqueHit(event) {
+    if (!plaqueOptions) return null;
+    updatePointer(event);
+    raycaster.setFromCamera(pointer, camera);
+    return raycaster.intersectObject(sign, false).find((hit) => hit.face.materialIndex === 4);
+  }
   let activeTheme = theme || { backing: '#2f526b', trim: '#527f9e', sign: '#101827', lamp: '#c99a2e' };
   const mobilePerformance = window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
   const renderer = new THREE.WebGLRenderer({ antialias: !mobilePerformance, alpha: false });
@@ -516,6 +547,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let currentType = type;
 
   function applyVisuals(nextVisuals = {}) {
+    if (plaqueOptions && Array.isArray(nextVisuals.providers)) {
+      plaqueOptions.allowAllYears = nextVisuals.providers.length > 0;
+      if (typeof nextVisuals.ignoreStoreYear === 'boolean') draft.ignoreStoreYear = nextVisuals.ignoreStoreYear;
+    }
     activeTheme = nextVisuals.theme || activeTheme;
     activeProviders = Array.isArray(nextVisuals.providers) ? nextVisuals.providers : activeProviders;
     backingMaterial.color.set(activeTheme.backing);
@@ -547,6 +582,9 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     activeStand = nextStand;
     drawSign(signCanvas.canvas.getContext('2d'), nextGenre, nextYear, nextType, activeTheme, activeProviders, providerImages, loading);
     signCanvas.texture.needsUpdate = true;
+    if (plaqueOptions) {
+      drawPlaque();
+    }
     drawStandMarker(standCanvas.canvas.getContext('2d'), activeStand);
     standCanvas.texture.needsUpdate = true;
     renderer.domElement.setAttribute('aria-label', `${nextGenre} rental shelf. Use arrow keys to choose a tape and Enter to inspect it.`);
@@ -602,7 +640,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     if (event.pointerType !== 'mouse') return;
     const hit = pick(event);
     hovered = hit ? hit.object.userData.index : -1;
-    renderer.domElement.style.cursor = hovered >= 0 ? 'pointer' : 'default';
+    renderer.domElement.style.cursor = hovered >= 0 || plaqueHit(event) ? 'pointer' : 'default';
   }
 
   function pointerDown(event) {
@@ -655,6 +693,25 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
 
   function click(event) {
     if (swipeLock) return;
+    const plaque = plaqueHit(event);
+    if (plaque) {
+      const x = plaque.uv.x * 1024;
+      const y = (1 - plaque.uv.y) * 240;
+      if (y < 120) {
+        const choices = plaqueOptions.genres;
+        const index = choices.indexOf(draft.genre);
+        draft.genre = choices[(index + (x < 512 ? -1 : 1) + choices.length) % choices.length];
+      } else if (x < 440) {
+        if (x > 100 && x < 340 && plaqueOptions.allowAllYears) draft.ignoreStoreYear = !draft.ignoreStoreYear;
+        else {
+          draft.ignoreStoreYear = false;
+          draft.year = Math.max(1920, Math.min(2026, draft.year + (x < 223 ? -1 : 1)));
+        }
+      } else if (x < 810) draft.type = draft.type === 'movie' ? 'series' : 'movie';
+      else onConfigure?.({ ...draft });
+      drawPlaque();
+      return;
+    }
     const hit = pick(event);
     if (!hit) return;
     selected = hit.object.userData.index;
@@ -719,6 +776,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   renderTapes(titles);
   loadFeaturedPosters(year);
   applyVisuals({});
+  if (plaqueOptions) drawPlaque();
 
   function render(time) {
     if (disposed || !running) return;
@@ -781,6 +839,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       return adjustZoom(-0.12);
     },
     setLoading(nextGenre, nextYear, nextType, nextStand) {
+      draft = { ...draft, genre: nextGenre, year: nextYear, type: nextType };
       updateSign(nextGenre, nextYear, nextType, true, nextStand);
     },
     setVisuals(nextVisuals) {
@@ -792,6 +851,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       if (record && typeof record.vhs?.setLogo === 'function') record.vhs.setLogo(logoUrl, fallbackLogoUrl);
     },
     update(nextTitles, nextGenre, nextYear, nextType, nextStand, nextVisuals) {
+      if (nextGenre !== currentGenre || nextYear !== currentYear || nextType !== currentType) draft = { ...draft, genre: nextGenre, year: nextYear, type: nextType };
       applyVisuals(nextVisuals);
       standTransition = null;
       room.position.x = 0;

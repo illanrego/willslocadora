@@ -717,7 +717,7 @@
   function immersiveVisuals() {
     const genre = genres[state.genreIndex];
     const providers = state.providers.map((id) => state.providerRegistry.find((provider) => provider.id === id)).filter(Boolean);
-    return { theme: getGenreTheme(genre.theme), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers };
+    return { theme: getGenreTheme(genre.theme), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers, ignoreStoreYear: state.ignoreStoreYear };
   }
 
   async function loadProviderRegistry() {
@@ -1241,15 +1241,27 @@
         type: state.type,
         stand: state.stand,
         ...immersiveVisuals(),
+        plaqueOptions: { genres: genres.map(genreLabel), movies: t('movies'), series: t('series'), go: t('go'), allYears: t('allYears'), ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0 },
+        onConfigure: (draft) => {
+          setYear(draft.year, false);
+          selectGenre(genres.findIndex((genre) => genreLabel(genre) === draft.genre), false);
+          setIgnoreStoreYear(draft.ignoreStoreYear, false);
+          state.type = draft.type;
+          localStorage.setItem('locadora.type', state.type);
+          document.querySelectorAll('[data-type]').forEach((button) => button.classList.toggle('is-active', button.dataset.type === state.type));
+          loadShelf();
+        },
         onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'shelf', mode: 'immersive' }, true, posterUrl),
         onSwipe: (direction) => { if (direction < 0) goToPreviousStand(); else goToNextStand(); },
       });
       stage.querySelector('.immersive-canvas')?.focus();
+      $('#immersive-browse-panel').classList.add('plaque-keyboard-controls');
       $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
       syncImmersiveStandControls();
       hydrateTapeLogos();
     } catch (error) {
       if (token !== immersiveToken) return;
+      $('#immersive-browse-panel').classList.remove('plaque-keyboard-controls');
       try { await mountImmersiveFallback(stage); }
       catch { $('#immersive-status').textContent = `The immersive shelf could not be loaded: ${error.message}`; }
     }
