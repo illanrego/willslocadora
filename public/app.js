@@ -83,6 +83,8 @@
   const sourcesDialog = $('#sources-dialog');
   let activeVhsViewer = null;
   let activeViewerTitle = null;
+  let cataloguePolicyVersion = null;
+  let cataloguePolicySync = null;
   let streamingGateTitle = null;
   let viewerToken = 0;
   let immersiveShelf = null;
@@ -202,7 +204,7 @@
     return {
       id: `tmdb:${item.tmdbId ?? item.tmdb_id}`, type: item.type || item.title_type, name: item.name || item.title_snapshot, year: item.year ?? item.release_year_snapshot,
       rentalItemId: item.id, rentedAt: item.rentedAt || item.rented_at, returnedAt: item.returnedAt || item.returned_at,
-      watchedStatus: item.watchedStatus || item.watched_status, poster: item.poster || '',
+      watchedStatus: item.watchedStatus || item.watched_status, poster: item.poster || '', ...(item.unavailable ? { unavailable: true } : {}),
     };
   }
 
@@ -295,6 +297,11 @@
     const image = document.createElement('img'); image.alt = '';
     image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
     refreshAccountTitleCard(memberTitle, meta, { image, name, detail });
+    if (memberTitle.unavailable) {
+      detail.textContent = `${memberTitle.year || '—'} · título indisponível no acervo`;
+      item.append(image, text);
+      return item;
+    }
     const inspect = document.createElement('button');
     inspect.className = 'account-title-inspect'; inspect.id = `${origin.source}-inspect-${title.tmdbId || title.id}`; inspect.type = 'button'; inspect.textContent = 'Inspecionar';
     const inspectTitle = async () => {
@@ -631,6 +638,15 @@
       renderWatchlist();
       syncTitleSavedActions();
     } catch (error) {
+      if (error.code === 'CATALOGUE_TITLE_BLOCKED' || error.message === 'That title is no longer available in the catalogue') {
+        title.unavailable = true;
+        state.member.savedTitles = state.member.savedTitles.filter((item) => canonicalTitleKey(item) !== canonicalTitleKey(title));
+        renderAccount();
+        renderWatchlist();
+        syncTitleSavedActions();
+        $('#watchlist-status').textContent = 'Essa fita foi retirada da prateleira e não pode ser salva.';
+        return;
+      }
       if (!serializeRentalTitle(title)) { $('#watchlist-status').textContent = error.message; return; }
       toggleLocalSavedCollection(title, collection);
       $('#watchlist-status').textContent = `Salvo neste navegador. O servidor não respondeu (${error.message}).`;
@@ -736,13 +752,57 @@
     const request = (async () => {
       const response = await fetch(url, options);
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+      if (!response.ok) {
+        const error = new Error(body.error || `Request failed (${response.status})`);
+        error.status = response.status;
+        error.code = body.code || '';
+        throw error;
+      }
       return body;
     })();
     if (!deduplicate) return request;
     pendingPublicRequests.set(url, request);
     try { return await request; }
     finally { pendingPublicRequests.delete(url); }
+  }
+
+  async function pruneBlockedLocalTitles() {
+    const candidates = state.counter.filter((title) => !title.unavailable);
+    if (!candidates.length) return;
+    const blocked = new Set();
+    await Promise.all(candidates.map(async (title) => {
+      try {
+        await api(`/api/meta?${new URLSearchParams({ type: title.type, id: title.id, locale: state.locale })}`);
+      } catch (error) {
+        if (error.status === 404 && error.message === 'Catalogue title unavailable') blocked.add(canonicalTitleKey(title));
+      }
+    }));
+    if (!blocked.size) return;
+    state.counter = state.counter.filter((title) => !blocked.has(canonicalTitleKey(title)));
+    if (balconySelection) balconySelection = prepareCounterSelection(balconySelection.filter((title) => !blocked.has(canonicalTitleKey(title))));
+    saveCounter();
+    syncTitleBasketAction();
+    if ($('#basket-dialog').open) renderBasket();
+    if ($('#balcony-dialog').open) renderBalconyPanel();
+    $('#basket-status').textContent = 'Uma fita retirada da prateleira foi removida da sua Cesta.';
+    $('#balcony-panel-status').textContent = 'Uma fita retirada da prateleira foi removida da decisão.';
+  }
+
+  async function syncCataloguePolicy() {
+    if (cataloguePolicySync) return cataloguePolicySync;
+    cataloguePolicySync = (async () => {
+      try {
+        const body = await api('/api/catalogue-policy');
+        const version = Number(body?.version);
+        if (!Number.isInteger(version) || version < 0) return;
+        const firstRead = cataloguePolicyVersion === null;
+        const changed = !firstRead && cataloguePolicyVersion !== version;
+        cataloguePolicyVersion = version;
+        if (firstRead || changed) await pruneBlockedLocalTitles();
+      } catch { /* Older/local public Workers may not expose policy versions yet. */ }
+      finally { cataloguePolicySync = null; }
+    })();
+    return cataloguePolicySync;
   }
 
   function openCatalogSearch(preserve = false) {
@@ -1505,6 +1565,11 @@
   }
 
   function toggleCounter(title) {
+    if (title?.unavailable) {
+      $('#basket-status').textContent = 'Essa fita foi retirada da prateleira e não pode voltar para a Cesta.';
+      $('#balcony-panel-status').textContent = 'Essa fita foi retirada da prateleira e não pode voltar para a decisão.';
+      return { titles: state.counter, changed: false, reason: 'unavailable' };
+    }
     const result = updateRentalBasket(state.counter, title, state.rental.rented);
     state.counter = result.titles;
     if (balconySelection && result.changed) {
@@ -1577,6 +1642,9 @@
       }
     } catch (error) {
       pendingRental = false;
+      if (error.code === 'CATALOGUE_TITLE_BLOCKED' || error.message === 'That title is no longer available in the catalogue') {
+        void syncCataloguePolicy();
+      }
       $('#balcony-panel-status').textContent = error.message;
       openRentalDesk();
     } finally {
@@ -1844,6 +1912,12 @@
       const image = document.createElement('img'); image.alt = ''; image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
       const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = title.name; const meta = document.createElement('span'); meta.textContent = `${title.year || '—'} · ${title.type === 'series' ? 'Série' : 'Filme'}`; text.append(name, meta);
       const actions = document.createElement('div'); actions.className = 'return-choices';
+      if (title.unavailable) {
+        meta.textContent = `${title.year || '—'} · título indisponível no acervo`;
+        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Não levar'; remove.addEventListener('click', () => removeFromCounterDecision(title));
+        actions.append(remove); item.append(image, text, actions); counterList.append(item);
+        return;
+      }
       const inspect = document.createElement('button'); inspect.id = `balcony-inspect-${title.type}-${title.id}`; inspect.type = 'button'; inspect.textContent = 'Ver fita';
       const inspectBalconyTitle = () => openTitleFromOrigin(title, { source: 'balcony', dialogId: 'balcony-dialog', focusId: inspect.id });
       inspect.addEventListener('click', inspectBalconyTitle);
@@ -2220,6 +2294,18 @@
       text.append(name, meta);
       const actions = document.createElement('div');
       actions.className = 'counter-item-actions';
+      if (title.unavailable) {
+        meta.textContent = `${title.year || 'Ano desconhecido'} · título indisponível no acervo`;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = 'Tirar';
+        remove.setAttribute('aria-label', `Tirar ${title.name} da cesta`);
+        remove.addEventListener('click', () => toggleCounter(title));
+        actions.append(remove);
+        item.append(image, text, actions);
+        list.append(item);
+        return;
+      }
       const inspect = document.createElement('button');
       inspect.id = `basket-inspect-${title.type}-${title.id}`;
       inspect.type = 'button';
@@ -2243,6 +2329,7 @@
     balconySelection = null;
     renderBasket();
     if (!$('#basket-dialog').open) $('#basket-dialog').showModal();
+    void syncCataloguePolicy().then(() => { if ($('#basket-dialog').open) renderBasket(); });
   }
 
   function takeBasketToCounter() {
@@ -2498,6 +2585,7 @@
   window.addEventListener('pagehide', disposeVhsViewer, { once: true });
   loadProviderRegistry();
   saveCounter();
+  void syncCataloguePolicy();
   setMode('immersive');
   setYear(state.year);
 })();

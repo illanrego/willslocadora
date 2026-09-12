@@ -107,6 +107,7 @@
       poster: typeof value.poster === 'string' ? value.poster : '',
       background: typeof value.background === 'string' ? value.background : '',
       description: typeof value.description === 'string' ? value.description : '',
+      ...(value.unavailable ? { unavailable: true } : {}),
     };
   }
 

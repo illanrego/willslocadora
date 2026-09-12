@@ -60,7 +60,12 @@
     headers.set('authorization', `Bearer ${token}`);
     const response = await fetch(`${authApiBase}${path}`, { ...options, headers });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+    if (!response.ok) {
+      const error = new Error(body.error || `Request failed (${response.status})`);
+      error.status = response.status;
+      error.code = body.code || '';
+      throw error;
+    }
     return body;
   }
 
