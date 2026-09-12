@@ -270,6 +270,13 @@ test('repeat rentals remain available through the shared three-active-tape cap a
   assert.doesNotMatch(balcony, /rental\.rented/);
 });
 
+test('Balcony wall requests the durable public rented-tape milestone and keeps a neutral fallback', () => {
+  assert.match(app, /async function publicMilestoneLines\(\)[\s\S]*publicRequest\('\/v1\/public\/milestones'\)/);
+  assert.match(app, /collectiveRentedTapesUnavailable/);
+  assert.match(app, /rentedTapes\.toLocaleString\(state\.locale\)/);
+  assert.match(app, /copy: \{ collectiveAwards: t\('collectiveAwards'\), collectiveAwardLines \}/);
+});
+
 test('rental and return windows open the shared optional support panel', () => {
   assert.match(page, /id="basket-donation"/);
   assert.match(page, /id="tip-jar"/);

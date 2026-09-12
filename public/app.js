@@ -1843,6 +1843,18 @@
     });
   }
 
+  async function publicMilestoneLines() {
+    const fallback = [t('collectiveRentedTapesUnavailable'), t('collectiveAwardOne'), t('collectiveAwardThree')];
+    try {
+      const data = await window.LocadoraAccount.publicRequest('/v1/public/milestones');
+      const rentedTapes = Number(data?.rentedTapes);
+      if (!Number.isSafeInteger(rentedTapes) || rentedTapes < 0) return fallback;
+      return [`${t('collectiveRentedTapes')} · ${rentedTapes.toLocaleString(state.locale)}`, t('collectiveAwardOne'), t('collectiveAwardThree')];
+    } catch {
+      return fallback;
+    }
+  }
+
   async function mountBalcony() {
     const stage = $('#balcony-stage');
     balcony?.dispose();
@@ -1850,11 +1862,13 @@
     try {
       const { createBalcony } = await import('./balcony.mjs');
       if (state.mode !== 'balcony') return;
+      const collectiveAwardLines = await publicMilestoneLines();
+      if (state.mode !== 'balcony') return;
       balcony = createBalcony({
         container: stage,
         rental: balconyRentalState(),
         year: state.year,
-        copy: { collectiveAwards: t('collectiveAwards'), collectiveAwardLines: [t('collectiveAwardOne'), t('collectiveAwardTwo'), t('collectiveAwardThree')] },
+        copy: { collectiveAwards: t('collectiveAwards'), collectiveAwardLines },
         onCounterSelect: openRentalDesk,
         onSearch: openCatalogSearch,
         onTitleSelect: (title) => { if (title) openTitle(title, true, posterTextureUrl(title.poster || posterFallback(title))); },
