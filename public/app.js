@@ -922,34 +922,25 @@
   function applyImmersiveFilters() {
     const year = $('#immersive-year-input').value;
     const genreIndex = Number($('#immersive-genre-select').value);
-    const type = $('#immersive-plaque [data-type].is-active')?.dataset.type || state.type;
     const providers = selectedProviderIds($('#immersive-provider-checkboxes'));
     const ignoreStoreYear = $('#immersive-ignore-store-year').checked;
     const yearChanged = clampStoreYear(year) !== state.year;
     const genreChanged = genreIndex !== state.genreIndex;
-    const typeChanged = type !== state.type;
     const providerChanged = providers.join(',') !== state.providers.join(',');
     const ignoreChanged = ignoreStoreYear !== state.ignoreStoreYear;
-    if (!yearChanged && !genreChanged && !typeChanged && !providerChanged && !ignoreChanged) return;
+    if (!yearChanged && !genreChanged && !providerChanged && !ignoreChanged) return;
     if (yearChanged) setYear(year, false);
     if (genreChanged) selectGenre(genreIndex, false);
-    if (typeChanged) selectType(type, false);
     if (providerChanged) setProviders(providers, false);
     if (ignoreChanged) setIgnoreStoreYear(ignoreStoreYear, false);
     loadShelf();
   }
 
-  function syncImmersivePlaque() {
-    $('#immersive-year-input').value = state.year;
-    $('#immersive-genre-select').value = String(state.genreIndex);
-    document.querySelectorAll('#immersive-plaque [data-type]').forEach((button) => button.classList.toggle('is-active', button.dataset.type === state.type));
-  }
-
-  function selectType(type, reload = true) {
+  function selectType(type) {
     state.type = type;
     localStorage.setItem('locadora.type', type);
     document.querySelectorAll('[data-type]').forEach((button) => button.classList.toggle('is-active', button.dataset.type === type));
-    if (reload) loadShelf();
+    loadShelf();
   }
 
   function renderSkeletons() {
@@ -1412,7 +1403,6 @@
       balcony?.dispose();
       balcony = null;
       $('#balcony-stage').replaceChildren();
-      syncImmersivePlaque();
       const mobileShelf = window.matchMedia('(max-width: 600px)').matches;
       setImmersiveHudCollapsed(mobileShelf);
       setImmersiveFilters(!mobileShelf);
@@ -2414,7 +2404,7 @@
     $('#mobile-menu-toggle').addEventListener('click', () => {
       setMobileMenu(!$('#store-header').classList.contains('is-mobile-menu-open'));
     });
-    syncImmersivePlaque();
+    $('#immersive-year-input').value = state.year;
     syncProviderControls();
     syncLightingControls();
     syncAudioControls('ambience');
@@ -2431,7 +2421,7 @@
     $('#normal-filters-toggle').addEventListener('click', () => setNormalFilters($('#normal-provider-filters').hidden));
     $('#normal-settings-toggle').addEventListener('click', () => setNormalSettings($('#normal-settings').hidden));
     setNormalFilters(!state.providerPreferenceSet);
-    $('#immersive-plaque').addEventListener('submit', (event) => { event.preventDefault(); applyImmersiveFilters(); });
+    $('#immersive-go').addEventListener('click', applyImmersiveFilters);
     $('#provider-checkboxes').addEventListener('change', handleProviderChange);
     $('#immersive-provider-checkboxes').addEventListener('change', handleProviderChange);
     $('#account-provider-checkboxes').addEventListener('change', handleProviderChange);
@@ -2485,13 +2475,7 @@
 
     document.querySelectorAll('[data-type]').forEach((button) => {
       button.classList.toggle('is-active', button.dataset.type === state.type);
-      button.addEventListener('click', () => {
-        if (button.closest('#immersive-plaque')) {
-          document.querySelectorAll('#immersive-plaque [data-type]').forEach((candidate) => candidate.classList.toggle('is-active', candidate === button));
-          return;
-        }
-        selectType(button.dataset.type);
-      });
+      button.addEventListener('click', () => selectType(button.dataset.type));
     });
     titleDialog.addEventListener('close', () => {
       viewerToken += 1;

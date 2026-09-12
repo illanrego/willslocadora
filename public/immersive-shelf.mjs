@@ -27,12 +27,33 @@ function drawSign(context, genre, year, type, theme, providers, providerImages, 
   context.strokeStyle = theme.trim;
   context.lineWidth = 24;
   context.strokeRect(12, 12, width - 24, height - 24);
-  if (loading) {
-    context.fillStyle = theme.sign;
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.font = '900 34px Courier New, monospace';
-    context.fillText('OPENING THE BOXES…', width / 2, height / 2);
+  context.fillStyle = theme.sign;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  const title = String(genre).toUpperCase();
+  const titleFontSize = title.length > 26 ? 58 : title.length > 18 ? 68 : 92;
+  context.font = `900 ${titleFontSize}px Impact, Arial Narrow, sans-serif`;
+  context.fillText(title, width / 2, 105);
+  const detail = loading ? 'OPENING THE BOXES…' : `${year}  •  ${type === 'series' ? 'SERIES' : 'MOVIES'}`;
+  const visibleProviders = providers.slice(0, 4);
+  context.font = '700 32px Courier New, monospace';
+  const detailWidth = context.measureText(detail).width;
+  const logoWidth = visibleProviders.length ? visibleProviders.length * 48 + 12 : 0;
+  const detailX = width / 2 - logoWidth / 2;
+  context.fillText(detail, detailX, 196);
+  let logoX = detailX + detailWidth / 2 + 20;
+  for (const provider of visibleProviders) {
+    const image = providerImages.get(provider.id);
+    if (image?.complete && image.naturalWidth) context.drawImage(image, logoX, 174, 40, 40);
+    else {
+      context.fillStyle = theme.sign;
+      context.fillRect(logoX, 174, 40, 40);
+      context.fillStyle = '#e7d8b1';
+      context.font = '900 14px Arial Narrow, sans-serif';
+      context.fillText(provider.displayName.slice(0, 3).toUpperCase(), logoX + 20, 194);
+      context.font = '700 32px Courier New, monospace';
+    }
+    logoX += 48;
   }
 }
 

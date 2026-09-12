@@ -172,8 +172,7 @@ test('mobile 3D Balcão separates its compact utility bar from member actions', 
 });
 
 test('immersive mode exposes a basket independently from the Balcony', () => {
-  assert.match(page, /<form id="immersive-plaque" class="immersive-plaque-menu"/);
-  assert.match(page, /class="immersive-plaque-picker immersive-genre-picker"/);
+  assert.match(page, /class="immersive-picker immersive-genre-picker"/);
   assert.match(page, /id="immersive-basket-open"[^>]*aria-controls="basket-dialog"[^>]*>\s*[\s\S]*immersive-basket-label/);
   assert.match(page, /id="immersive-2d-open"/);
   assert.match(page, /id="basket-dialog"/);
@@ -181,12 +180,9 @@ test('immersive mode exposes a basket independently from the Balcony', () => {
   assert.match(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openBasket\)/);
   assert.match(app, /function takeBasketToCounter\(\)[\s\S]*state\.mode === 'immersive'[\s\S]*setMode\('balcony'\)/);
   assert.doesNotMatch(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openRentalDesk\)/);
-  assert.match(css, /\.immersive-plaque-menu/);
-  assert.match(css, /\.immersive-plaque-picker input \{ font-size: clamp\(1\.65rem, 3vw, 2\.35rem\)/);
+  assert.match(css, /\.immersive-genre-picker/);
+  assert.match(css, /\.immersive-genre-picker select/);
   assert.match(css, /\.immersive-hud \{[^}]*position: absolute;/);
-  assert.doesNotMatch(page, /id="immersive-browse-panel"/);
-  assert.match(app, /#immersive-plaque'\)\.addEventListener\('submit'/);
-  assert.match(app, /const type = \$\('#immersive-plaque \[data-type\]\.is-active'\)\?\.dataset\.type \|\| state\.type/);
   assert.match(css, /\.immersive-basket-button/);
   assert.match(css, /\.store-dock \.counter-button > span\.basket-spines/);
   assert.doesNotMatch(css, /\.immersive-basket-button \.basket-icon \{ display: none/);
