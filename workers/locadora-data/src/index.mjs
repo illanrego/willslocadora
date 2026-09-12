@@ -165,12 +165,13 @@ async function authenticateAdmin(request, env, ctx) {
 }
 
 class ApiError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, code = '') { super(message); this.status = status; this.code = code; }
 }
 
 export function databaseError(error) {
   if (!error) return;
   if (error.code === '23505') throw new ApiError(409, 'That public username is already taken');
+  if (error.message === 'catalogue_title_blocked') throw new ApiError(409, 'That title is no longer available in the catalogue', 'CATALOGUE_TITLE_BLOCKED');
   if (error.message === 'active_title_limit') throw new ApiError(409, 'You can have up to three active titles');
   if (error.message === 'title_already_rented') throw new ApiError(409, 'That title is already active at your counter');
   if (error.message === 'profile_required') throw new ApiError(409, 'Choose a public username first');
@@ -184,7 +185,7 @@ function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function mapTitleRow(row) {
+function mapTitleRow(row, blockedKeys = new Set()) {
   return {
     id: row.id,
     canonicalKey: row.canonical_key,
@@ -192,6 +193,7 @@ function mapTitleRow(row) {
     type: row.title_type,
     name: row.title_snapshot,
     year: row.release_year_snapshot,
+    ...(blockedKeys.has(row.canonical_key) ? { unavailable: true } : {}),
   };
 }
 
@@ -203,16 +205,16 @@ function mapCollectionRow(row) {
   return { ...mapWatchlistRow(row), collection: row.collection };
 }
 
-function mapRentalItemRow(row) {
-  return { ...mapTitleRow(row), rentedAt: row.rented_at, returnedAt: row.returned_at, watchedStatus: row.watched_status };
+function mapRentalItemRow(row, blockedKeys = new Set()) {
+  return { ...mapTitleRow(row, blockedKeys), rentedAt: row.rented_at, returnedAt: row.returned_at, watchedStatus: row.watched_status };
 }
 
-export function mapActiveRentalRow(row) {
+export function mapActiveRentalRow(row, blockedKeys = new Set()) {
   if (!row) return null;
   return {
     id: row.id,
     openedAt: row.opened_at,
-    items: (row.rental_items || []).filter((item) => !item.returned_at).map(mapRentalItemRow),
+    items: (row.rental_items || []).filter((item) => !item.returned_at).map((item) => mapRentalItemRow(item, blockedKeys)),
   };
 }
 
@@ -348,6 +350,11 @@ export function createSupabaseRepository(env) {
       });
       databaseError(result.error);
       return { removed: Boolean(result.data) };
+    },
+    async isTitleBlocked(canonicalKey) {
+      const result = await database.from('catalogue_blocks').select('id').eq('canonical_key', canonicalKey).is('removed_at', null).maybeSingle();
+      databaseError(result.error);
+      return Boolean(result.data);
     },
     async rentTitles(userId, titles) {
       const result = await database.rpc('rent_titles', {
@@ -525,31 +532,33 @@ export function createSupabaseRepository(env) {
       databaseError(result.error);
       return { revoked: result.count || 0 };
     },
-    async listHistory(userId, offset) {
+    async listHistory(userId, offset, blockedKeys = null) {
+      const activeBlockedKeys = blockedKeys || new Set(await this.listActiveCatalogueKeys());
       const result = await database.from('rental_items')
         .select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at, returned_at, watched_status')
         .eq('user_id', userId).not('returned_at', 'is', null)
         .order('returned_at', { ascending: false }).range(offset, offset + HISTORY_PAGE_SIZE);
       databaseError(result.error);
       const rows = result.data || [];
-      return { history: rows.slice(0, HISTORY_PAGE_SIZE).map(mapRentalItemRow), hasMore: rows.length > HISTORY_PAGE_SIZE };
+      return { history: rows.slice(0, HISTORY_PAGE_SIZE).map((row) => mapRentalItemRow(row, activeBlockedKeys)), hasMore: rows.length > HISTORY_PAGE_SIZE };
     },
     async getState(userId) {
+      const blockedKeys = new Set(await this.listActiveCatalogueKeys());
       const [profileResult, watchlistResult, rentalResult, history] = await Promise.all([
         database.from('profiles').select('user_id, username, created_at').eq('user_id', userId).maybeSingle(),
         database.from('saved_title_memberships').select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, collection, source, source_note, added_at, completed_at').eq('user_id', userId).order('added_at', { ascending: false }),
         database.from('rentals').select('id, opened_at, rental_items(id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at, returned_at, watched_status)').eq('user_id', userId).is('returned_at', null).maybeSingle(),
-        this.listHistory(userId, 0),
+        this.listHistory(userId, 0, blockedKeys),
       ]);
       [profileResult, watchlistResult, rentalResult].forEach(({ error }) => databaseError(error));
       return {
         profile: profileResult.data ? { userId: profileResult.data.user_id, username: profileResult.data.username, createdAt: profileResult.data.created_at } : null,
-        watchlist: (watchlistResult.data || []).filter((row) => row.collection === 'watch_later' && !row.completed_at).map(mapWatchlistRow),
+        watchlist: (watchlistResult.data || []).filter((row) => !blockedKeys.has(row.canonical_key) && row.collection === 'watch_later' && !row.completed_at).map(mapWatchlistRow),
         collections: {
-          watch_later: (watchlistResult.data || []).filter((row) => row.collection === 'watch_later' && !row.completed_at).map(mapCollectionRow),
-          favorite: (watchlistResult.data || []).filter((row) => row.collection === 'favorite').map(mapCollectionRow),
+          watch_later: (watchlistResult.data || []).filter((row) => !blockedKeys.has(row.canonical_key) && row.collection === 'watch_later' && !row.completed_at).map(mapCollectionRow),
+          favorite: (watchlistResult.data || []).filter((row) => !blockedKeys.has(row.canonical_key) && row.collection === 'favorite').map(mapCollectionRow),
         },
-        activeRental: mapActiveRentalRow(rentalResult.data),
+        activeRental: mapActiveRentalRow(rentalResult.data, blockedKeys),
         history: history.history,
         historyHasMore: history.hasMore,
       };
@@ -723,17 +732,21 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
         if (isWatchlistRequest) {
           const title = normalizeTitle({ ...body?.title, source: body?.source, sourceNote: body?.sourceNote });
           if (!title) return response(request, env, { error: 'Invalid watchlist title' }, 400);
+          if (await repository.isTitleBlocked?.(title.canonicalKey)) return response(request, env, { error: 'That title is no longer available in the catalogue', code: 'CATALOGUE_TITLE_BLOCKED' }, 409);
           return response(request, env, { watchlistItem: await repository.saveWatchlist(userId, title) }, 201);
         }
         if (isCollectionSaveRequest) {
           const title = normalizeTitle({ ...body?.title, source: body?.source, sourceNote: body?.sourceNote });
           if (!title) return response(request, env, { error: 'Invalid collection title' }, 400);
+          if (await repository.isTitleBlocked?.(title.canonicalKey)) return response(request, env, { error: 'That title is no longer available in the catalogue', code: 'CATALOGUE_TITLE_BLOCKED' }, 409);
           return response(request, env, { membership: await repository.saveCollectionMembership(userId, collectionMatch[1], title) }, 201);
         }
         if (isRentalRequest) {
           const titles = Array.isArray(body?.titles) ? body.titles.map((title) => normalizeTitle(title, { requireSource: false })) : [];
           const distinct = new Set(titles.filter(Boolean).map((title) => title.canonicalKey));
           if (titles.length < 1 || titles.length > 3 || titles.some((title) => !title) || distinct.size !== titles.length) return response(request, env, { error: 'Choose one to three distinct titles' }, 400);
+          const blocked = (await Promise.all(titles.map((title) => repository.isTitleBlocked?.(title.canonicalKey)))).some(Boolean);
+          if (blocked) return response(request, env, { error: 'That title is no longer available in the catalogue', code: 'CATALOGUE_TITLE_BLOCKED' }, 409);
           return response(request, env, { rental: await repository.rentTitles(userId, titles) }, 201);
         }
         if (returnMatch) {
@@ -747,7 +760,7 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
         return response(request, env, { profile: await repository.upsertProfile(userId, username) });
       } catch (error) {
         console.error('locadora-data request failed', error);
-        return response(request, env, { error: error.message || 'The Locadora archive is unavailable' }, error.status || 503);
+        return response(request, env, { error: error.message || 'The Locadora archive is unavailable', ...(error.code ? { code: error.code } : {}) }, error.status || 503);
       }
     },
   };

@@ -42,6 +42,21 @@ test('active rental state excludes tapes that have already been returned', () =>
   assert.deepEqual(active.items.map((item) => item.id), ['item-active']);
 });
 
+test('active rental state marks a blocked tape unavailable without losing its rental identity', () => {
+  const active = mapActiveRentalRow({
+    id: 'rental-1',
+    opened_at: '2026-08-01T10:00:00Z',
+    rental_items: [
+      { id: 'item-active', canonical_key: 'movie:603', tmdb_id: 603, title_type: 'movie', title_snapshot: 'The Matrix', release_year_snapshot: 1999, rented_at: '2026-08-01T10:00:00Z', returned_at: null },
+    ],
+  }, new Set(['movie:603']));
+
+  assert.deepEqual(active.items[0], {
+    id: 'item-active', canonicalKey: 'movie:603', tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999,
+    unavailable: true, rentedAt: '2026-08-01T10:00:00Z', returnedAt: null, watchedStatus: undefined,
+  });
+});
+
 test('Will-like ASCII username variants are recognized before profile changes', () => {
   assert.equal(isReservedWillUsername('will'), true);
   assert.equal(isReservedWillUsername('w1ll'), true);
@@ -362,6 +377,22 @@ test('data Worker saves an authenticated member title to the watchlist with a ca
   } });
 });
 
+test('data Worker rejects blocked saved titles before touching the repository write', async () => {
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => 'user_123',
+    createRepository: () => ({
+      async isTitleBlocked(canonicalKey) { assert.equal(canonicalKey, 'movie:603'); return true; },
+      async saveCollectionMembership() { assert.fail('must not write a blocked collection membership'); },
+    }),
+  });
+  const response = await worker.fetch(jsonRequest('/v1/collections/favorite', {
+    method: 'POST', body: { title: { tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 }, source: 'locadora' },
+  }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { error: 'That title is no longer available in the catalogue', code: 'CATALOGUE_TITLE_BLOCKED' });
+});
+
 test('data Worker refuses malformed or unsupported watchlist titles', async () => {
   const worker = createLocadoraDataWorker({
     authenticate: async () => 'user_123',
@@ -405,6 +436,22 @@ test('data Worker rents canonical titles through one server-side operation', asy
     { canonicalKey: 'movie:603', tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 },
     { canonicalKey: 'series:1396', tmdbId: 1396, type: 'series', name: 'Breaking Bad', year: 2008 },
   ] } });
+});
+
+test('data Worker rejects a rental batch containing a blocked title before creating a package', async () => {
+  const worker = createLocadoraDataWorker({
+    authenticate: async () => 'user_123',
+    createRepository: () => ({
+      async isTitleBlocked(canonicalKey) { return canonicalKey === 'movie:603'; },
+      async rentTitles() { assert.fail('must not rent a blocked title'); },
+    }),
+  });
+  const response = await worker.fetch(jsonRequest('/v1/rentals', {
+    method: 'POST', body: { titles: [{ tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 }] },
+  }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { error: 'That title is no longer available in the catalogue', code: 'CATALOGUE_TITLE_BLOCKED' });
 });
 
 test('data Worker refuses rental batches larger than the three active-title limit', async () => {

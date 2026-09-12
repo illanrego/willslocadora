@@ -123,6 +123,15 @@ test('catalogue blocks are reversible, owner-attributed, and unique while active
   assert.match(blockMigration, /enable row level security/i);
 });
 
+test('blocked catalogue titles cannot enter new saved or rental state', () => {
+  const stateMigration = readFileSync(new URL('../supabase/migrations/20260913_blocked_member_state.sql', import.meta.url), 'utf8');
+  assert.match(stateMigration, /create or replace function public\.reject_blocked_catalogue_state/i);
+  assert.match(stateMigration, /where canonical_key = new\.canonical_key and removed_at is null/i);
+  assert.match(stateMigration, /raise exception 'catalogue_title_blocked'/i);
+  assert.match(stateMigration, /saved_title_memberships_reject_blocked/i);
+  assert.match(stateMigration, /rental_items_reject_blocked/i);
+});
+
 test('review moderation keeps hidden rows auditable and outside public visibility', () => {
   const moderation = readFileSync(new URL('../supabase/migrations/20260912_admin_review_moderation.sql', import.meta.url), 'utf8');
   const reviewMigration = readFileSync(new URL('../supabase/migrations/20260802_add_title_reviews.sql', import.meta.url), 'utf8');

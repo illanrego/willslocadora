@@ -19,6 +19,8 @@ Browser CORS headers are emitted only for allowed origins. All mutation and memb
 - `DELETE /v1/collections/:collection/:type/:tmdbId` — removes only the requested saved collection membership.
 - `POST /v1/rentals` — atomically rents one to three distinct titles; the database enforces the three-active-title cap.
 - `POST /v1/rental-items/:id/return` — records `watched`, `not_watched`, or `unknown`. Only `watched` completes the active Assistir depois membership.
+
+Active catalogue blocks are excluded from saved collections. Existing active rentals and history retain their snapshots and dates with `unavailable: true`; new saved-title and rental writes for those canonical keys are rejected.
 - `GET /v1/admin/users` — exact-admin-only user directory with account, rental, watched, and review counts.
 - `POST /v1/admin/users/:id/revoke-sessions` — exact-admin-only session revocation for one user.
 
