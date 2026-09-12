@@ -24,3 +24,7 @@ namespace_id = "24002"
   [ratelimits.simple]
   limit = 30
   period = 60
+
+[[kv_namespaces]]
+binding = "CATALOGUE_POLICY"
+id = '7ea24df984de4c9c85dff23dd9ec22b7'
