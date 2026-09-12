@@ -23,9 +23,9 @@ This tracker covers the boundary between code that exists locally and behavior t
 
 ## Test repair and verification
 
-- [ ] `REL-11` Repair the stale rental-confirmation source assertion to match the current `beganOnBackdrop` behavior.
-- [ ] `REL-12` Repair the stale mobile-layout assertion to include the current compact-room offset contract.
-- [ ] `REL-13` Repair the stale server assertion for the current `loadProviderAssets` signature.
+- [x] `REL-11` Rental-confirmation source assertion already matches the current `beganOnBackdrop` behavior.
+- [x] `REL-12` Repair the stale mobile-layout assertion to include the current compact-room offset contract.
+- [x] `REL-13` Repair the stale server assertion for the current `loadProviderAssets` signature.
 - [ ] `REL-14` Run `npm test`, `npm run build:pages`, and `git diff --check` before each relevant commit.
 - [ ] `REL-15` Add focused tests for each new migration/API/cache contract before broad test repair is declared complete.
 
@@ -44,5 +44,6 @@ This tracker covers the boundary between code that exists locally and behavior t
 | --- | --- | --- | --- |
 | 2026-09-11 | `npm test` | 233/236 pass | Three known stale source-contract failures: rental confirmation backdrop assertion, mobile pan assertion, and `loadProviderAssets` signature assertion. |
 | 2026-09-11 | `npm run build:pages` | pass | Pages build completed successfully after sequential execution. |
+| 2026-09-12 | source-contract assertions | updated | REL-12 and REL-13 now describe the current compact-room and provider-asset contracts; REL-11 was already current. |
 | 2026-09-11 | Wrangler KV list | blocked | Cloudflare authentication error 10000; no namespace was provisioned or claimed live. |
 | pending | Worker deployment | pending | Migrations, shared KV binding, and live endpoint verification remain. |

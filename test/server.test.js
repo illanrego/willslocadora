@@ -161,7 +161,7 @@ test('server exposes the installed Three.js browser module without exposing node
   assert.match(viewerSource, /createVhsViewer/);
   assert.match(viewerSource, /certificationBR/);
   assert.match(viewerSource, /availabilityBR/);
-  assert.match(viewerSource, /function loadProviderAssets\(nextTitle\)/);
+  assert.match(viewerSource, /function loadProviderAssets\(nextTitle, preserveExisting = false\)/);
   assert.match(viewerSource, /loadProviderAssets\(title\);/);
   assert.match(viewerSource, /function setDetailFocus\(nextFocus\)/);
   assert.match(viewerSource, /focusFront\(\)/);

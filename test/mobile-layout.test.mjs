@@ -125,7 +125,7 @@ test('mobile immersive drag pans the camera and focus together without translati
   assert.match(immersive, /renderer\.domElement\.setPointerCapture\?\.\(event\.pointerId\)/);
   assert.match(immersive, /mobilePanX = THREE\.MathUtils\.clamp\(dragPanBaseX - [\s\S]*\* 4, -2\.6, 2\.6\)/);
   assert.match(immersive, /mobilePanY = THREE\.MathUtils\.clamp\(dragPanBaseY \+ [\s\S]*\* 4\.5, -3\.4, 3\.4\)/);
-  assert.match(immersive, /mobilePanLookAt\.set\(mobilePanX, 0\.25 \+ mobilePanY, 0\)/);
+  assert.match(immersive, /mobilePanLookAt\.set\(mobilePanX, compactRoomOffsetY \+ 0\.25 \+ mobilePanY, 0\)/);
   assert.doesNotMatch(immersive, /onSwipe\?\./);
   assert.doesNotMatch(immersive, /dragOffsetTarget = THREE\.MathUtils\.clamp/);
   assert.doesNotMatch(immersive, /room\.position\.x \+= \(dragOffsetTarget/);
