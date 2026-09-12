@@ -233,7 +233,7 @@ test('account errors and rental prompts survive the account rerender', () => {
 test('private account API supports paged history and authenticated username availability feedback', () => {
   assert.match(worker, /url\.pathname === '\/v1\/history'/);
   assert.match(worker, /url\.pathname\.match\(\/\^\\\/v1\\\/usernames/);
-  assert.match(worker, /async listHistory\(userId, offset\)/);
+  assert.match(worker, /async listHistory\(userId, offset, blockedKeys = null\)/);
   assert.match(worker, /async isUsernameAvailable\(userId, username\)/);
   assert.match(app, /\/v1\/usernames\/\$\{encodeURIComponent\(username\)\}/);
 });

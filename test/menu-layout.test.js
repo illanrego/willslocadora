@@ -225,7 +225,7 @@ test('a successful rental clears the complete Cesta while retaining the server-c
 
 test('rental confirmation has one deliberate conclusion and cannot be dismissed accidentally', () => {
   assert.match(app, /rental-confirmation-dialog'\)\.addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\)/);
-  assert.match(app, /event\.target === dialog && dialog\.id !== 'rental-confirmation-dialog'/);
+  assert.match(app, /event\.target === dialog && beganOnBackdrop && dialog\.id !== 'rental-confirmation-dialog'/);
 });
 
 test('the rental desk explains the rental-store flow: choose basket, decide at counter, rent one pack', () => {
@@ -290,7 +290,7 @@ test('the member destination is a detailed Member Section rather than a generic 
 test('VHS inspection offers the basket as a floating action without duplicating streamings', () => {
   assert.match(app, /basket\.textContent = 'Botar na cesta';/);
   assert.match(app, /memberActions\.append\(basket\)/);
-  assert.match(app, /utilityActions\.append\(savedActions, titleReview, teaser\)/);
+  assert.match(app, /utilityActions\.append\(savedActions, titleReview, teaser, ownerAction\)/);
   assert.doesNotMatch(app, /title-streaming-action/);
   assert.match(app, /savedActions\.className = 'title-saved-actions';/);
   assert.match(app, /basket\.addEventListener\('click', \(\) => \{[\s\S]*toggleCounter\(current\)/);
