@@ -177,24 +177,22 @@
           </button>
         </div>
         <button id="immersive-2d-open" class="immersive-2d-button" type="button" aria-label="Voltar ao modo 2D" title="Voltar ao modo 2D">2D</button>
-        <details id="immersive-browse-panel" class="immersive-browse-panel" open>
-          <summary><span><span data-i18n="genre">Gênero</span> · <span data-i18n="year">Ano</span></span><span class="browse-panel-chevron" aria-hidden="true">⌃</span></summary>
-          <div class="immersive-independent-pickers">
-              <label class="immersive-picker immersive-genre-picker" for="immersive-genre-select">
-                <span data-i18n="genre">Gênero</span>
-                <select id="immersive-genre-select" aria-label="Immersive genre"></select>
-              </label>
-              <label class="immersive-picker immersive-year-picker" for="immersive-year-input">
-                <span data-i18n="year">Ano</span>
-                <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
-              </label>
-            <button id="immersive-go" type="button" data-i18n="go">Ir</button>
-            <div class="immersive-format" role="group" aria-label="Immersive shelf format">
-              <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
-              <button data-type="series" type="button" data-i18n="series">Séries</button>
-            </div>
+        <form id="immersive-plaque" class="immersive-plaque-menu" aria-label="Configure immersive shelf">
+          <div class="immersive-plaque-title" aria-hidden="true">ESTANTE</div>
+          <label class="immersive-plaque-picker immersive-genre-picker" for="immersive-genre-select">
+            <span data-i18n="genre">Gênero</span>
+            <select id="immersive-genre-select" aria-label="Immersive genre"></select>
+          </label>
+          <label class="immersive-plaque-picker immersive-year-picker" for="immersive-year-input">
+            <span data-i18n="year">Ano</span>
+            <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
+          </label>
+          <div id="immersive-format" class="immersive-format" role="group" aria-label="Immersive shelf format">
+            <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
+            <button data-type="series" type="button" data-i18n="series">Séries</button>
           </div>
-        </details>
+          <button id="immersive-go" type="submit" data-i18n="go">Ir</button>
+        </form>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
             <nav class="immersive-menu-actions" aria-label="Immersive actions">
