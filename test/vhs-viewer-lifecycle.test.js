@@ -33,6 +33,12 @@ test('same-tape metadata and basket refreshes preserve the inspected back cover'
   assert.match(viewer, /loadProviderAssets\(title, preserveView\)/);
 });
 
+test('VHS back cover places runtime immediately beside the IMDb score', () => {
+  const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
+  assert.match(viewer, /const runtimeLabel = Number\.isSafeInteger\(runtime\) && runtime > 0 \? `\$\{runtime\} min` : ''/);
+  assert.match(viewer, /title\.imdbRating && `IMDb ★ \$\{title\.imdbRating\}`, runtimeLabel/);
+});
+
 test('VHS canvas changes to a pointer over clickable back-cover actions', () => {
   const viewer = readFileSync(require.resolve('../public/vhs-3d.mjs'), 'utf8');
   assert.match(viewer, /function isClickableHit\(hit\)/);

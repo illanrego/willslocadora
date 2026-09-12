@@ -110,6 +110,12 @@ function yearFromDate(value) {
   return Number.isInteger(year) ? year : null;
 }
 
+function runtimeMinutes(type, title) {
+  if (type !== 'movie') return null;
+  const runtime = Number(title?.runtime);
+  return Number.isSafeInteger(runtime) && runtime > 0 ? runtime : null;
+}
+
 async function mapWithConcurrency(items, mapper, limit = 4) {
   const values = new Array(items.length);
   let next = 0;
@@ -218,7 +224,9 @@ async function titleMeta({ type, id, locale }, env, fetchImpl, cataloguePolicy) 
     ...(/^tt\d+$/.test(title.external_ids?.imdb_id || '') ? { imdbId: title.external_ids.imdb_id } : {}),
     type, name: title.title || title.name || 'Untitled', year: yearFromDate(title.release_date || title.first_air_date),
     description: title.overview || '', poster: imageUrl(title.poster_path, 'w500'), background: imageUrl(title.backdrop_path, 'w1280'),
-    imdbRating: title.vote_average ? String(title.vote_average) : '', logo: imageUrl(logo?.file_path, 'w500'), genres: (title.genres || []).map((genre) => genre.name).filter(Boolean),
+    imdbRating: title.vote_average ? String(title.vote_average) : '',
+    ...(runtimeMinutes(type, title) ? { runtime: runtimeMinutes(type, title) } : {}),
+    logo: imageUrl(logo?.file_path, 'w500'), genres: (title.genres || []).map((genre) => genre.name).filter(Boolean),
     director: directors, writer: writers, cast: names((title.credits?.cast || []).slice(0, 10)), certificationBR: movieRating || seriesRating,
     availabilityBR: { link: br.link || '', providers: providers.map((provider) => provider.provider_name).filter(Boolean), subscriptionProviders: providers.map((provider) => provider.provider_name).filter(Boolean), providerLogos: providers.map((provider) => ({ name: provider.provider_name, logo: imageUrl(provider.logo_path, 'w92') })).filter((provider) => provider.name && provider.logo) },
   };

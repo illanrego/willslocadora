@@ -236,7 +236,9 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   wrappedText(context, title.displayTitle || title.name, 72, 250, 610, 75, 2);
   context.fillStyle = LOCADORA_PALETTE.cream;
   context.font = '800 23px Arial Narrow, sans-serif';
-  const meta = [...(title.genres || []).slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`, title.certificationBR && `BR ${title.certificationBR}`].filter(Boolean).join('  ·  ');
+  const runtime = Number(title.runtime);
+  const runtimeLabel = Number.isSafeInteger(runtime) && runtime > 0 ? `${runtime} min` : '';
+  const meta = [...(title.genres || []).slice(0, 3), title.imdbRating && `IMDb ★ ${title.imdbRating}`, runtimeLabel, title.certificationBR && `BR ${title.certificationBR}`].filter(Boolean).join('  ·  ');
   context.fillText(meta || copy.catalogueEdition, 72, 365);
 
   drawImageFrame(context, posterImage, 72, 405, 348, 285, 0.18);

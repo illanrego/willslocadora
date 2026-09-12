@@ -10,6 +10,7 @@ const {
   filterByStore,
   hydrateTitleMetadata,
   normalizeTitle,
+  parseRuntimeMinutes,
   parseReleaseYear,
   normalizeRentalState,
   prepareCounterSelection,
@@ -32,6 +33,12 @@ test('parseReleaseYear extracts the first four digit year', () => {
   assert.equal(parseReleaseYear('1997–1999'), 1997);
   assert.equal(parseReleaseYear('Released 1987'), 1987);
   assert.equal(parseReleaseYear(null), null);
+});
+
+test('parseRuntimeMinutes normalizes movie lengths for the tape back cover', () => {
+  assert.equal(parseRuntimeMinutes(136), 136);
+  assert.equal(parseRuntimeMinutes('2h 16m'), 136);
+  assert.equal(parseRuntimeMinutes(null), null);
 });
 
 test('metadata hydration applies one cached response to every matching title object', async () => {

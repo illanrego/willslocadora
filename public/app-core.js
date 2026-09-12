@@ -15,6 +15,15 @@
     return match ? Number(match[0]) : null;
   }
 
+  function parseRuntimeMinutes(value) {
+    if (Array.isArray(value)) return parseRuntimeMinutes(value.find((item) => item != null));
+    const text = String(value == null ? '' : value).trim().toLowerCase();
+    if (!text) return null;
+    const hours = text.match(/^(\d+)\s*h(?:\s*(\d+)\s*m)?$/);
+    const minutes = hours ? Number(hours[1]) * 60 + Number(hours[2] || 0) : Number(text.match(/\d+/)?.[0]);
+    return Number.isSafeInteger(minutes) && minutes > 0 ? minutes : null;
+  }
+
   function normalizeStringList(value) {
     if (Array.isArray(value)) return value.filter(Boolean).map(String);
     if (typeof value === 'string' && value.trim()) return value.split(',').map((item) => item.trim()).filter(Boolean);
@@ -23,6 +32,7 @@
 
   function normalizeTitle(meta, source) {
     const imdbId = /^tt\d+$/.test(String(meta.imdbId || '')) ? String(meta.imdbId) : '';
+    const runtime = parseRuntimeMinutes(meta.runtime);
     return {
       id: String(meta.id || ''),
       ...(imdbId ? { imdbId } : {}),
@@ -34,6 +44,7 @@
       background: typeof meta.background === 'string' ? meta.background : '',
       description: typeof meta.description === 'string' ? meta.description : '',
       imdbRating: meta.imdbRating == null ? '' : String(meta.imdbRating),
+      ...(runtime ? { runtime } : {}),
       director: normalizeStringList(meta.director),
       writer: normalizeStringList(meta.writer),
       cast: normalizeStringList(meta.cast),
@@ -235,5 +246,5 @@
     return result;
   }
 
-  return { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, hydrateTitleMetadata, normalizeTitle, parseReleaseYear, rentalTitleKey, normalizeRentalState, prepareCounterSelection, removeCounterSelection, rentCounterTitles, returnRentedTitle, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse };
+  return { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, deduplicateTitles, filterByStore, hydrateTitleMetadata, normalizeTitle, parseReleaseYear, parseRuntimeMinutes, rentalTitleKey, normalizeRentalState, prepareCounterSelection, removeCounterSelection, rentCounterTitles, returnRentedTitle, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse };
 }));

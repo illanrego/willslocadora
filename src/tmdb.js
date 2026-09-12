@@ -213,6 +213,8 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
       const logo = (details.images?.logos || []).find((image) => image.iso_639_1 === preferredLogoLanguage)
         || (details.images?.logos || []).find((image) => image.iso_639_1 === 'en' || image.iso_639_1 === 'pt')
         || details.images?.logos?.[0];
+      const runtime = title.type === 'movie' && Number.isSafeInteger(Number(details.runtime)) && Number(details.runtime) > 0
+        ? Number(details.runtime) : null;
 
       return {
         ...title,
@@ -223,6 +225,7 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
         tagline: details.tagline || '',
         background: imageUrl(details.backdrop_path, 'w1280') || title.background,
         logo: imageUrl(logo?.file_path, 'w500'),
+        ...(runtime ? { runtime } : {}),
         certificationBR: brazilCertification(title.type, details),
         availabilityBR: brazilAvailability(details),
         director: uniqueNames([...directors, ...(title.director || [])]),

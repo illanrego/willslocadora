@@ -52,13 +52,15 @@ test('shelf titles expose a rentable TMDB identity while retaining IMDb handoff 
 test('title metadata supplies the IMDb identity needed for Stremio handoff', async () => {
   const worker = createLocadoraWorker({
     fetchImpl: async (url) => {
-      if (String(url).includes('/movie/603?')) return response({ id: 603, title: 'The Matrix', release_date: '1999-03-30', credits: { crew: [], cast: [] }, external_ids: { imdb_id: 'tt0133093' } });
+      if (String(url).includes('/movie/603?')) return response({ id: 603, title: 'The Matrix', release_date: '1999-03-30', runtime: 136, credits: { crew: [], cast: [] }, external_ids: { imdb_id: 'tt0133093' } });
       throw new Error(`Unexpected request: ${url}`);
     },
   });
 
   const result = await worker.fetch(new Request('https://api.example/v1/title?type=movie&id=tmdb:603&locale=pt-BR'), { TMDB_API_KEY: 'test' });
-  assert.equal((await result.json()).meta.imdbId, 'tt0133093');
+  const payload = await result.json();
+  assert.equal(payload.meta.imdbId, 'tt0133093');
+  assert.equal(payload.meta.runtime, 136);
 });
 
 test('worker rejects invalid catalogue search queries', async () => {

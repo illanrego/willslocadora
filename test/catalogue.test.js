@@ -95,12 +95,13 @@ test('fetchTitleMeta returns normalized rich metadata from a compatible source',
       ok: true,
       json: async () => ({ meta: {
         id: 'tt0133093', type: 'movie', name: 'The Matrix', releaseInfo: '1999',
-        imdbRating: '8.7', director: ['Lana Wachowski'], writer: ['Lilly Wachowski'], cast: ['Keanu Reeves'],
+        imdbRating: '8.7', runtime: '136 min', director: ['Lana Wachowski'], writer: ['Lilly Wachowski'], cast: ['Keanu Reeves'],
       } }),
     }),
   });
 
   assert.equal(meta.imdbRating, '8.7');
+  assert.equal(meta.runtime, 136);
   assert.deepEqual(meta.director, ['Lana Wachowski']);
   assert.deepEqual(meta.writer, ['Lilly Wachowski']);
   assert.deepEqual(meta.cast, ['Keanu Reeves']);
@@ -120,6 +121,7 @@ test('TMDB enrichment adds Brazil availability, classification, images, and expa
           crew: [{ job: 'Director', name: 'Lana Wachowski' }, { job: 'Writer', name: 'Lilly Wachowski' }],
         },
         images: { logos: [{ file_path: '/matrix-logo.png', iso_639_1: 'en' }] },
+        runtime: 136,
         release_dates: { results: [{ iso_3166_1: 'BR', release_dates: [{ certification: '14' }] }] },
         'watch/providers': { results: { BR: { link: 'https://www.justwatch.com/br/filme/matrix', flatrate: [{ provider_name: 'Netflix', logo_path: '/netflix-logo.png' }], rent: [{ provider_name: 'Amazon Prime Video' }] } } },
       }) };
@@ -133,6 +135,7 @@ test('TMDB enrichment adds Brazil availability, classification, images, and expa
   assert.match(requests[0], /language=pt-BR/);
   assert.equal(result.id, 'tmdb:603');
   assert.equal(result.imdbId, 'tt0133093');
+  assert.equal(result.runtime, 136);
   assert.equal(result.background, 'https://image.tmdb.org/t/p/w1280/matrix-backdrop.jpg');
   assert.equal(result.logo, 'https://image.tmdb.org/t/p/w500/matrix-logo.png');
   assert.equal(result.certificationBR, '14');
