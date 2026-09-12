@@ -10,6 +10,9 @@ security definer
 set search_path = public
 as $$
 begin
+  if tg_op = 'update' and old.canonical_key = new.canonical_key then
+    return new;
+  end if;
   if exists (
     select 1 from public.catalogue_blocks
     where canonical_key = new.canonical_key and removed_at is null

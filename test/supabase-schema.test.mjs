@@ -128,6 +128,7 @@ test('blocked catalogue titles cannot enter new saved or rental state', () => {
   assert.match(stateMigration, /create or replace function public\.reject_blocked_catalogue_state/i);
   assert.match(stateMigration, /where canonical_key = new\.canonical_key and removed_at is null/i);
   assert.match(stateMigration, /raise exception 'catalogue_title_blocked'/i);
+  assert.match(stateMigration, /if tg_op = 'update' and old\.canonical_key = new\.canonical_key then[\s\S]*return new/i);
   assert.match(stateMigration, /saved_title_memberships_reject_blocked/i);
   assert.match(stateMigration, /rental_items_reject_blocked/i);
 });
