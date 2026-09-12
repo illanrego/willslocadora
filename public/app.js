@@ -99,6 +99,7 @@
   let balconySelection = null;
   let pendingReturns = new Map();
   let returnRequestInFlight = false;
+  let blockActionInFlightKey = '';
   let memberSessionVersion = 0;
   let memberRefreshVersion = 0;
   let t = createTranslator(window.LocadoraI18n.COPY, state.locale);
@@ -956,23 +957,33 @@
   }
 
   async function blockCatalogueTitle(title, action) {
-    if (!state.admin || action.disabled) return;
+    const key = `${title.type}:${title.id}`;
+    if (!state.admin || action?.disabled || blockActionInFlightKey === key) return;
+    blockActionInFlightKey = key;
+    if (action) action.disabled = true;
     const reason = window.prompt(`Motivo para retirar ${title.name} da prateleira:`)?.trim() || '';
-    if (!reason) return;
-    action.disabled = true;
+    if (!reason) {
+      blockActionInFlightKey = '';
+      if (action) action.disabled = false;
+      return;
+    }
     try {
       await window.LocadoraAccount.request('/v1/admin/catalogue/blocks', {
         method: 'POST',
         body: JSON.stringify({ type: title.type, tmdbId: Number(title.tmdbId || String(title.id).replace(/^tmdb:/, '')), reason }),
       });
-      const key = `${title.type}:${title.id}`;
       state.titles = state.titles.filter((item) => `${item.type}:${item.id}` !== key);
       state.standCache.set(state.stand, { titles: state.titles, hasNextStand: state.hasNextStand });
       if (state.mode === 'normal') renderShelf(state.titles, state.stand, false);
-      $('#shelf-status').textContent = 'Título bloqueado e retirado desta estante.';
+      if (state.mode === 'immersive') refreshImmersive();
+      $('#shelf-status').textContent = 'Título retirado desta estante.';
+      if (titleDialog.open && `${activeViewerTitle?.type}:${activeViewerTitle?.id}` === key) titleDialog.close();
     } catch (error) {
       $('#shelf-status').textContent = error.message || 'Não foi possível bloquear este título.';
-      action.disabled = false;
+      if (action) action.disabled = false;
+    } finally {
+      blockActionInFlightKey = '';
+      syncTitleOwnerAction();
     }
   }
 
@@ -1374,7 +1385,7 @@
     const providerLabel = state.providers.map((id) => providerNames[id]).filter(Boolean).join(' + ');
     const yearLabel = state.ignoreStoreYear ? t('allYears') : `${state.year - 19}–${state.year}`;
     $('#shelf-title').textContent = genreLabel(genre);
-    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${t('storeYearCaption')} ${state.year}`} · ${state.type === 'movie' ? t('movies') : t('series')}`;
+    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${yearLabel}`} · ${state.type === 'movie' ? t('movies') : t('series')}`;
     $('#immersive-provider-summary').textContent = `${providerLabel || t('allCatalogues')} · ${state.ignoreStoreYear ? t('allYears') : `${t('storeYearCaption')} ${state.year}`}`;
     $('#shelf-status').textContent = append ? t('openingStand') : t('openingBoxes');
     $('#immersive-status').textContent = append ? t('openingStand') : t('openingBoxes');
@@ -2018,6 +2029,18 @@
     await renderTitleReviews(title);
   }
 
+  function syncTitleOwnerAction() {
+    const action = $('#title-owner-action');
+    if (action) {
+      const key = activeViewerTitle ? `${activeViewerTitle.type}:${activeViewerTitle.id}` : '';
+      action.hidden = !state.admin;
+      action.disabled = blockActionInFlightKey === key;
+      action.textContent = t('removeFromShelf');
+      if (activeViewerTitle) action.setAttribute('aria-label', `${t('removeFromShelf')} ${activeViewerTitle.name}`);
+    }
+    activeVhsViewer?.setBlockActionVisible(state.admin);
+  }
+
   function openTitleFromOrigin(title, origin = {}, hydrate = true, posterUrl) {
     const dialog = origin.dialogId ? $(`#${origin.dialogId}`) : null;
     inspectionOrigin = {
@@ -2057,6 +2080,7 @@
       activeVhsViewer.update(title, isAtCounter(title), vhsAssets(title, posterUrl));
       syncTitleBasketAction();
       syncTitleSavedActions();
+      syncTitleOwnerAction();
       const existingTeaser = detail.querySelector('.title-review-teaser');
       if (existingTeaser) refreshTitleReviewTeaser(title, existingTeaser);
       if (hydrate) loadTitleMetadata(title).then(() => {
@@ -2111,8 +2135,13 @@
     const teaser = document.createElement('button');
     teaser.type = 'button'; teaser.className = 'title-review-teaser'; teaser.hidden = true;
     teaser.addEventListener('click', () => { if (activeViewerTitle) openTitleReviews(activeViewerTitle); });
+    const ownerAction = document.createElement('button');
+    ownerAction.id = 'title-owner-action';
+    ownerAction.type = 'button'; ownerAction.className = 'title-owner-action'; ownerAction.textContent = t('removeFromShelf');
+    ownerAction.hidden = !state.admin;
+    ownerAction.addEventListener('click', () => { if (activeViewerTitle) blockCatalogueTitle(activeViewerTitle, ownerAction); });
     memberActions.append(basket);
-    utilityActions.append(savedActions, titleReview, teaser);
+    utilityActions.append(savedActions, titleReview, teaser, ownerAction);
     stage.append(memberActions, utilityActions);
     refreshTitleReviewTeaser(title, teaser);
     detail.append(stage);
@@ -2131,6 +2160,7 @@
         atCounter: isAtCounter(title),
         savedCollections: savedTitleCollections(title),
         showSavedActions: window.matchMedia('(max-width: 600px)').matches,
+        showBlockAction: state.admin,
         onCounter: () => {
           const current = activeViewerTitle;
           if (!current) return;
@@ -2145,8 +2175,10 @@
         onImdb: () => { if (activeViewerTitle) window.open(createImdbUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
         onWatchLater: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'watch_later', { confirm: true }); },
         onFavorite: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'favorite', { confirm: true }); },
+        onBlock: () => { if (activeViewerTitle) blockCatalogueTitle(activeViewerTitle, ownerAction); },
         onClose: () => titleDialog.close(),
       });
+      syncTitleOwnerAction();
     } catch (error) {
       if (token !== viewerToken) return;
       stage.classList.add('vhs-stage-error');

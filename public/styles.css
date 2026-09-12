@@ -487,6 +487,7 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .title-utility-actions > button { width: 100%; text-align: left; box-shadow: 3px 4px 0 rgba(0,0,0,.45); }
 .title-icon-action { display: inline-flex; align-items: center; gap: .45rem; }
 .title-utility-actions .title-review-action { color: #1b1612; background: #e7d8b1; border-color: var(--yellow); }
+.title-utility-actions .title-owner-action { --control-fill: var(--red); --control-ink: #fff; --control-edge: #e67570; }
 .title-review-teaser { display: grid; gap: .35rem; color: #e7d8b1 !important; text-transform: none !important; }
 .title-review-teaser strong { color: var(--yellow); font-size: .64rem; }
 .title-review-teaser span { display: -webkit-box; overflow: hidden; color: #e7d8b1; font: 700 .68rem/1.35 Arial, sans-serif; letter-spacing: normal; text-transform: none; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }

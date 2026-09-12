@@ -8,6 +8,7 @@ const ACTIONS = {
   watch: { x: 676, y: 1328, width: 276, height: 104 },
   letterboxd: { x: 856, y: 200, width: 96, height: 86 },
   imdb: { x: 856, y: 292, width: 96, height: 86 },
+  block: { x: 438, y: 68, width: 138, height: 126 },
   favorite: { x: 696, y: 218, width: 64, height: 64 },
   watchLater: { x: 776, y: 218, width: 64, height: 64 },
 };
@@ -159,6 +160,11 @@ function drawButton(context, rect, label, fill, ink) {
   context.textBaseline = 'alphabetic';
 }
 
+function drawOwnerAction(context, rect, label) {
+  const shortLabel = String(label || '').startsWith('REMOVE') ? 'REMOVE' : 'RETIRAR';
+  drawButton(context, rect, `× ${shortLabel}`, LOCADORA_PALETTE.ink, LOCADORA_PALETTE.white);
+}
+
 function drawImageFrame(context, image, x, y, width, height, focus = 0.5) {
   context.fillStyle = LOCADORA_PALETTE.ink;
   context.fillRect(x, y, width, height);
@@ -200,7 +206,7 @@ function drawBarcode(context, value, x, y, width, height) {
   context.textAlign = 'left';
 }
 
-function drawBack(context, title, atCounter, posterImage = null, backdropImage = null, copy = {}, providerImages = [], savedCollections = new Set(), showSavedActions = false) {
+function drawBack(context, title, atCounter, posterImage = null, backdropImage = null, copy = {}, providerImages = [], savedCollections = new Set(), showSavedActions = false, showBlockAction = false) {
   context.fillStyle = LOCADORA_PALETTE.ink;
   context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
   context.fillStyle = LOCADORA_PALETTE.navy;
@@ -216,6 +222,7 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   context.fillText("WILL'S LOCADORA · VIDEO ARCHIVE", 72, 92);
   context.font = '700 18px Courier New, monospace';
   context.fillText(`${title.type === 'series' ? copy.homeVideoSeries : copy.featurePresentation} · ${title.year || copy.yearUnknown}`, 72, 130);
+  if (showBlockAction) drawOwnerAction(context, ACTIONS.block, copy.removeFromShelf);
   drawBarcode(context, title.id, 596, 68, 356, 126);
   drawLetterboxdSticker(context);
   drawImdbSticker(context);
@@ -351,7 +358,7 @@ function drawPoster(context, image, title, logoImage = null) {
   context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 92, 1366);
 }
 
-export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, savedCollections = [], showSavedActions = false, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onWatchLater, onFavorite, onClose, copy }) {
+export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, savedCollections = [], showSavedActions = false, showBlockAction = false, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onWatchLater, onFavorite, onBlock, onClose, copy }) {
   const labels = { noSynopsis: 'No synopsis was included by this catalogue source.', ...copy };
   const mobilePerformance = window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !mobilePerformance });
@@ -395,7 +402,8 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   const providerImages = [];
   let currentAtCounter = atCounter;
   let currentSavedCollections = new Set(savedCollections);
-  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions));
+  let currentShowBlockAction = showBlockAction;
+  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions, currentShowBlockAction));
   const backMaterial = new THREE.MeshStandardMaterial({ map: backCanvas.texture, roughness: 0.72 });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(3.82, 5.82), backMaterial);
   back.position.z = -0.236;
@@ -418,7 +426,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     if (posterImage) drawPoster(frontContext, posterImage, title, logoImage);
     else drawFront(frontContext, title, labels);
     frontCanvas.texture.needsUpdate = true;
-    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions);
+    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions, currentShowBlockAction);
     backCanvas.texture.needsUpdate = true;
   }
   function loadAsset(name, url) {
@@ -531,6 +539,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
 
   function clickableActions() {
     const actions = [ACTIONS.letterboxd, ACTIONS.imdb, ACTIONS.counter, ACTIONS.availability, ACTIONS.watch];
+    if (currentShowBlockAction) actions.push(ACTIONS.block);
     if (showSavedActions) actions.push(ACTIONS.watchLater, ACTIONS.favorite);
     return actions;
   }
@@ -616,6 +625,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     const coordinates = actionCoordinates(hit);
     if (coordinates) {
       const { x, y } = coordinates;
+      if (currentShowBlockAction && inside(ACTIONS.block, x, y)) return onBlock?.();
       if (inside(ACTIONS.letterboxd, x, y)) return onLetterboxd?.();
       if (inside(ACTIONS.imdb, x, y)) return onImdb?.();
       if (showSavedActions && inside(ACTIONS.watchLater, x, y)) return onWatchLater?.();
@@ -696,6 +706,10 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     zoomOut() { adjustZoom(-VHS_ZOOM_STEP); },
     setSavedCollections(nextCollections) {
       currentSavedCollections = new Set(nextCollections);
+      redraw();
+    },
+    setBlockActionVisible(visible) {
+      currentShowBlockAction = Boolean(visible);
       redraw();
     },
     update(nextTitle, nextAtCounter, assets = {}, { preserveView = false } = {}) {
