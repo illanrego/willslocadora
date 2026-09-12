@@ -81,6 +81,69 @@ function featuredMovies(titles) {
 
 export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect, onSwipe, plaqueOptions, onConfigure }) {
   let draft = { genre, year, type, ignoreStoreYear: Boolean(plaqueOptions?.ignoreStoreYear) };
+  let plaqueEditor = null;
+  function closePlaqueEditor(save = true) {
+    if (!plaqueEditor) return;
+    const editor = plaqueEditor;
+    plaqueEditor = null;
+    if (save) editor.save();
+    editor.element.remove();
+    drawPlaque();
+  }
+  function positionPlaqueEditor() {
+    if (!plaqueEditor) return;
+    const point = sign.localToWorld(new THREE.Vector3(plaqueEditor.field === 'genre' ? 0 : plaqueEditor.field === 'year' ? -2.23 : .87, plaqueEditor.field === 'genre' ? .33 : -.36, .12)).project(camera);
+    const bounds = renderer.domElement.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const width = Math.min(plaqueEditor.field === 'genre' ? 310 : 230, (viewport?.width || window.innerWidth) - 16);
+    const left = bounds.left + (point.x + 1) * bounds.width / 2 - width / 2;
+    const top = bounds.top + (1 - point.y) * bounds.height / 2 - 22;
+    Object.assign(plaqueEditor.element.style, {
+      width: `${width}px`,
+      left: `${Math.max(8, Math.min(left, (viewport?.width || window.innerWidth) - width - 8))}px`,
+      top: `${Math.max(8, Math.min(top, (viewport?.height || window.innerHeight) - plaqueEditor.element.offsetHeight - 8))}px`,
+    });
+  }
+  function editPlaque(field) {
+    closePlaqueEditor();
+    const element = document.createElement('form');
+    element.className = 'plaque-field-editor';
+    const input = document.createElement(field === 'year' ? 'input' : 'select');
+    input.setAttribute('aria-label', plaqueOptions[field + 'Label'] || field);
+    if (field === 'year') {
+      input.type = 'number'; input.min = '1920'; input.max = '2026'; input.step = '1';
+      input.inputMode = 'numeric'; input.required = true; input.value = draft.year;
+    } else {
+      const choices = field === 'genre' ? plaqueOptions.genres.map((value) => [value, value]) : [['movie', plaqueOptions.movies], ['series', plaqueOptions.series]];
+      for (const [value, text] of choices) {
+        const option = document.createElement('option'); option.value = value; option.textContent = text; input.append(option);
+      }
+      input.value = draft[field];
+    }
+    element.append(input);
+    const save = () => {
+      if (field === 'year') {
+        if (!input.checkValidity()) return;
+        draft.year = Number(input.value); draft.ignoreStoreYear = false;
+      } else draft[field] = input.value;
+    };
+    const done = document.createElement('button'); done.type = 'submit'; done.textContent = '✓'; done.setAttribute('aria-label', plaqueOptions.doneLabel);
+    element.append(done);
+    if (field === 'year' && plaqueOptions.allowAllYears) {
+      const all = document.createElement('button'); all.type = 'button'; all.className = 'plaque-all-years'; all.textContent = plaqueOptions.allYears;
+      all.addEventListener('click', () => { draft.ignoreStoreYear = true; closePlaqueEditor(false); renderer.domElement.focus({ preventScroll: true }); });
+      element.append(all);
+    }
+    element.addEventListener('submit', (event) => { event.preventDefault(); if (input.reportValidity()) { closePlaqueEditor(); renderer.domElement.focus({ preventScroll: true }); } });
+    element.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); closePlaqueEditor(false); renderer.domElement.focus({ preventScroll: true }); } });
+    element.addEventListener('focusout', () => { queueMicrotask(() => { if (plaqueEditor?.element === element && !element.contains(document.activeElement)) closePlaqueEditor(); }); });
+    document.body.append(element);
+    plaqueEditor = { element, field, save };
+    positionPlaqueEditor();
+    input.focus({ preventScroll: true });
+    if (field === 'year') input.select();
+    else { try { input.showPicker?.(); } catch { /* The focused native select still supports keyboard and touch. */ } }
+  }
   function drawPlaque() {
     const context = signCanvas.canvas.getContext('2d');
     context.fillStyle = '#e7d8b1';
@@ -93,6 +156,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     context.textBaseline = 'middle';
     context.font = '900 64px Impact, Arial, sans-serif';
     context.fillText(draft.genre.toUpperCase(), 512, 70, 790);
+    context.font = '900 26px Arial'; context.fillText('▾', 887, 70);
     context.font = '900 64px Arial';
     context.fillText('‹', 55, 70); context.fillText('›', 969, 70);
     context.fillText('‹', 55, 174); context.fillText('›', 390, 174);
@@ -100,6 +164,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     context.fillText(draft.ignoreStoreYear ? plaqueOptions.allYears : String(draft.year), 223, 174, 250);
     context.font = '900 38px Arial';
     context.fillText(draft.type === 'series' ? plaqueOptions.series : plaqueOptions.movies, 625, 174, 290);
+    context.font = '900 26px Arial'; context.fillText('▾', 785, 174);
     context.fillStyle = '#9e3634'; context.fillRect(825, 125, 170, 95);
     context.fillStyle = '#fff4d1'; context.font = '900 48px Arial';
     context.fillText(plaqueOptions.go, 910, 174);
@@ -698,16 +763,17 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       const x = plaque.uv.x * 1024;
       const y = (1 - plaque.uv.y) * 240;
       if (y < 120) {
+        if (x > 100 && x < 920) { editPlaque('genre'); return; }
         const choices = plaqueOptions.genres;
         const index = choices.indexOf(draft.genre);
         draft.genre = choices[(index + (x < 512 ? -1 : 1) + choices.length) % choices.length];
       } else if (x < 440) {
-        if (x > 100 && x < 340 && plaqueOptions.allowAllYears) draft.ignoreStoreYear = !draft.ignoreStoreYear;
+        if (x > 100 && x < 340) { editPlaque('year'); return; }
         else {
           draft.ignoreStoreYear = false;
           draft.year = Math.max(1920, Math.min(2026, draft.year + (x < 223 ? -1 : 1)));
         }
-      } else if (x < 810) draft.type = draft.type === 'movie' ? 'series' : 'movie';
+      } else if (x < 810) { editPlaque('type'); return; }
       else onConfigure?.({ ...draft });
       drawPlaque();
       return;
@@ -817,6 +883,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       record.material.emissive.setHex(active ? 0x221805 : 0x000000);
     });
     renderer.render(scene, camera);
+    positionPlaqueEditor();
     frame = requestAnimationFrame(render);
   }
   frame = requestAnimationFrame(render);
@@ -878,6 +945,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       };
     },
     dispose() {
+      closePlaqueEditor(false);
       disposed = true;
       featuredRequestToken += 1;
       cancelAnimationFrame(frame);

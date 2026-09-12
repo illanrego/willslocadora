@@ -19,6 +19,11 @@
 }
 
 /* Native controls remain reachable by keyboard and when WebGL is unavailable. */
+.plaque-field-editor { position: fixed; z-index: 20; display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 4px; color: #101827; background: #e7d8b1; border: 2px solid #9e3634; border-radius: 3px; }
+.plaque-field-editor input, .plaque-field-editor select { flex: 1; width: 0; min-width: 0; min-height: 44px; padding: 4px; font: 700 16px Arial, sans-serif; color: #101827; background: #fff4d1; border: 1px solid #101827; color-scheme: light; }
+.plaque-field-editor input { font: 700 28px "Courier New", monospace; text-align: center; }
+.plaque-field-editor button { min-width: 44px; min-height: 44px; border: 1px solid #101827; color: #101827; background: #c99a2e; cursor: pointer; }
+.plaque-field-editor .plaque-all-years { flex-basis: 100%; background: #fff4d1; }
 #immersive-browse-panel.plaque-keyboard-controls:not(:focus-within) {
   width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden;
   clip-path: inset(50%); white-space: nowrap;

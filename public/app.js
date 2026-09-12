@@ -1241,7 +1241,7 @@
         type: state.type,
         stand: state.stand,
         ...immersiveVisuals(),
-        plaqueOptions: { genres: genres.map(genreLabel), movies: t('movies'), series: t('series'), go: t('go'), allYears: t('allYears'), ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0 },
+        plaqueOptions: { genres: genres.map(genreLabel), movies: t('movies'), series: t('series'), go: t('go'), allYears: t('allYears'), ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0, genreLabel: t('genre'), yearLabel: t('year'), typeLabel: state.locale === 'pt-BR' ? 'Formato' : 'Format', doneLabel: state.locale === 'pt-BR' ? 'Confirmar seleção' : 'Confirm selection' },
         onConfigure: (draft) => {
           setYear(draft.year, false);
           selectGenre(genres.findIndex((genre) => genreLabel(genre) === draft.genre), false);
