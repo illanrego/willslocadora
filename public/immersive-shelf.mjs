@@ -85,8 +85,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   function closePlaqueEditor(save = true) {
     if (!plaqueEditor) return;
     const editor = plaqueEditor;
+    if (save && !editor.save()) return;
     plaqueEditor = null;
-    if (save) editor.save();
     editor.element.remove();
     drawPlaque();
   }
@@ -106,7 +106,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   }
   function editPlaque(field) {
     closePlaqueEditor();
-    const element = document.createElement('form');
+    const element = document.createElement('div');
     element.className = 'plaque-field-editor';
     const input = document.createElement(field === 'year' ? 'input' : 'select');
     input.setAttribute('aria-label', plaqueOptions[field + 'Label'] || field);
@@ -123,19 +123,25 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     element.append(input);
     const save = () => {
       if (field === 'year') {
-        if (!input.checkValidity()) return;
+        if (!input.checkValidity()) return false;
         draft.year = Number(input.value); draft.ignoreStoreYear = false;
       } else draft[field] = input.value;
+      return true;
     };
-    const done = document.createElement('button'); done.type = 'submit'; done.textContent = '✓'; done.setAttribute('aria-label', plaqueOptions.doneLabel);
-    element.append(done);
     if (field === 'year' && plaqueOptions.allowAllYears) {
       const all = document.createElement('button'); all.type = 'button'; all.className = 'plaque-all-years'; all.textContent = plaqueOptions.allYears;
       all.addEventListener('click', () => { draft.ignoreStoreYear = true; closePlaqueEditor(false); renderer.domElement.focus({ preventScroll: true }); });
       element.append(all);
     }
-    element.addEventListener('submit', (event) => { event.preventDefault(); if (input.reportValidity()) { closePlaqueEditor(); renderer.domElement.focus({ preventScroll: true }); } });
-    element.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); closePlaqueEditor(false); renderer.domElement.focus({ preventScroll: true }); } });
+    input.addEventListener('change', () => {
+      if (!save()) return;
+      closePlaqueEditor(false);
+      renderer.domElement.focus({ preventScroll: true });
+    });
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closePlaqueEditor(false); renderer.domElement.focus({ preventScroll: true }); }
+      else if (event.key === 'Enter' && save()) { event.preventDefault(); closePlaqueEditor(false); renderer.domElement.focus({ preventScroll: true }); }
+    });
     element.addEventListener('focusout', () => { queueMicrotask(() => { if (plaqueEditor?.element === element && !element.contains(document.activeElement)) closePlaqueEditor(); }); });
     document.body.append(element);
     plaqueEditor = { element, field, save };
@@ -162,6 +168,25 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     context.fillText('‹', 55, 174); context.fillText('›', 500, 174);
     context.font = draft.ignoreStoreYear ? '900 30px Arial' : '900 76px Courier New';
     context.fillText(draft.ignoreStoreYear ? plaqueOptions.allYears : String(draft.year), 278, 174, 360);
+    const visibleProviders = activeProviders.slice(0, 4);
+    if (visibleProviders.length) {
+      let logoX = 530;
+      for (const provider of visibleProviders) {
+        const image = providerImages.get(provider.id);
+        if (image?.complete && image.naturalWidth) context.drawImage(image, logoX, 148, 32, 32);
+        else {
+          context.fillStyle = activeTheme.sign;
+          context.fillRect(logoX, 148, 32, 32);
+          context.fillStyle = '#e7d8b1';
+          context.font = '900 10px Arial Narrow, sans-serif';
+          context.fillText(provider.displayName.slice(0, 3).toUpperCase(), logoX + 16, 164);
+        }
+        logoX += 38;
+      }
+    } else {
+      context.font = '900 17px Arial';
+      context.fillText(plaqueOptions.allProviders, 620, 164, 130);
+    }
     context.fillStyle = '#9e3634'; context.fillRect(700, 125, 295, 95);
     context.fillStyle = '#fff4d1'; context.font = '900 48px Arial';
     context.fillText(plaqueOptions.go, 848, 174);

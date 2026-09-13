@@ -26,3 +26,15 @@ test('localized labels do not choose the fallback shelf theme', () => {
   assert.match(app, /theme: 'Crime & Thriller'/);
   assert.match(app, /getGenreTheme\(genre\.theme\)/);
 });
+
+test('plaque selections update the draft directly and keep provider context visible until Ir', () => {
+  const immersive = readFileSync(require.resolve('../public/immersive-shelf.mjs'), 'utf8');
+  const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
+  assert.match(immersive, /input\.addEventListener\('change', \(\) => \{\s*if \(!save\(\)\) return;\s*closePlaqueEditor\(false\)/);
+  assert.doesNotMatch(immersive, /const done = document\.createElement\('button'\)/);
+  assert.match(immersive, /const visibleProviders = activeProviders\.slice\(0, 4\)/);
+  assert.match(immersive, /context\.drawImage\(image, logoX, 148, 32, 32\)/);
+  assert.match(immersive, /context\.fillText\(plaqueOptions\.allProviders, 620, 164, 130\)/);
+  assert.match(app, /allProviders: state\.locale === 'pt-BR' \? 'TODOS' : 'ALL'/);
+  assert.doesNotMatch(app, /doneLabel: state\.locale/);
+});
