@@ -152,12 +152,28 @@ test('auth form gives accessible visual feedback for validation, loading, and re
   assert.match(account, /RATE_LIMITED/);
   assert.match(account, /setBusy\(true\)/);
   assert.match(account, /aria-invalid/);
-  assert.match(account, /pattern="\[a-z0-9_\\\\-\]\{3,24\}"/);
+  assert.match(account, /pattern="\[A-Za-z0-9_\\\\-\]\{3,24\}"/);
   assert.match(account, /password-visibility-toggle/);
   assert.match(account, /aria-pressed/);
   assert.match(styles, /\.auth-feedback/);
   assert.match(styles, /\.source-form input\[aria-invalid="true"\]/);
   assert.match(styles, /\.password-visibility-toggle/);
+});
+
+test('signup normalizes capitalized usernames, accepts simple passwords, and confirms them', () => {
+  assert.match(account, /id="auth-password-confirm" name="password-confirm" type="password" minlength="6"/);
+  assert.match(account, /passwordConfirmationInput\.required = signup;/);
+  assert.match(account, /if \(signup && password !== passwordConfirmation\) return showFieldError\(passwordConfirmationInput, 'As senhas precisam ser iguais\.'\)/);
+  assert.match(account, /if \(password\.length < 6\) return showFieldError\(passwordInput, 'A senha precisa ter pelo menos 6 caracteres\.'\)/);
+  assert.match(account, /pattern="\[A-Za-z0-9_\\\\-\]\{3,24\}"/);
+  assert.match(account, /const usernameValue = String\(data\.get\('username'\) \|\| ''\)\.trim\(\)\.toLowerCase\(\)/);
+  assert.doesNotMatch(account, /letras minúsculas/);
+});
+
+test('Better Auth enforces the same light password minimum and post-normalizes usernames', () => {
+  assert.match(worker, /minPasswordLength: 6/);
+  assert.match(worker, /usernameNormalization: \(value\) => String\(value \|\| ''\)\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(worker, /validationOrder: \{ username: 'post-normalization' \}/);
 });
 
 test('a rent confirmation interrupted by identity setup resumes the same basket', () => {

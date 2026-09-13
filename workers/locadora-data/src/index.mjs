@@ -103,6 +103,7 @@ function createAuth(env, ctx) {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
+      minPasswordLength: 6,
       sendResetPassword: async ({ user, url }) => {
         const safeUrl = escapeHtml(url);
         queueTransactionalEmail(env, ctx, {
@@ -131,7 +132,7 @@ function createAuth(env, ctx) {
         },
       },
     },
-    plugins: [username({ displayUsername: false, usernameValidator: (value) => /^[a-z0-9_-]{3,24}$/.test(value) }), bearer()],
+    plugins: [username({ displayUsername: false, usernameNormalization: (value) => String(value || '').trim().toLowerCase(), validationOrder: { username: 'post-normalization' }, usernameValidator: (value) => /^[a-z0-9_-]{3,24}$/.test(value) }), bearer()],
     advanced: { useSecureCookies: true },
   });
   return {

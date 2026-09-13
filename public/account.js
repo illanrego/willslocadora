@@ -103,10 +103,10 @@
       USER_ALREADY_EXISTS: 'Já existe uma conta com esse email. Entre usando a senha cadastrada.',
       USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'Já existe uma conta com esse email. Use outro email ou entre na sua conta.',
       EMAIL_ALREADY_IN_USE: 'Já existe uma conta com esse email. Use outro email ou entre na sua conta.',
-      INVALID_USERNAME: 'Esse nome de usuário não é válido. Use 3–24 caracteres: letras minúsculas, números, _ ou -.',
+      INVALID_USERNAME: 'Esse nome de usuário não é válido. Use 3–24 caracteres: letras, números, _ ou -.',
       USERNAME_TOO_SHORT: 'Esse nome de usuário é curto demais. Use pelo menos 3 caracteres.',
       USERNAME_TOO_LONG: 'Esse nome de usuário é longo demais. Use no máximo 24 caracteres.',
-      PASSWORD_TOO_SHORT: 'A senha precisa ter pelo menos 8 caracteres.',
+      PASSWORD_TOO_SHORT: 'A senha precisa ter pelo menos 6 caracteres.',
       PASSWORD_TOO_LONG: 'Essa senha é longa demais. Escolha uma senha menor.',
     };
     if (signup && error.code === 'CONFLICT' && /reserved/i.test(error.message || '')) return 'Esse nome de usuário é reservado. Escolha outro.';
@@ -121,7 +121,7 @@
     dialog = document.createElement('dialog');
     dialog.id = 'auth-dialog';
     dialog.className = 'panel-dialog member-dialog';
-    dialog.innerHTML = `<form method="dialog" class="panel-header"><div><span class="eyebrow">CARTEIRINHA</span><h2 id="auth-heading">Entrar na Locadora</h2></div><button class="dialog-close" value="close" aria-label="Fechar">×</button></form><div id="auth-status" class="auth-feedback" role="alert" aria-live="assertive" hidden></div><form id="auth-form" class="source-form"><label for="auth-identifier">Email ou nome de usuário</label><input id="auth-identifier" name="identifier" autocomplete="username" required aria-describedby="auth-status"><p class="auth-field-hint" id="auth-identifier-hint">Entre com o email ou nome que você cadastrou.</p><label for="auth-password">Senha</label><div class="password-field"><input id="auth-password" name="password" type="password" minlength="8" autocomplete="current-password" required aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="auth-password" aria-controls="auth-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><label id="auth-username-label" for="auth-username" hidden>Nome de usuário</label><input id="auth-username" name="username" minlength="3" maxlength="24" pattern="[a-z0-9_\\-]{3,24}" autocomplete="nickname" hidden aria-describedby="auth-status"><p class="auth-field-hint" id="auth-username-hint" hidden>Use de 3 a 24 letras minúsculas, números, _ ou -.</p><div class="auth-form-actions"><button class="account-action" id="auth-submit" type="submit">Entrar</button><button class="account-action account-secondary-action" id="auth-mode" type="button">Criar conta</button></div><button class="auth-text-action" id="auth-forgot" type="button">Esqueci minha senha</button></form><form id="reset-form" class="source-form" hidden><p class="auth-field-hint">Escolha uma nova senha para sua Carteirinha.</p><label for="reset-password">Nova senha</label><div class="password-field"><input id="reset-password" type="password" minlength="8" autocomplete="new-password" required aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="reset-password" aria-controls="reset-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><label for="reset-password-confirm">Repita a nova senha</label><div class="password-field"><input id="reset-password-confirm" type="password" minlength="8" autocomplete="new-password" required aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="reset-password-confirm" aria-controls="reset-password-confirm" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><button class="account-action" type="submit">Salvar nova senha</button></form>`;
+    dialog.innerHTML = `<form method="dialog" class="panel-header"><div><span class="eyebrow">CARTEIRINHA</span><h2 id="auth-heading">Entrar na Locadora</h2></div><button class="dialog-close" value="close" aria-label="Fechar">×</button></form><div id="auth-status" class="auth-feedback" role="alert" aria-live="assertive" hidden></div><form id="auth-form" class="source-form"><label for="auth-identifier">Email ou nome de usuário</label><input id="auth-identifier" name="identifier" autocomplete="username" required aria-describedby="auth-status"><p class="auth-field-hint" id="auth-identifier-hint">Entre com o email ou nome que você cadastrou.</p><label for="auth-password">Senha</label><div class="password-field"><input id="auth-password" name="password" type="password" minlength="6" autocomplete="current-password" required aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="auth-password" aria-controls="auth-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><label id="auth-password-confirm-label" for="auth-password-confirm" hidden>Confirmar senha</label><div id="auth-password-confirm-field" class="password-field" hidden><input id="auth-password-confirm" name="password-confirm" type="password" minlength="6" autocomplete="new-password" aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="auth-password-confirm" aria-controls="auth-password-confirm" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><label id="auth-username-label" for="auth-username" hidden>Nome de usuário</label><input id="auth-username" name="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_\\-]{3,24}" autocomplete="nickname" hidden aria-describedby="auth-status"><p class="auth-field-hint" id="auth-username-hint" hidden>Use de 3 a 24 letras, números, _ ou -.</p><div class="auth-form-actions"><button class="account-action" id="auth-submit" type="submit">Entrar</button><button class="account-action account-secondary-action" id="auth-mode" type="button">Criar conta</button></div><button class="auth-text-action" id="auth-forgot" type="button">Esqueci minha senha</button></form><form id="reset-form" class="source-form" hidden><p class="auth-field-hint">Escolha uma nova senha para sua Carteirinha.</p><label for="reset-password">Nova senha</label><div class="password-field"><input id="reset-password" type="password" minlength="6" autocomplete="new-password" required aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="reset-password" aria-controls="reset-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><label for="reset-password-confirm">Repita a nova senha</label><div class="password-field"><input id="reset-password-confirm" type="password" minlength="6" autocomplete="new-password" required aria-describedby="auth-status"><button class="password-visibility-toggle" type="button" data-password-target="reset-password-confirm" aria-controls="reset-password-confirm" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div><button class="account-action" type="submit">Salvar nova senha</button></form>`;
     document.body.append(dialog);
     const form = dialog.querySelector('#auth-form');
     let signup = false;
@@ -129,6 +129,7 @@
     const identifierInput = dialog.querySelector('#auth-identifier');
     const identifierLabel = dialog.querySelector('label[for="auth-identifier"]');
     const passwordInput = dialog.querySelector('#auth-password');
+    const passwordConfirmationInput = dialog.querySelector('#auth-password-confirm');
     const usernameInput = dialog.querySelector('#auth-username');
     dialog.querySelectorAll('.password-visibility-toggle').forEach((toggle) => {
       toggle.addEventListener('click', () => {
@@ -162,13 +163,17 @@
       identifierInput.autocomplete = emailOnly ? 'email' : 'username';
       identifierInput.placeholder = emailOnly ? 'seu@email.com' : '';
     };
-    const clearFieldErrors = () => [identifierInput, passwordInput, usernameInput].forEach((input) => input.removeAttribute('aria-invalid'));
+    const clearFieldErrors = () => [identifierInput, passwordInput, passwordConfirmationInput, usernameInput].forEach((input) => input.removeAttribute('aria-invalid'));
     const showFieldError = (input, message) => { input.setAttribute('aria-invalid', 'true'); setFeedback(message); input.focus(); };
-    [identifierInput, passwordInput, usernameInput].forEach((input) => input.addEventListener('input', () => { input.removeAttribute('aria-invalid'); if (status.dataset.tone === 'error') setFeedback(''); }));
+    [identifierInput, passwordInput, passwordConfirmationInput, usernameInput].forEach((input) => input.addEventListener('input', () => { input.removeAttribute('aria-invalid'); if (status.dataset.tone === 'error') setFeedback(''); }));
     modeButton.addEventListener('click', () => {
       signup = !signup;
       modeButton.textContent = signup ? 'Já tenho conta' : 'Criar conta';
       submit.textContent = signup ? 'Criar conta' : 'Entrar';
+      passwordInput.autocomplete = signup ? 'new-password' : 'current-password';
+      dialog.querySelector('#auth-password-confirm-label').hidden = !signup;
+      dialog.querySelector('#auth-password-confirm-field').hidden = !signup;
+      passwordConfirmationInput.required = signup;
       dialog.querySelector('#auth-username-label').hidden = !signup;
       usernameInput.hidden = !signup;
       usernameInput.required = signup;
@@ -194,11 +199,13 @@
       const data = new FormData(form);
       const identifier = String(data.get('identifier') || '').trim();
       const password = String(data.get('password') || '');
+      const passwordConfirmation = String(data.get('password-confirm') || '');
       const usernameValue = String(data.get('username') || '').trim().toLowerCase();
       clearFieldErrors();
       if (!identifier || (signup && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier))) return showFieldError(identifierInput, 'Digite um email válido para criar sua conta.');
-      if (password.length < 8) return showFieldError(passwordInput, 'A senha precisa ter pelo menos 8 caracteres.');
-      if (signup && !/^[a-z0-9_-]{3,24}$/.test(usernameValue)) return showFieldError(usernameInput, 'Escolha um nome de 3–24 caracteres: letras minúsculas, números, _ ou -.');
+      if (password.length < 6) return showFieldError(passwordInput, 'A senha precisa ter pelo menos 6 caracteres.');
+      if (signup && password !== passwordConfirmation) return showFieldError(passwordConfirmationInput, 'As senhas precisam ser iguais.');
+      if (signup && !/^[a-z0-9_-]{3,24}$/.test(usernameValue)) return showFieldError(usernameInput, 'Escolha um nome de 3–24 caracteres: letras, números, _ ou -.');
       setFeedback('');
       setBusy(true);
       try {
@@ -218,7 +225,7 @@
       event.preventDefault();
       const password = dialog.querySelector('#reset-password');
       const confirmation = dialog.querySelector('#reset-password-confirm');
-      if (password.value.length < 8) return showFieldError(password, 'A senha precisa ter pelo menos 8 caracteres.');
+      if (password.value.length < 6) return showFieldError(password, 'A senha precisa ter pelo menos 6 caracteres.');
       if (password.value !== confirmation.value) return showFieldError(confirmation, 'As senhas precisam ser iguais.');
       const resetButton = resetForm.querySelector('button[type="submit"]');
       const resetToken = resetForm.dataset.token || '';
