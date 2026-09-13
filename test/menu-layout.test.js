@@ -8,7 +8,7 @@ const css = readFileSync(require.resolve('../public/styles.css'), 'utf8');
 const balcony = readFileSync(require.resolve('../public/balcony.mjs'), 'utf8');
 const sessionSupport = readFileSync(require.resolve('../public/session-support.js'), 'utf8');
 
-test('normal browsing exposes subscription choices from the compact browse controls', () => {
+test('normal browsing exposes compact browse controls without a title-format selector', () => {
   const header = page.match(/<header id="store-header"[\s\S]*?<\/header>/)?.[0] || '';
   assert.match(header, /id="year-form"/);
   assert.match(header, /id="year-go"/);
@@ -16,7 +16,7 @@ test('normal browsing exposes subscription choices from the compact browse contr
   assert.match(header, /id="normal-filters-toggle"[^>]*aria-controls="normal-provider-filters"/);
   assert.match(header, /id="normal-provider-filters"[^>]*hidden/);
   assert.match(header, /data-i18n="streamingHint"/);
-  assert.match(header, /class="format-switch"/);
+  assert.doesNotMatch(header, /format-switch|data-type=/);
   assert.match(header, /id="provider-checkboxes"/);
   assert.match(header, /data-provider-none>[\s\S]*data-i18n="stremioAll">Stremio \(todos\)<\/span>/);
   assert.doesNotMatch(page, /<aside class="aisle-directory"/);
@@ -43,8 +43,9 @@ test('mobile storefront keeps genre, year, and streaming controls outside the co
   assert.match(css, /\.browse-menu \.browse-select \{ grid-column: 1; order: 1; \}/);
   assert.match(css, /\.browse-menu \.year-machine \{ grid-column: 1; order: 2;/);
   assert.match(css, /\.browse-menu \.normal-filters-toggle \{ grid-column: 1; order: 3;/);
-  assert.match(css, /\.browse-menu \.format-switch \{ display: none;/);
-  assert.match(css, /\.store-header\.is-mobile-menu-open \.browse-menu \.format-switch \{ display: grid; \}/);
+  assert.doesNotMatch(css, /format-switch|immersive-format/);
+  assert.doesNotMatch(app, /locadora\.type|function selectType|\[data-type\]/);
+  assert.match(app, /type: 'movie'/);
   assert.match(app, /providerPreferenceSet: localStorage\.getItem\('locadora\.providers'\) !== null \|\| localStorage\.getItem\('locadora\.provider'\) !== null/);
   assert.match(app, /state\.providerPreferenceSet = true;[\s\S]*localStorage\.setItem\('locadora\.providers', JSON\.stringify\(state\.providers\)\)/);
   assert.match(app, /input\.checked = state\.providerPreferenceSet && state\.providers\.length === 0/);

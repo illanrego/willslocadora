@@ -52,7 +52,7 @@
     locale: normalizeLocale(localStorage.getItem('locadora.locale') || 'pt-BR'),
     year: clampStoreYear(localStorage.getItem('locadora.year') || 1999),
     genreIndex: Number(localStorage.getItem('locadora.genre')) || 0,
-    type: localStorage.getItem('locadora.type') === 'series' ? 'series' : 'movie',
+    type: 'movie',
     providers: (() => { try { const saved = JSON.parse(localStorage.getItem('locadora.providers') || '[]'); return Array.isArray(saved) ? saved.filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort() : []; } catch { const legacy = localStorage.getItem('locadora.provider'); return ['netflix', 'prime-video'].includes(legacy) ? [legacy] : []; } })(),
     providerPreferenceSet: localStorage.getItem('locadora.providers') !== null || localStorage.getItem('locadora.provider') !== null,
     ignoreStoreYear: window.LocadoraSessionSupport.allYearsPreference(localStorage.getItem('locadora.ignoreStoreYear')),
@@ -933,13 +933,6 @@
     loadShelf();
   }
 
-  function selectType(type) {
-    state.type = type;
-    localStorage.setItem('locadora.type', type);
-    document.querySelectorAll('[data-type]').forEach((button) => button.classList.toggle('is-active', button.dataset.type === type));
-    loadShelf();
-  }
-
   function renderSkeletons() {
     const grid = document.createElement('div');
     grid.className = 'shelf';
@@ -1238,14 +1231,11 @@
         type: state.type,
         stand: state.stand,
         ...immersiveVisuals(),
-        plaqueOptions: { genres: genres.map(genreLabel), movies: t('movies'), series: t('series'), go: t('go'), allYears: t('allYears'), ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0, genreLabel: t('genre'), yearLabel: t('year'), typeLabel: state.locale === 'pt-BR' ? 'Formato' : 'Format', doneLabel: state.locale === 'pt-BR' ? 'Confirmar seleção' : 'Confirm selection' },
+        plaqueOptions: { genres: genres.map(genreLabel), go: t('go'), allYears: t('allYears'), ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0, genreLabel: t('genre'), yearLabel: t('year'), doneLabel: state.locale === 'pt-BR' ? 'Confirmar seleção' : 'Confirm selection' },
         onConfigure: (draft) => {
           setYear(draft.year, false);
           selectGenre(genres.findIndex((genre) => genreLabel(genre) === draft.genre), false);
           setIgnoreStoreYear(draft.ignoreStoreYear, false);
-          state.type = draft.type;
-          localStorage.setItem('locadora.type', state.type);
-          document.querySelectorAll('[data-type]').forEach((button) => button.classList.toggle('is-active', button.dataset.type === state.type));
           loadShelf();
         },
         onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'shelf', mode: 'immersive' }, true, posterUrl),
@@ -1421,7 +1411,7 @@
     const providerLabel = state.providers.map((id) => providerNames[id]).filter(Boolean).join(' + ');
     const yearLabel = state.ignoreStoreYear ? t('allYears') : `${state.year - 19}–${state.year}`;
     $('#shelf-title').textContent = genreLabel(genre);
-    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${yearLabel}`} · ${state.type === 'movie' ? t('movies') : t('series')}`;
+    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${yearLabel}`}`;
     $('#immersive-provider-summary').textContent = `${providerLabel || t('allCatalogues')} · ${state.ignoreStoreYear ? t('allYears') : `${t('storeYearCaption')} ${state.year}`}`;
     $('#shelf-status').textContent = append ? t('openingStand') : t('openingBoxes');
     $('#immersive-status').textContent = append ? t('openingStand') : t('openingBoxes');
@@ -2444,10 +2434,6 @@
     $('#immersive-previous-stand').addEventListener('click', goToPreviousStand);
     $('#immersive-next-stand').addEventListener('click', goToNextStand);
 
-    document.querySelectorAll('[data-type]').forEach((button) => {
-      button.classList.toggle('is-active', button.dataset.type === state.type);
-      button.addEventListener('click', () => selectType(button.dataset.type));
-    });
     titleDialog.addEventListener('close', () => {
       viewerToken += 1;
       if (state.mode === 'immersive') immersiveShelf?.setActive?.(true);

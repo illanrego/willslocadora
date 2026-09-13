@@ -47,10 +47,6 @@
           <span data-i18n="genre">Gênero</span>
           <select id="genre-select" aria-label="Genre"></select>
         </label>
-        <div class="format-switch" role="group" aria-label="Title format">
-          <button class="is-active" data-type="movie" type="button" data-i18n="movies">Filmes</button>
-          <button data-type="series" type="button" data-i18n="series">Séries</button>
-        </div>
         <button id="normal-filters-toggle" class="normal-filters-toggle" type="button" aria-controls="normal-provider-filters" aria-expanded="false"><span data-i18n="brazilStreaming">Seus streamings</span><span class="normal-filters-chevron" aria-hidden="true">⌄</span></button>
         <form id="year-form" class="year-machine" aria-label="Store year">
           <label class="year-label" for="store-year-input" data-i18n="storeYear">Ano da loja</label>
@@ -182,10 +178,6 @@
                 <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
               </label>
             <button id="immersive-go" type="button" data-i18n="go">Ir</button>
-            <div class="immersive-format" role="group" aria-label="Immersive shelf format">
-              <button data-type="movie" type="button" data-i18n="movies">Filmes</button>
-              <button data-type="series" type="button" data-i18n="series">Séries</button>
-            </div>
           </div>
         </details>
         <header id="immersive-hud" class="immersive-hud">

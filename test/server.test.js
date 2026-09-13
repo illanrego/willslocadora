@@ -186,7 +186,7 @@ test('server exposes the installed Three.js browser module without exposing node
   assert.match(immersiveSource, /const lampPositions = \[-3\.2, 3\.2\];/);
   assert.match(immersiveSource, /new THREE\.SpotLight\(lighting\?\.color \|\| activeTheme\.lamp/);
   assert.match(immersiveSource, /function applyVisuals\(nextVisuals = \{\}\)/);
-  assert.match(immersiveSource, /function drawSign\(context, genre, year, type, theme, providers, providerImages/);
+  assert.match(immersiveSource, /function drawSign\(context, genre, year, theme, providers, providerImages/);
   assert.match(immersiveSource, /function loadProviderLogos\(nextProviders\)/);
   assert.match(immersiveSource, /function featuredMovies\(titles\)/);
   assert.match(immersiveSource, /function renderFeaturedPosters\(nextTitles\)/);

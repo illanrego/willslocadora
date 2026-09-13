@@ -20,7 +20,7 @@ function canvasTexture(width, height, draw) {
   return { canvas, texture };
 }
 
-function drawSign(context, genre, year, type, theme, providers, providerImages, loading = false) {
+function drawSign(context, genre, year, theme, providers, providerImages, loading = false) {
   const { width, height } = context.canvas;
   context.fillStyle = '#e7d8b1';
   context.fillRect(0, 0, width, height);
@@ -34,7 +34,7 @@ function drawSign(context, genre, year, type, theme, providers, providerImages, 
   const titleFontSize = title.length > 26 ? 58 : title.length > 18 ? 68 : 92;
   context.font = `900 ${titleFontSize}px Impact, Arial Narrow, sans-serif`;
   context.fillText(title, width / 2, 105);
-  const detail = loading ? 'OPENING THE BOXES…' : `${year}  •  ${type === 'series' ? 'SERIES' : 'MOVIES'}`;
+  const detail = loading ? 'OPENING THE BOXES…' : String(year);
   const visibleProviders = providers.slice(0, 4);
   context.font = '700 32px Courier New, monospace';
   const detailWidth = context.measureText(detail).width;
@@ -80,7 +80,7 @@ function featuredMovies(titles) {
 }
 
 export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect, onSwipe, plaqueOptions, onConfigure }) {
-  let draft = { genre, year, type, ignoreStoreYear: Boolean(plaqueOptions?.ignoreStoreYear) };
+  let draft = { genre, year, ignoreStoreYear: Boolean(plaqueOptions?.ignoreStoreYear) };
   let plaqueEditor = null;
   function closePlaqueEditor(save = true) {
     if (!plaqueEditor) return;
@@ -114,7 +114,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       input.type = 'number'; input.min = '1920'; input.max = '2026'; input.step = '1';
       input.inputMode = 'numeric'; input.required = true; input.value = draft.year;
     } else {
-      const choices = field === 'genre' ? plaqueOptions.genres.map((value) => [value, value]) : [['movie', plaqueOptions.movies], ['series', plaqueOptions.series]];
+      const choices = plaqueOptions.genres.map((value) => [value, value]);
       for (const [value, text] of choices) {
         const option = document.createElement('option'); option.value = value; option.textContent = text; input.append(option);
       }
@@ -159,15 +159,12 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     context.font = '900 26px Arial'; context.fillText('▾', 887, 70);
     context.font = '900 64px Arial';
     context.fillText('‹', 55, 70); context.fillText('›', 969, 70);
-    context.fillText('‹', 55, 174); context.fillText('›', 390, 174);
+    context.fillText('‹', 55, 174); context.fillText('›', 500, 174);
     context.font = draft.ignoreStoreYear ? '900 30px Arial' : '900 76px Courier New';
-    context.fillText(draft.ignoreStoreYear ? plaqueOptions.allYears : String(draft.year), 223, 174, 250);
-    context.font = '900 38px Arial';
-    context.fillText(draft.type === 'series' ? plaqueOptions.series : plaqueOptions.movies, 625, 174, 290);
-    context.font = '900 26px Arial'; context.fillText('▾', 785, 174);
-    context.fillStyle = '#9e3634'; context.fillRect(825, 125, 170, 95);
+    context.fillText(draft.ignoreStoreYear ? plaqueOptions.allYears : String(draft.year), 278, 174, 360);
+    context.fillStyle = '#9e3634'; context.fillRect(700, 125, 295, 95);
     context.fillStyle = '#fff4d1'; context.font = '900 48px Arial';
-    context.fillText(plaqueOptions.go, 910, 174);
+    context.fillText(plaqueOptions.go, 848, 174);
     signCanvas.texture.needsUpdate = true;
   }
   function plaqueHit(event) {
@@ -368,7 +365,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   let activeProviders = providers;
   const providerImages = new Map();
   let providerLogoKey = '';
-  const signCanvas = canvasTexture(1024, 240, (context) => drawSign(context, genre, year, type, activeTheme, activeProviders, providerImages));
+  const signCanvas = canvasTexture(1024, 240, (context) => drawSign(context, genre, year, activeTheme, activeProviders, providerImages));
   const sign = new THREE.Mesh(
     new THREE.BoxGeometry(7.9, 1.58, 0.22),
     [edge, edge, edge, edge, new THREE.MeshStandardMaterial({ map: signCanvas.texture, roughness: 0.62 }), edge],
@@ -645,7 +642,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     currentYear = nextYear;
     currentType = nextType;
     activeStand = nextStand;
-    drawSign(signCanvas.canvas.getContext('2d'), nextGenre, nextYear, nextType, activeTheme, activeProviders, providerImages, loading);
+    drawSign(signCanvas.canvas.getContext('2d'), nextGenre, nextYear, activeTheme, activeProviders, providerImages, loading);
     signCanvas.texture.needsUpdate = true;
     if (plaqueOptions) {
       drawPlaque();
@@ -767,14 +764,13 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
         const choices = plaqueOptions.genres;
         const index = choices.indexOf(draft.genre);
         draft.genre = choices[(index + (x < 512 ? -1 : 1) + choices.length) % choices.length];
-      } else if (x < 440) {
-        if (x > 100 && x < 340) { editPlaque('year'); return; }
+      } else if (x < 560) {
+        if (x > 100 && x < 455) { editPlaque('year'); return; }
         else {
           draft.ignoreStoreYear = false;
-          draft.year = Math.max(1920, Math.min(2026, draft.year + (x < 223 ? -1 : 1)));
+          draft.year = Math.max(1920, Math.min(2026, draft.year + (x < 278 ? -1 : 1)));
         }
-      } else if (x < 810) { editPlaque('type'); return; }
-      else onConfigure?.({ ...draft });
+      } else if (x >= 700) onConfigure?.({ ...draft });
       drawPlaque();
       return;
     }
@@ -906,7 +902,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       return adjustZoom(-0.12);
     },
     setLoading(nextGenre, nextYear, nextType, nextStand) {
-      draft = { ...draft, genre: nextGenre, year: nextYear, type: nextType };
+      draft = { ...draft, genre: nextGenre, year: nextYear };
       updateSign(nextGenre, nextYear, nextType, true, nextStand);
     },
     setVisuals(nextVisuals) {
@@ -918,7 +914,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       if (record && typeof record.vhs?.setLogo === 'function') record.vhs.setLogo(logoUrl, fallbackLogoUrl);
     },
     update(nextTitles, nextGenre, nextYear, nextType, nextStand, nextVisuals) {
-      if (nextGenre !== currentGenre || nextYear !== currentYear || nextType !== currentType) draft = { ...draft, genre: nextGenre, year: nextYear, type: nextType };
+      if (nextGenre !== currentGenre || nextYear !== currentYear || nextType !== currentType) draft = { ...draft, genre: nextGenre, year: nextYear };
       applyVisuals(nextVisuals);
       standTransition = null;
       room.position.x = 0;
