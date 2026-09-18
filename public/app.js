@@ -1202,18 +1202,6 @@
     if (!goToCachedStand(state.stand + 1, 1)) loadShelf(state.stand + 1, true, 1);
   }
 
-  async function mountImmersiveFallback(stage) {
-    const { createTapeFallback } = await import('./tape-fallback.mjs');
-    immersiveShelf = createTapeFallback({
-      container: stage,
-      titles: immersiveTitles(),
-      heading: `${genreLabel(genres[state.genreIndex])} · ${state.year}`,
-      onSelect: (title, posterUrl) => openTitleFromOrigin(title, { source: 'shelf', mode: 'immersive' }, true, posterUrl),
-    });
-    $('#immersive-status').textContent = '3D is unavailable. Showing tape fronts instead.';
-    syncImmersiveStandControls();
-  }
-
   async function mountImmersive() {
     const token = ++immersiveToken;
     const stage = $('#immersive-stage');
@@ -1249,8 +1237,8 @@
     } catch (error) {
       if (token !== immersiveToken) return;
       $('#immersive-browse-panel').classList.remove('plaque-keyboard-controls');
-      try { await mountImmersiveFallback(stage); }
-      catch { $('#immersive-status').textContent = `The immersive shelf could not be loaded: ${error.message}`; }
+      setMode('normal');
+      $('#shelf-status').textContent = 'O modo 3D não está disponível. Você voltou para a estante 2D.';
     }
   }
 
@@ -2151,6 +2139,7 @@
     for (const [method, label] of [['zoomOut', '−'], ['focusFront', 'Front'], ['focusWhole', 'Whole case'], ['focusBack', 'Back'], ['zoomIn', '+']]) {
       const button = document.createElement('button');
       button.type = 'button';
+      button.dataset.viewerMethod = method;
       button.textContent = label;
       button.setAttribute('aria-label', label === '−' ? 'Zoom out' : label === '+' ? 'Zoom in' : label);
       button.addEventListener('click', () => activeVhsViewer?.[method]());
@@ -2235,10 +2224,41 @@
       syncTitleOwnerAction();
     } catch (error) {
       if (token !== viewerToken) return;
-      stage.classList.add('vhs-stage-error');
-      const notice = document.createElement('p'); notice.textContent = `The 3D tape could not be loaded: ${error.message}`;
-      stage.replaceChildren(notice, memberActions, utilityActions);
-      return;
+      try {
+        const { createFlatVhsViewer } = await import('./vhs-flat.mjs');
+        if (token !== viewerToken || !titleDialog.open) return;
+        stage.classList.add('vhs-stage-flat');
+        controls.querySelectorAll('[data-viewer-method="zoomOut"], [data-viewer-method="zoomIn"], [data-viewer-method="focusWhole"]').forEach((button) => { button.hidden = true; });
+        activeVhsViewer = createFlatVhsViewer({
+          container: stage,
+          title,
+          ...vhsAssets(title, posterUrl),
+          copy: getCopy(state.locale),
+          atCounter: isAtCounter(title),
+          savedCollections: savedTitleCollections(title),
+          showSavedActions: window.matchMedia('(max-width: 600px)').matches,
+          showBlockAction: state.admin,
+          onCounter: () => {
+            const current = activeViewerTitle;
+            if (!current) return;
+            toggleCounter(current);
+            activeVhsViewer?.update(current, isAtCounter(current), vhsAssets(current, posterTextureUrl(current.poster || posterFallback(current))), { preserveView: true });
+          },
+          onAvailability: () => { if (activeViewerTitle) openStreamingGate(activeViewerTitle); },
+          onWatch: () => { if (activeViewerTitle) window.location.href = createStremioUri(activeViewerTitle); },
+          onLetterboxd: () => { if (activeViewerTitle) window.open(createLetterboxdUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
+          onImdb: () => { if (activeViewerTitle) window.open(createImdbUrl(activeViewerTitle), '_blank', 'noopener,noreferrer'); },
+          onWatchLater: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'watch_later', { confirm: true }); },
+          onFavorite: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'favorite', { confirm: true }); },
+          onBlock: () => { if (activeViewerTitle) blockCatalogueTitle(activeViewerTitle, ownerAction); },
+        });
+        syncTitleOwnerAction();
+      } catch (fallbackError) {
+        stage.classList.add('vhs-stage-error');
+        const notice = document.createElement('p'); notice.textContent = `The tape could not be loaded: ${fallbackError.message || error.message}`;
+        stage.replaceChildren(notice, memberActions, utilityActions);
+        return;
+      }
     }
 
     if (hydrate) {
