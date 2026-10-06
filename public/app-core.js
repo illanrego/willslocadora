@@ -133,7 +133,7 @@
   }
 
   const MAX_CESTA_TITLES = 15;
-  const MAX_RENTAL_TITLES = 3;
+  const MAX_RENTAL_TITLES = 10;
 
   function updateRentalBasket(value, title) {
     const titles = normalizeRentalTitles(value).slice(0, MAX_CESTA_TITLES);
@@ -212,9 +212,9 @@
     return prepareCounterSelection(value).filter((item) => rentalTitleKey(item) !== key);
   }
 
-  function rentCounterTitles(value) {
+  function rentCounterTitles(value, rentalLimit = 3) {
     const state = normalizeRentalState(value);
-    if (!state.counter.length || state.counter.length > MAX_RENTAL_TITLES || state.rented) return state;
+    if (!state.counter.length || state.counter.length > (Number.isInteger(rentalLimit) && rentalLimit >= 1 && rentalLimit <= 10 ? rentalLimit : 3) || state.rented) return state;
     return { ...state, counter: [], rented: { titles: state.counter } };
   }
 

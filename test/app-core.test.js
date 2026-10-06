@@ -173,13 +173,13 @@ test('a canonical shelf title survives Cesta normalization and serializes for re
   assert.deepEqual(serializeRentalTitle(selected), { tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 });
 });
 
-test('validateRentalResponse accepts only a matching one-to-three-tape Worker package', () => {
+test('validateRentalResponse accepts only a matching one-to-ten-tape Worker package', () => {
   const requested = [serializeRentalTitle({ id: 'tmdb:603', type: 'movie', name: 'The Matrix', year: 1999 })];
   const response = { rental: { id: 'rental-1', items: [{ id: 'item-1', ...requested[0] }] } };
   const existing = { id: 'item-existing', tmdbId: 550, type: 'movie', name: 'Fight Club' };
   const expandedResponse = { rental: { id: 'rental-1', items: [existing, { id: 'item-1', ...requested[0] }] } };
   assert.deepEqual(validateRentalResponse(expandedResponse, requested), expandedResponse);
-  assert.throws(() => validateRentalResponse({ rental: { id: 'rental-1', items: [existing, { id: 'item-1', ...requested[0] }, { id: 'item-3', tmdbId: 680, type: 'movie', name: 'Pulp Fiction' }, { id: 'item-4', tmdbId: 13, type: 'movie', name: 'Forrest Gump' }] } }, requested), /invalid rental response/i);
+  assert.throws(() => validateRentalResponse({ rental: { id: 'rental-1', items: [{ id: 'item-1', ...requested[0] }, ...Array.from({ length: 10 }, (_, i) => ({ id: `extra-${i}`, tmdbId: i + 1, type: 'movie', name: `Tape ${i}` }))] } }, requested), /invalid rental response/i);
   assert.throws(() => validateRentalResponse({}, requested), /invalid rental response/i);
   assert.throws(() => validateRentalResponse({ rental: { id: 'rental-1', items: [] } }, requested), /invalid rental response/i);
   assert.throws(() => validateRentalResponse({ rental: { id: 'rental-1', items: [{ id: 'item-1', tmdbId: 550, type: 'movie', name: 'Wrong tape' }] } }, requested), /invalid rental response/i);
@@ -280,4 +280,15 @@ test('normalizeRentalState preserves a pending Cesta while another account packa
 
   assert.deepEqual(rental.counter.map((title) => title.id), ['tt0133093']);
   assert.deepEqual(rental.rented.titles.map((title) => title.id), ['tt0114369']);
+});
+
+
+test('ten rental titles survive response validation and persisted normalization', () => {
+  const titles = Array.from({ length: 10 }, (_, i) => ({ id: `tmdb:${i + 1}`, type: 'movie', name: `Tape ${i}` }));
+  const requested = titles.map(serializeRentalTitle);
+  const response = { rental: { id: 'rental', items: requested.map((title, i) => ({ ...title, id: `item-${i}` })) } };
+  assert.equal(validateRentalResponse(response, requested), response);
+  assert.equal(normalizeRentalState({ rented: { titles } }).rented.titles.length, 10);
+  assert.equal(rentCounterTitles({ counter: titles }, 10).rented.titles.length, 10);
+  assert.equal(rentCounterTitles({ counter: titles }, 1).rented, null);
 });

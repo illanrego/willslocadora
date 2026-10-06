@@ -10,7 +10,10 @@
   "pt-BR": {
     "skipShelf": "Pular para a prateleira",
     "brandTag": "Escolha o que assistir nos seus streamings, com a magia de uma locadora.",
-    "rentalIntro": "Escolha suas fitas, alugue grátis e assista no seu streaming. Até 3 fitas ativas, sem prazo de devolução.",
+    "rentalLimitLabel": "Limite de aluguéis simultâneos",
+    "rentalLimitSave": "Salvar limite",
+    "rentalLimitHint": "Vale para o site e o aplicativo. Reduzir o limite não devolve suas fitas atuais.",
+    "rentalIntro": "Escolha suas fitas, alugue grátis e assista no seu streaming. Escolha seu limite na Carteirinha, sem prazo de devolução.",
     "streamingHint": "Selecione os serviços que você assina ou explore tudo. Não precisa de conta para passear.",
     "allCatalogues": "Todos os catálogos",
     "support": "Me pague um café",
@@ -142,7 +145,10 @@
   "en-US": {
     "skipShelf": "Skip to shelf",
     "brandTag": "Choose what to watch on your streaming services, with the magic of a video store.",
-    "rentalIntro": "Pick your tapes, rent for free and watch on your streaming service. Up to 3 active tapes, with no return deadline.",
+    "rentalLimitLabel": "Simultaneous rental limit",
+    "rentalLimitSave": "Save limit",
+    "rentalLimitHint": "Applies to the website and app. Lowering the limit does not return existing rentals.",
+    "rentalIntro": "Pick your tapes, rent for free and watch on your streaming service. Choose your limit in Membership, with no return deadline.",
     "streamingHint": "Choose your subscriptions or explore everything. No account needed to browse.",
     "allCatalogues": "All catalogues",
     "support": "Buy me a coffee",

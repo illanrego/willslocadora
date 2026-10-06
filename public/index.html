@@ -317,6 +317,12 @@
         <div class="member-card-username"><span>Nome de usuário</span><strong id="account-basic-data"></strong><button id="account-edit-username" class="member-edit-button" type="button" aria-controls="username-form" aria-expanded="false" aria-label="Editar nome de usuário" title="Editar nome de usuário">✎</button></div>
         <div><span>Membro desde</span><strong id="account-member-since">—</strong></div>
       </div>
+      <form id="rental-limit-form" class="source-form">
+        <label for="account-rental-limit" data-i18n="rentalLimitLabel">Limite de aluguéis simultâneos</label>
+        <div><select id="account-rental-limit" name="rentalLimit"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select><button id="rental-limit-save" type="submit" data-i18n="rentalLimitSave">Salvar limite</button></div>
+        <p data-i18n="rentalLimitHint">Vale para o site e o aplicativo. Reduzir o limite não devolve suas fitas atuais.</p>
+        <p id="rental-limit-status" role="status" aria-live="polite"></p>
+      </form>
       <div class="member-stats" aria-label="Resumo da conta">
         <div><strong id="account-active-count">0/3</strong><span>Fitas alugadas</span></div>
         <div><strong id="account-history-count">0</strong><span>Registros recentes</span></div>
@@ -440,7 +446,7 @@
       <ol class="rental-flow" aria-label="Como alugar">
         <li><span>1</span><strong>Escolha</strong><small>fitas nas estantes</small></li>
         <li class="is-current"><span>2</span><strong>Escolher / alugar fitas</strong><small id="rental-capacity">0 de 15 fitas</small></li>
-        <li><span>3</span><strong>Alugue</strong><small>até 3 fitas ativas</small></li>
+        <li><span>3</span><strong>Alugue</strong><small>limite escolhido na Carteirinha</small></li>
       </ol>
       <div id="balcony-counter-list" class="counter-list"></div>
       <button id="rent-counter" class="balcony-rent-button balcony-primary-action" type="button">Alugar pacote</button>

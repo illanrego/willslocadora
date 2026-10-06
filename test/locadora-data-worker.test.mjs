@@ -486,16 +486,16 @@ test('data Worker rejects a rental batch containing a blocked title before creat
   assert.deepEqual(await response.json(), { error: 'That title is no longer available in the catalogue', code: 'CATALOGUE_TITLE_BLOCKED' });
 });
 
-test('data Worker refuses rental batches larger than the three active-title limit', async () => {
+test('data Worker refuses rental batches larger than the ten-title maximum', async () => {
   const worker = createLocadoraDataWorker({
     authenticate: async () => 'user_123',
     createRepository: () => ({ rentTitles: async () => assert.fail('must not write') }),
   });
   const title = { tmdbId: 603, type: 'movie', name: 'The Matrix', year: 1999 };
-  const response = await worker.fetch(jsonRequest('/v1/rentals', { method: 'POST', body: { titles: [title, { ...title, tmdbId: 604 }, { ...title, tmdbId: 605 }, { ...title, tmdbId: 606 }] } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  const response = await worker.fetch(jsonRequest('/v1/rentals', { method: 'POST', body: { titles: Array.from({ length: 11 }, (_, i) => ({ ...title, tmdbId: 603 + i })) } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
 
   assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: 'Choose one to three distinct titles' });
+  assert.deepEqual(await response.json(), { error: 'Choose one to ten distinct titles' });
 });
 
 test('data Worker returns a member title and records the watched outcome', async () => {
@@ -585,4 +585,34 @@ test('data Worker removes only the requested private collection membership', asy
   assert.equal(response.status, 200);
   assert.deepEqual(calls, [['user_123', 'favorite', 'movie:603']]);
   assert.deepEqual(await response.json(), { removed: true });
+});
+
+
+test('rental limit updates require authentication and a bounded integer', async () => {
+  const calls = [];
+  const worker = createLocadoraDataWorker({ authenticate: async (request) => request.headers.get('authorization') === 'Bearer valid-token' ? 'user_123' : null,
+    createRepository: () => ({ async setRentalLimit(userId, rentalLimit) { calls.push([userId, rentalLimit]); return { rentalLimit }; } }) });
+  const env = { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' };
+  for (const rentalLimit of [0, 11, 1.5, '10', null]) {
+    const response = await worker.fetch(jsonRequest('/v1/rental-limit', { method: 'PUT', body: { rentalLimit } }), env);
+    assert.equal(response.status, 400);
+  }
+  assert.equal((await worker.fetch(jsonRequest('/v1/rental-limit', { method: 'PUT', token: 'invalid', body: { rentalLimit: 10 } }), env)).status, 401);
+  assert.equal(calls.length, 0);
+  for (const rentalLimit of [1, 3, 10]) {
+    const response = await worker.fetch(jsonRequest('/v1/rental-limit', { method: 'PUT', body: { rentalLimit } }), env);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { rentalLimit });
+  }
+  assert.deepEqual(calls, [['user_123', 1], ['user_123', 3], ['user_123', 10]]);
+});
+
+test('rental API accepts ten distinct titles for database account-limit enforcement', async () => {
+  const worker = createLocadoraDataWorker({ authenticate: async () => 'user_123', createRepository: () => ({
+    async rentTitles(userId, titles) { assert.equal(userId, 'user_123'); assert.equal(titles.length, 10); return { id: 'rental', items: titles }; },
+  }) });
+  const response = await worker.fetch(jsonRequest('/v1/rentals', { method: 'POST', body: {
+    titles: Array.from({ length: 10 }, (_, i) => ({ tmdbId: i + 1, type: 'movie', name: `Tape ${i}` })),
+  } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(response.status, 201);
 });

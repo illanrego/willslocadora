@@ -3,7 +3,10 @@
 
   const { clampStoreYear, createImdbUrl, createLetterboxdUrl, createStremioUri, hydrateTitleMetadata, normalizeRentalState, prepareCounterSelection, removeCounterSelection, serializeRentalTitle, submitRentalReturns, updateRentalBasket, validateRentalResponse } = window.LocadoraCore;
   const MAX_CESTA_TITLES = 15;
-  const MAX_RENTAL_TITLES = 3;
+  function rentalLimit() {
+    const value = state.member.profile?.rentalLimit;
+    return Number.isInteger(value) && value >= 1 && value <= 10 ? value : 3;
+  }
   const COVER_PLACEHOLDER_URL = '/images/wills-locadora-cover-placeholder.svg';
   const { createTranslator, getCopy, normalizeLocale } = window.LocadoraI18n;
   const { getGenreTheme } = window.LocadoraGenreThemes;
@@ -161,7 +164,7 @@
   }
 
   function availableRentalSlots() {
-    return Math.max(0, MAX_RENTAL_TITLES - activeRentalCount());
+    return Math.max(0, rentalLimit() - activeRentalCount());
   }
 
   function beginCounterDecision() {
@@ -340,10 +343,11 @@
     const { profile, history = [], historyHasMore, signedIn } = state.member;
     overview.hidden = !signedIn || !profile;
     if (overview.hidden) return;
+    $('#account-rental-limit').value = String(rentalLimit());
     $('#account-basic-data').textContent = profile.username;
     $('#account-member-since').textContent = accountDate(profile.createdAt);
     const rental = state.rental.rented;
-    $('#account-active-count').textContent = `${rental?.titles.length || 0}/3`;
+    $('#account-active-count').textContent = `${rental?.titles.length || 0}/${rentalLimit()}`;
     $('#account-history-count').textContent = String(history.length);
     $('#account-watchlist-count').textContent = String(new Set((state.member.savedTitles.length ? state.member.savedTitles : state.member.watchlist).map(canonicalTitleKey)).size);
     renderAccountSavedCollections();
@@ -533,7 +537,7 @@
       list.replaceChildren();
       const entries = savedCollectionEntries(collection);
       if (!entries.length) { list.textContent = `${label} está vazia.`; continue; }
-      entries.forEach((savedTitle) => {
+      entries.slice(0, 3).forEach((savedTitle) => {
         list.append(createSavedCollectionCard(savedTitle, collection, 'account-dialog'));
       });
     }
@@ -1566,7 +1570,7 @@
     if (decision.length > available) {
       $('#balcony-panel-status').textContent = available
         ? `Você ainda pode alugar ${available} ${available === 1 ? 'fita' : 'fitas'}. Tire as outras da decisão antes de confirmar.`
-        : 'Você já está com 3 fitas alugadas. Devolva uma fita antes de alugar outra.';
+        : 'Você atingiu seu limite de aluguéis. Devolva fitas ou ajuste o limite na Carteirinha.';
       openRentalDesk();
       return;
     }
@@ -1867,12 +1871,12 @@
     flowSteps.forEach((step, index) => step.classList.toggle('is-current', capacity ? index === 1 : rented ? index === 2 : index === 0));
     $('#balcony-panel-status').textContent = capacity
       ? !available
-        ? 'Você já está com 3 fitas alugadas. Devolva uma fita antes de registrar outra.'
+        ? 'Você atingiu seu limite de aluguéis. Devolva fitas ou ajuste o limite na Carteirinha.'
         : capacity > available
           ? `${capacity} fitas continuam na sua decisão. Para alugar agora, deixe no máximo ${available}.`
-          : `${capacity} ${capacity === 1 ? 'fita chegou' : 'fitas chegaram'} ao balcão. Você ainda ficará com no máximo 3 fitas ativas.`
+          : `${capacity} ${capacity === 1 ? 'fita chegou' : 'fitas chegaram'} ao balcão. Você ainda ficará com no máximo ${rentalLimit()} fitas ativas.`
       : rented
-        ? `${rented.titles.length} de 3 fitas estão no seu pacote ativo. Você pode montar outra decisão enquanto houver vagas.`
+        ? `${rented.titles.length} de ${rentalLimit()} fitas estão no seu pacote ativo. Você pode montar outra decisão enquanto houver vagas.`
         : 'Escolha fitas nas estantes ou pesquise títulos. Depois revise a Cesta antes de alugar.';
     if (!capacity) counterList.textContent = 'Nenhuma fita nesta decisão. Pesquisar títulos.';
     decisionTitles.forEach((title) => {
@@ -2273,7 +2277,7 @@
     list.replaceChildren();
     const available = availableRentalSlots();
     $('#basket-status').textContent = !available
-      ? 'Você já está com 3 fitas alugadas. Devolva uma fita antes de levar outra ao Balcão.'
+      ? 'Você atingiu seu limite de aluguéis. Devolva fitas ou ajuste o limite na Carteirinha.'
       : state.counter.length
         ? `${state.counter.length} de ${MAX_CESTA_TITLES} fitas escolhidas. Você ainda pode alugar ${available} ${available === 1 ? 'fita' : 'fitas'} agora.`
         : `Sua cesta está vazia. Escolha até ${MAX_CESTA_TITLES} fitas nas estantes.`;
@@ -2533,6 +2537,27 @@
         $('#account-status').textContent = error.message;
         syncUsernameSubmit();
       }
+    });
+    $('#rental-limit-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const version = memberSessionVersion;
+      const save = $('#rental-limit-save');
+      save.disabled = true;
+      $('#rental-limit-status').textContent = '';
+      try {
+        const result = await window.LocadoraAccount.request('/v1/rental-limit', {
+          method: 'PUT', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ rentalLimit: Number($('#account-rental-limit').value) }),
+        });
+        if (version !== memberSessionVersion || !state.member.profile) return;
+        state.member.profile.rentalLimit = result.rentalLimit;
+        renderAccountOverview();
+        renderBasket();
+        renderBalconyPanel();
+        $('#rental-limit-status').textContent = state.locale === 'pt-BR' ? 'Limite salvo para o site e o aplicativo.' : 'Limit saved for the website and app.';
+      } catch (error) {
+        if (version === memberSessionVersion) $('#rental-limit-status').textContent = error.message;
+      } finally { save.disabled = false; }
     });
     $('#account-history-more').addEventListener('click', loadMoreAccountHistory);
     if (window.locadoraIsPublic) {

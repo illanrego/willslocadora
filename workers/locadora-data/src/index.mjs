@@ -173,7 +173,7 @@ export function databaseError(error) {
   if (!error) return;
   if (error.code === '23505') throw new ApiError(409, 'That public username is already taken');
   if (error.message === 'catalogue_title_blocked') throw new ApiError(409, 'That title is no longer available in the catalogue', 'CATALOGUE_TITLE_BLOCKED');
-  if (error.message === 'active_title_limit') throw new ApiError(409, 'You can have up to three active titles');
+  if (error.message === 'active_title_limit') throw new ApiError(409, 'Your account rental limit has been reached');
   if (error.message === 'title_already_rented') throw new ApiError(409, 'That title is already active at your counter');
   if (error.message === 'profile_required') throw new ApiError(409, 'Choose a public username first');
   if (error.message === 'watched_history_required') throw new ApiError(403, 'Return this title as watched before reviewing it');
@@ -317,13 +317,20 @@ export function createSupabaseRepository(env) {
   );
 
   return {
+    async setRentalLimit(userId, rentalLimit) {
+      const result = await database.from('profiles').update({ rental_limit: rentalLimit })
+        .eq('user_id', userId).select('rental_limit').maybeSingle();
+      databaseError(result.error);
+      if (!result.data) throw new ApiError(409, 'Choose a public username first');
+      return { rentalLimit: result.data.rental_limit };
+    },
     async upsertProfile(userId, username) {
       const result = await database.rpc('set_member_username', {
         p_user_id: userId,
         p_username: username,
       }).single();
       databaseError(result.error);
-      return { userId: result.data.user_id, username: result.data.username, createdAt: result.data.created_at };
+      return { userId: result.data.user_id, username: result.data.username, createdAt: result.data.created_at, rentalLimit: result.data.rental_limit ?? 3 };
     },
     async saveCollectionMembership(userId, collection, title) {
       const result = await database.rpc('save_saved_title_membership', {
@@ -577,14 +584,14 @@ export function createSupabaseRepository(env) {
     async getState(userId) {
       const blockedKeys = new Set(await this.listActiveCatalogueKeys());
       const [profileResult, watchlistResult, rentalResult, history] = await Promise.all([
-        database.from('profiles').select('user_id, username, created_at').eq('user_id', userId).maybeSingle(),
+        database.from('profiles').select('user_id, username, created_at, rental_limit').eq('user_id', userId).maybeSingle(),
         database.from('saved_title_memberships').select('id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, collection, source, source_note, added_at, completed_at').eq('user_id', userId).order('added_at', { ascending: false }),
         database.from('rentals').select('id, opened_at, rental_items(id, canonical_key, tmdb_id, title_type, title_snapshot, release_year_snapshot, rented_at, returned_at, watched_status)').eq('user_id', userId).is('returned_at', null).maybeSingle(),
         this.listHistory(userId, 0, blockedKeys),
       ]);
       [profileResult, watchlistResult, rentalResult].forEach(({ error }) => databaseError(error));
       return {
-        profile: profileResult.data ? { userId: profileResult.data.user_id, username: profileResult.data.username, createdAt: profileResult.data.created_at } : null,
+        profile: profileResult.data ? { userId: profileResult.data.user_id, username: profileResult.data.username, createdAt: profileResult.data.created_at, rentalLimit: profileResult.data.rental_limit } : null,
         watchlist: (watchlistResult.data || []).filter((row) => !blockedKeys.has(row.canonical_key) && row.collection === 'watch_later' && !row.completed_at).map(mapWatchlistRow),
         collections: {
           watch_later: (watchlistResult.data || []).filter((row) => !blockedKeys.has(row.canonical_key) && row.collection === 'watch_later' && !row.completed_at).map(mapCollectionRow),
@@ -729,6 +736,7 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
       const isHistoryRequest = request.method === 'GET' && url.pathname === '/v1/history';
       const isPublicMilestonesRequest = request.method === 'GET' && url.pathname === '/v1/public/milestones';
       const usernameMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/usernames\/([a-z0-9_-]{3,24})$/) : null;
+      const isRentalLimitRequest = request.method === 'PUT' && url.pathname === '/v1/rental-limit';
       const isProfileRequest = request.method === 'PUT' && url.pathname === '/v1/profile';
       const isWatchlistRequest = request.method === 'POST' && url.pathname === '/v1/watchlist';
       const collectionMatch = url.pathname.match(/^\/v1\/collections\/(watch_later|favorite)(?:\/(movie|series)\/([1-9][0-9]*))?$/);
@@ -739,7 +747,7 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
       const publicReviewsMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/reviews$/) : null;
       const reviewWriteMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/review$/) : null;
       const reviewEligibilityMatch = request.method === 'GET' ? url.pathname.match(/^\/v1\/titles\/(movie|series)\/([1-9][0-9]*)\/review-eligibility$/) : null;
-      if (!isStateRequest && !isHistoryRequest && !isPublicMilestonesRequest && !usernameMatch && !isProfileRequest && !isWatchlistRequest && !isCollectionSaveRequest && !isCollectionRemoveRequest && !isRentalRequest && !returnMatch && !publicReviewsMatch && !reviewWriteMatch && !reviewEligibilityMatch) return response(request, env, { error: 'Not found' }, 404);
+      if (!isStateRequest && !isHistoryRequest && !isPublicMilestonesRequest && !usernameMatch && !isProfileRequest && !isRentalLimitRequest && !isWatchlistRequest && !isCollectionSaveRequest && !isCollectionRemoveRequest && !isRentalRequest && !returnMatch && !publicReviewsMatch && !reviewWriteMatch && !reviewEligibilityMatch) return response(request, env, { error: 'Not found' }, 404);
 
       try {
         const repository = createRepository(env);
@@ -765,6 +773,11 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
         }
         if (usernameMatch) return response(request, env, { username: usernameMatch[1], available: await repository.isUsernameAvailable(userId, usernameMatch[1]) });
         const body = await readJson(request);
+        if (isRentalLimitRequest) {
+          const rentalLimit = body?.rentalLimit;
+          if (!Number.isInteger(rentalLimit) || rentalLimit < 1 || rentalLimit > 10) return response(request, env, { error: 'Rental limit must be an integer from 1 to 10' }, 400);
+          return response(request, env, await repository.setRentalLimit(userId, rentalLimit));
+        }
         if (reviewWriteMatch) {
           const review = normalizeReview(body);
           if (!review) return response(request, env, { error: 'A review needs a half-star rating and a short text' }, 400);
@@ -786,7 +799,7 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
         if (isRentalRequest) {
           const titles = Array.isArray(body?.titles) ? body.titles.map((title) => normalizeTitle(title, { requireSource: false })) : [];
           const distinct = new Set(titles.filter(Boolean).map((title) => title.canonicalKey));
-          if (titles.length < 1 || titles.length > 3 || titles.some((title) => !title) || distinct.size !== titles.length) return response(request, env, { error: 'Choose one to three distinct titles' }, 400);
+          if (titles.length < 1 || titles.length > 10 || titles.some((title) => !title) || distinct.size !== titles.length) return response(request, env, { error: 'Choose one to ten distinct titles' }, 400);
           const blocked = (await Promise.all(titles.map((title) => repository.isTitleBlocked?.(title.canonicalKey)))).some(Boolean);
           if (blocked) return response(request, env, { error: 'That title is no longer available in the catalogue', code: 'CATALOGUE_TITLE_BLOCKED' }, 409);
           return response(request, env, { rental: await repository.rentTitles(userId, titles) }, 201);
