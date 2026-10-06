@@ -201,10 +201,7 @@ test('the normal header opens Cesta first and reaches the 2D Balcony through its
 });
 
 
-test('the normal header opens catalogue search without requiring a Cesta selection', () => {
-  assert.match(page, /id="catalog-search-open"[^>]*>Pesquisar títulos<\/button>/);
-  assert.match(app, /\$\('#catalog-search-open'\)\.addEventListener\('click', openCatalogSearch\)/);
-});
+
 
 test('Balcão decisions use a temporary subset instead of deleting titles from Cesta', () => {
   assert.match(app, /let balconySelection = null/);

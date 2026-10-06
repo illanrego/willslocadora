@@ -2418,7 +2418,6 @@
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#immersive-2d-open').addEventListener('click', () => setMode('normal'));
     $('#immersive-balcony-open').addEventListener('click', () => setMode('balcony'));
-    $('#catalog-search-open').addEventListener('click', openCatalogSearch);
     $('#balcony-return-shelf').addEventListener('click', () => setMode('immersive'));
     $('#balcony-panel-open').addEventListener('click', openRentalDesk);
     $('#catalog-search-form').addEventListener('submit', (event) => { event.preventDefault(); searchCatalog(); });

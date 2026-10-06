@@ -10,6 +10,7 @@
   <link rel="icon" type="image/png" sizes="256x256" href="/favicon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/normal-mode.css">
 </head>
 <body>
   <a class="skip-link" href="#shelf" data-i18n="skipShelf">Pular para a prateleira</a>
@@ -25,7 +26,6 @@
           <span class="mobile-menu-close-icon" aria-hidden="true">×</span>
         </button>
         <nav class="header-actions" aria-label="Store actions">
-          <button class="utility-button" id="catalog-search-open" type="button" aria-controls="catalog-search-dialog">Pesquisar títulos</button>
           <button id="watchlist-open" class="utility-button header-icon-button" type="button" aria-label="Assistir depois e Favoritos" title="Assistir depois e Favoritos">
             <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
             <span class="mobile-action-label">Salvos</span>
@@ -34,11 +34,15 @@
             <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="3.25"/><path d="M5 21c.7-4.1 3-6.15 7-6.15S18.3 16.9 19 21"/></svg>
             <span class="mobile-action-label">Conta</span>
           </button>
+          <button class="utility-button" id="immersive-toggle" type="button" aria-pressed="false" data-i18n="immersiveMode">MODO IMERSIVO</button>
           <button id="normal-settings-toggle" class="utility-button header-icon-button" type="button" aria-controls="normal-settings" aria-expanded="false" data-i18n-aria-label="settings" title="Ajustes">
             <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="3.25"/><path d="M12 2.75v2.1m0 14.3v2.1M2.75 12h2.1m14.3 0h2.1M5.45 5.45l1.5 1.5m10.1 10.1 1.5 1.5m0-13.1-1.5 1.5M6.95 17.05l-1.5 1.5"/></svg>
             <span class="mobile-action-label" data-i18n="settings">Ajustes</span>
           </button>
           <button class="utility-button" id="sources-open" type="button" data-i18n="sources">Fontes</button>
+          <button class="counter-button" id="counter-open" type="button" aria-controls="basket-dialog">
+            <span data-i18n="basket">Cesta</span><span id="counter-count">0</span>
+          </button>
         </nav>
       </div>
 
@@ -117,12 +121,9 @@
     </header>
 
     <main>
-      <p class="rental-intro" data-i18n="rentalIntro">Escolha suas fitas, alugue grátis e assista no seu streaming. Até 3 fitas ativas, sem prazo de devolução.</p>
+      <p class="rental-intro" data-i18n="rentalIntro">Escolha suas fitas, alugue grátis e assista no seu streaming. Escolha seu limite na Carteirinha, sem prazo de devolução.</p>
       <section id="normal-mode" class="shop-floor" aria-label="Video store aisles">
         <div class="shelf-room">
-          <div class="shelf-home-actions">
-            <button class="mode-button shelf-mode-button" id="immersive-toggle" type="button" aria-pressed="false" data-i18n="immersiveMode">MODO 3D - IMERSIVO</button>
-          </div>
           <div class="fluorescent" aria-hidden="true"></div>
           <header class="shelf-heading">
             <div>
@@ -381,11 +382,6 @@
     <div id="watchlist-list" class="counter-list" role="tabpanel"></div>
   </dialog>
 
-  <div class="store-dock">
-    <button class="counter-button" id="counter-open" type="button" aria-controls="basket-dialog">
-      <span class="basket-spines" aria-hidden="true"></span><span data-i18n="basket">Cesta</span> <span id="counter-count">0</span>
-    </button>
-  </div>
   <p id="basket-added-message" class="basket-notice" role="status" aria-live="polite" aria-atomic="true"></p>
   <dialog id="donation-dialog" class="panel-dialog donation-dialog" aria-labelledby="donation-heading">
     <form method="dialog" class="panel-header"><h2 id="donation-heading" data-i18n="supportTitle">Me pague um café</h2><button class="dialog-close" data-i18n-aria-label="close" aria-label="Fechar">×</button></form>
@@ -442,7 +438,7 @@
     </form>
     <p id="balcony-panel-status" class="panel-copy" role="status" aria-live="polite"></p>
     <section id="balcony-rental-controls" aria-label="Aluguel no Balcão">
-      <p class="panel-copy" data-i18n="rentalIntro">Escolha suas fitas, alugue grátis e assista no seu streaming. Até 3 fitas ativas, sem prazo de devolução.</p>
+      <p class="panel-copy" data-i18n="rentalIntro">Escolha suas fitas, alugue grátis e assista no seu streaming. Escolha seu limite na Carteirinha, sem prazo de devolução.</p>
       <ol class="rental-flow" aria-label="Como alugar">
         <li><span>1</span><strong>Escolha</strong><small>fitas nas estantes</small></li>
         <li class="is-current"><span>2</span><strong>Escolher / alugar fitas</strong><small id="rental-capacity">0 de 15 fitas</small></li>
