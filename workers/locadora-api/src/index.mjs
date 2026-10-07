@@ -5,6 +5,10 @@ const TMDB_IMAGE_HOST = 'image.tmdb.org';
 const CATALOGUE_POLICY_KEY = 'catalogue-policy-v1';
 const MAX_TITLES = 40;
 const LOCALES = new Set(['pt-BR', 'en-US']);
+// Departments surfaced as credit-stand roles. Kept in sync with the frozen contract.
+const CREDIT_DEPARTMENTS = new Set(['Acting', 'Directing', 'Writing', 'Camera', 'Editing', 'Visual Effects', 'Sound', 'Art', 'Production', 'Music', 'Costume & Make-Up', 'Lighting']);
+const WRITER_JOBS = Object.freeze(['Writer', 'Screenplay', 'Story', 'Teleplay']);
+const SELF_CHARACTERS = new Set(['Self', 'Himself', 'Herself']);
 
 const PROVIDERS = Object.freeze([
   ['netflix', 8, 'Netflix', 'Netflix', '/images/providers/netflix.svg'],
@@ -128,6 +132,226 @@ async function mapWithConcurrency(items, mapper, limit = 4) {
   return values;
 }
 
+function genreName(tmdbType, genreId) {
+  return tmdbType === 'tv' ? TV_GENRE_NAMES[genreId] : Object.keys(MOVIE_GENRES).find((name) => MOVIE_GENRES[name] === genreId);
+}
+
+function normalizedCreditType(mediaType) {
+  return mediaType === 'tv' ? 'series' : 'movie';
+}
+
+function isSelfCharacter(character) {
+  const value = String(character || '').trim();
+  return SELF_CHARACTERS.has(value) || value.startsWith('Self ') || value.startsWith('Self-');
+}
+
+function brFlatrate(details) {
+  const source = details?.['watch/providers'] ?? details;
+  const br = source?.results?.BR || {};
+  return { link: typeof br.link === 'string' ? br.link : '', flatrate: Array.isArray(br.flatrate) ? br.flatrate : [] };
+}
+
+// Roles are derived from combined_credits: cast entries carry no TMDB department/job,
+// so they are normalized to Acting/Acting; crew entries keep their real department/job.
+function buildRoles(cast, crew) {
+  const counts = new Map();
+  const add = (department, job) => {
+    if (!CREDIT_DEPARTMENTS.has(department)) return;
+    const key = `${department}\u0000${job}`;
+    const entry = counts.get(key) || { department, job, count: 0 };
+    entry.count += 1;
+    counts.set(key, entry);
+  };
+  for (const item of Array.isArray(cast) ? cast : []) add('Acting', 'Acting');
+  for (const item of Array.isArray(crew) ? crew : []) add(item.department, item.job || '');
+  return [...counts.values()].sort((a, b) => b.count - a.count
+    || (a.department < b.department ? -1 : a.department > b.department ? 1 : 0)
+    || (a.job < b.job ? -1 : a.job > b.job ? 1 : 0));
+}
+
+function buildPersonProfile(data, id) {
+  return {
+    id: String(id),
+    name: data?.name || 'Untitled',
+    profile: imageUrl(data?.profile_path, 'w185'),
+    knownFor: data?.known_for_department || '',
+    roles: buildRoles(data?.combined_credits?.cast, data?.combined_credits?.crew),
+  };
+}
+
+// Additive credits block for /v1/title: keeps the legacy name arrays untouched.
+function buildTitleCredits(credits = {}) {
+  const crew = Array.isArray(credits.crew) ? credits.crew : [];
+  const cast = Array.isArray(credits.cast) ? credits.cast : [];
+  const uniqueById = (items) => [...new Map(items.map((person) => [String(person.id), { id: String(person.id), name: person.name || '' }])).values()];
+  const directors = uniqueById(crew.filter((person) => person.job === 'Director'));
+  const writers = uniqueById(crew.filter((person) => WRITER_JOBS.includes(person.job)));
+  const castTop = cast.slice(0, 10).map((person) => ({ id: String(person.id), name: person.name || '', character: person.character || '' }));
+  const people = [];
+  const seen = new Set();
+  for (const person of crew) {
+    if (!CREDIT_DEPARTMENTS.has(person.department)) continue;
+    const key = `${person.id}:${person.job || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    people.push({ id: String(person.id), name: person.name || '', department: person.department, job: person.job || '' });
+    if (people.length >= 24) break;
+  }
+  return { director: directors, writer: writers, cast: castTop, crew: people };
+}
+
+function creditEntries(data, { department, job, type }) {
+  const cast = Array.isArray(data?.cast) ? data.cast : [];
+  const crew = Array.isArray(data?.crew) ? data.crew : [];
+  const entries = [];
+  if (department === 'Acting') {
+    for (const item of cast) if (!isSelfCharacter(item.character)) entries.push({ item, department: 'Acting', job: 'Acting' });
+  } else {
+    for (const item of crew) {
+      if (item.department !== department) continue;
+      if (job && item.job !== job) continue;
+      entries.push({ item, department: item.department, job: item.job || '' });
+    }
+  }
+  return entries.filter((entry) => type === 'all' || normalizedCreditType(entry.item.media_type) === type);
+}
+
+function dedupeCredits(entries) {
+  const byKey = new Map();
+  for (const entry of entries) {
+    const key = `${normalizedCreditType(entry.item.media_type)}:${entry.item.id}`;
+    const current = byKey.get(key);
+    if (!current || (Number(entry.item.vote_count) || 0) > (Number(current.item.vote_count) || 0)) byKey.set(key, entry);
+  }
+  return [...byKey.values()];
+}
+
+function sortCredits(entries) {
+  return [...entries].sort((a, b) => {
+    const votes = (Number(b.item.vote_count) || 0) - (Number(a.item.vote_count) || 0);
+    if (votes) return votes;
+    const popularity = (Number(b.item.popularity) || 0) - (Number(a.item.popularity) || 0);
+    if (popularity) return popularity;
+    const dateA = String(a.item.release_date || a.item.first_air_date || '');
+    const dateB = String(b.item.release_date || b.item.first_air_date || '');
+    if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+    return (Number(a.item.id) || 0) - (Number(b.item.id) || 0);
+  });
+}
+
+// combined_credits is cached at the edge per person/locale for 7 days and shared by
+// /v1/person and /v1/credit-stand.
+async function personCredits(id, locale, env, fetchImpl, ctx) {
+  const edge = globalThis.caches?.default;
+  const key = new Request(`https://locadora.internal/v1/person-credits?id=${encodeURIComponent(id)}&locale=${encodeURIComponent(locale)}`);
+  const cached = await edge?.match(key);
+  if (cached) { try { return await cached.json(); } catch { /* fall through to upstream */ } }
+  const tmdb = createTmdb(env, fetchImpl);
+  const data = await tmdb.request(`/person/${id}?append_to_response=combined_credits`, locale);
+  if (edge && ctx?.waitUntil) ctx.waitUntil(edge.put(key, new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=604800' } })));
+  return data;
+}
+
+// Single cached BR-flatrate helper shared by titleMeta() (extraction) and creditStand() (lookup).
+async function brAvailability(tmdbType, tmdbId, env, fetchImpl, ctx, cataloguePolicy) {
+  const edge = globalThis.caches?.default;
+  const key = new Request(`https://locadora.internal/v1/br-availability?type=${tmdbType}&id=${tmdbId}&_policy=${Number(cataloguePolicy?.version) || 0}`);
+  const cached = await edge?.match(key);
+  if (cached) { try { return await cached.json(); } catch { /* fall through to upstream */ } }
+  const tmdb = createTmdb(env, fetchImpl);
+  const result = brFlatrate(await tmdb.request(`/${tmdbType}/${tmdbId}/watch/providers`));
+  if (edge && ctx?.waitUntil) ctx.waitUntil(edge.put(key, new Response(JSON.stringify(result), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=604800' } })));
+  return result;
+}
+
+async function person({ id, locale }, env, fetchImpl, ctx) {
+  const data = await personCredits(id, locale, env, fetchImpl, ctx);
+  return buildPersonProfile(data, id);
+}
+
+async function creditStand(filters, env, fetchImpl, cataloguePolicy, ctx) {
+  const { person: personId, department, job, type, year, ignoreStoreYear, providers, stand, locale } = filters;
+  const data = await personCredits(personId, locale, env, fetchImpl, ctx);
+  const profile = buildPersonProfile(data, personId);
+  const deduped = dedupeCredits(creditEntries(data?.combined_credits || {}, { department, job, type }));
+  const total = deduped.length;
+  let ordered = sortCredits(deduped);
+  if (!ignoreStoreYear) {
+    const span = providers.length ? 19 : 4;
+    ordered = ordered.filter((entry) => {
+      const titleYear = yearFromDate(entry.item.release_date || entry.item.first_air_date);
+      return Number.isInteger(titleYear) && titleYear >= year - span && titleYear <= year;
+    });
+  }
+  const tmdb = createTmdb(env, fetchImpl);
+  const hydrate = async (entry) => {
+    const item = entry.item;
+    const titleType = normalizedCreditType(item.media_type);
+    const tmdbType = titleType === 'series' ? 'tv' : 'movie';
+    if (isBlocked(cataloguePolicy, titleType, item.id)) return null;
+    // Availability first: a rejected candidate costs one lookup instead of two, which keeps a
+    // provider-filtered stand inside the Workers subrequest budget.
+    let availability = { link: '', providers: [], subscriptionProviders: [] };
+    if (providers.length) {
+      const br = await brAvailability(tmdbType, item.id, env, fetchImpl, ctx, cataloguePolicy);
+      const flatrateIds = new Set((br.flatrate || []).map((provider) => provider.provider_id));
+      const matching = providers.filter((id) => flatrateIds.has(PROVIDERS_BY_ID.get(id).tmdbProviderId));
+      if (!matching.length) return null;
+      const names = matching.map((id) => PROVIDERS_BY_ID.get(id).canonicalName);
+      availability = { link: br.link || '', providers: names, subscriptionProviders: names };
+    }
+    let imdbId = '';
+    try { imdbId = (await tmdb.request(`/${tmdbType}/${item.id}/external_ids`, locale)).imdb_id || ''; } catch { imdbId = ''; }
+    if (!/^tt\d+$/.test(imdbId)) return null;
+    return {
+      id: `tmdb:${item.id}`, imdbId, type: titleType, name: item.title || item.name || 'Untitled',
+      year: yearFromDate(item.release_date || item.first_air_date), poster: imageUrl(item.poster_path, 'w500'),
+      background: imageUrl(item.backdrop_path, 'w1280'), description: item.overview || '',
+      imdbRating: item.vote_average ? String(item.vote_average) : '',
+      genres: (item.genre_ids || []).map((genreId) => genreName(tmdbType, genreId)).filter(Boolean),
+      director: [], writer: [], cast: [], source: 'tmdb-person', availabilityBR: availability,
+    };
+  };
+  // Cloudflare Workers allow 50 subrequests per request on the free plan and the discover shelf
+  // already spends 42, so a stand examines a bounded window of credits: 40 when a candidate costs
+  // one lookup (IMDb id), 20 when a provider filter adds a second (BR availability) — 41 in total.
+  const candidateBudget = providers.length ? 20 : MAX_TITLES;
+  const candidateStart = stand * candidateBudget;
+  const candidates = ordered.slice(candidateStart, candidateStart + candidateBudget);
+  const accepted = (await mapWithConcurrency(candidates, hydrate, 4)).filter(Boolean);
+  const titles = accepted.slice(0, MAX_TITLES);
+  const hasNextStand = ordered.length > candidateStart + candidateBudget || accepted.length > MAX_TITLES;
+  return {
+    person: { id: String(personId), name: profile.name, department, job, total, profile: profile.profile },
+    titles, hasNextStand, year, ignoreStoreYear, providers, stand,
+  };
+}
+
+function validPerson(url) {
+  const id = url.searchParams.get('id') || '';
+  const locale = url.searchParams.get('locale') || 'pt-BR';
+  if (!/^[1-9][0-9]*$/.test(id) || !LOCALES.has(locale)) return null;
+  return { id, locale };
+}
+
+function validCreditStand(url) {
+  const personId = url.searchParams.get('person') || '';
+  const department = url.searchParams.get('department') || '';
+  const job = (url.searchParams.get('job') || '').trim();
+  const requestedType = url.searchParams.get('type') || 'movie';
+  const type = ['movie', 'series', 'all'].includes(requestedType) ? requestedType : null;
+  const year = Number(url.searchParams.get('year'));
+  const stand = Number(url.searchParams.get('stand') || 0);
+  const requested = url.searchParams.get('providers') ?? url.searchParams.get('provider') ?? '';
+  const providers = [...new Set(requested.split(',').map((id) => id.trim()).filter((id) => PROVIDERS_BY_ID.has(id)))].sort();
+  const ignoreStoreYear = url.searchParams.get('ignoreStoreYear') === 'true';
+  const locale = url.searchParams.get('locale') || 'pt-BR';
+  if (!/^[1-9][0-9]*$/.test(personId) || !CREDIT_DEPARTMENTS.has(department) || job.length > 60 || !type
+    || !Number.isInteger(year) || year < 1920 || year > 2026 || !Number.isInteger(stand) || stand < 0 || stand > 20
+    || (requested && !providers.length) || !LOCALES.has(locale)) return null;
+  return { person: personId, department, job, type, year, stand, providers, ignoreStoreYear, locale };
+}
+
 function createTmdb(env, fetchImpl) {
   if (!env.TMDB_API_KEY) throw new Error('TMDB is not configured');
   async function request(path, locale = 'pt-BR') {
@@ -214,8 +438,8 @@ async function titleMeta({ type, id, locale }, env, fetchImpl, cataloguePolicy) 
   const names = (items) => [...new Set(items.map((person) => person.name).filter(Boolean))];
   const writers = names(crew.filter((person) => ['Writer', 'Screenplay', 'Story', 'Teleplay'].includes(person.job)));
   const directors = names(crew.filter((person) => person.job === 'Director'));
-  const br = title['watch/providers']?.results?.BR || {};
-  const providers = br.flatrate || [];
+  const br = brFlatrate(title);
+  const providers = br.flatrate;
   const movieRating = title.release_dates?.results?.find((result) => result.iso_3166_1 === 'BR')?.release_dates?.find((release) => release.certification)?.certification || '';
   const seriesRating = title.content_ratings?.results?.find((result) => result.iso_3166_1 === 'BR')?.rating || '';
   const logo = (title.images?.logos || []).find((image) => image.iso_639_1 === locale.slice(0, 2)) || (title.images?.logos || []).find((image) => image.iso_639_1 === 'en') || (title.images?.logos || [])[0];
@@ -228,6 +452,7 @@ async function titleMeta({ type, id, locale }, env, fetchImpl, cataloguePolicy) 
     ...(runtimeMinutes(type, title) ? { runtime: runtimeMinutes(type, title) } : {}),
     logo: imageUrl(logo?.file_path, 'w500'), genres: (title.genres || []).map((genre) => genre.name).filter(Boolean),
     director: directors, writer: writers, cast: names((title.credits?.cast || []).slice(0, 10)), certificationBR: movieRating || seriesRating,
+    credits: buildTitleCredits(title.credits),
     availabilityBR: { link: br.link || '', providers: providers.map((provider) => provider.provider_name).filter(Boolean), subscriptionProviders: providers.map((provider) => provider.provider_name).filter(Boolean), providerLogos: providers.map((provider) => ({ name: provider.provider_name, logo: imageUrl(provider.logo_path, 'w92') })).filter((provider) => provider.name && provider.logo) },
   };
 }
@@ -315,6 +540,22 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
           return await edgeCached(url, ['type', 'id', 'locale'], policy, ctx, async () => {
             const meta = await titleMeta({ type: url.searchParams.get('type'), id: url.searchParams.get('id') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl, cataloguePolicy);
             return json({ meta }, 200, { 'cache-control': browserAndEdgeCache(86400, 604800) });
+          });
+        }
+        if (url.pathname === '/v1/person') {
+          const filters = validPerson(url);
+          if (!filters) return json({ error: 'Invalid person request' }, 400, policy.headers);
+          return await edgeCached(url, ['id', 'locale', '_policy'], policy, ctx, async () => {
+            const profile = await person(filters, env, fetchImpl, ctx);
+            return json({ person: profile }, 200, { 'cache-control': browserAndEdgeCache(86400, 604800, 604800) });
+          });
+        }
+        if (url.pathname === '/v1/credit-stand') {
+          const filters = validCreditStand(url);
+          if (!filters) return json({ error: 'Invalid credit stand filters' }, 400, policy.headers);
+          return await edgeCached(url, ['person', 'department', 'job', 'type', 'year', 'ignoreStoreYear', 'providers', 'stand', 'locale'], policy, ctx, async () => {
+            const body = await creditStand(filters, env, fetchImpl, cataloguePolicy, ctx);
+            return json(body, 200, { 'cache-control': browserAndEdgeCache(3600, 86400, 604800) });
           });
         }
         if (url.pathname === '/v1/shelf') {

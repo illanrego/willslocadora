@@ -24,6 +24,24 @@
     { labelKey: 'genreDocumentary', theme: 'Documentary', genres: ['Documentary'] },
   ];
 
+  // Credit stands: allowlisted TMDB departments mapped to localized labels (i18n.js).
+  const DEPARTMENT_LABEL_KEYS = Object.freeze({
+    Acting: 'departmentActing',
+    Directing: 'departmentDirecting',
+    Writing: 'departmentWriting',
+    Camera: 'departmentCamera',
+    Editing: 'departmentEditing',
+    'Visual Effects': 'departmentVisualEffects',
+    Sound: 'departmentSound',
+    Art: 'departmentArt',
+    Production: 'departmentProduction',
+    Music: 'departmentMusic',
+    'Costume & Make-Up': 'departmentCostume',
+    Lighting: 'departmentLighting',
+  });
+  // The three roles already on a title; crew departments are the second pass.
+  const CREDIT_PRIMARY_DEPARTMENTS = Object.freeze(['Directing', 'Writing', 'Acting']);
+
   function loadLocalSavedTitles() {
     try {
       const saved = JSON.parse(localStorage.getItem('locadora.savedTitles') || '[]');
@@ -74,6 +92,8 @@
     mode: 'immersive',
     hasNextStand: false,
     standCache: createBoundedStandCache(3),
+    // A credit stand reuses the shelf pipeline with a person as the source (see loadShelf()).
+    credit: null,
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -134,9 +154,10 @@
     for (const select of [$('#genre-select'), $('#immersive-genre-select')]) {
       select.querySelectorAll('option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
     }
-    $('#shelf-title').textContent = genreLabel(genres[state.genreIndex]);
+    $('#shelf-title').textContent = shelfRoomLabel();
     sessionSupport.refreshLocale();
     state.metadata.clear();
+    if (refreshTitle && $('#person-dialog')?.open && personState) renderPerson();
     if (refreshTitle && titleDialog.open) {
       const key = $('#title-detail').dataset.titleKey;
       const title = [...state.titles, ...state.counter].find((item) => `${item.type}:${item.id}` === key);
@@ -883,10 +904,11 @@
     document.querySelectorAll('[data-provider-id]').forEach((input) => { input.checked = state.providers.includes(input.dataset.providerId); });
     document.querySelectorAll('[data-provider-none]').forEach((input) => { input.checked = state.providerPreferenceSet && state.providers.length === 0; });
     const enabled = state.providers.length > 0;
-    state.ignoreStoreYear = enabled && state.ignoreStoreYear;
+    const credit = Boolean(state.credit);
+    state.ignoreStoreYear = (enabled || credit) && state.ignoreStoreYear;
     for (const selector of ['#ignore-store-year', '#immersive-ignore-store-year']) {
       $(selector).checked = state.ignoreStoreYear;
-      $(selector).disabled = !enabled;
+      $(selector).disabled = !(enabled || credit);
     }
   }
 
@@ -909,7 +931,7 @@
   }
 
   function setIgnoreStoreYear(value, reload = true) {
-    state.ignoreStoreYear = state.providers.length > 0 && Boolean(value);
+    state.ignoreStoreYear = (state.providers.length > 0 || Boolean(state.credit)) && Boolean(value);
     localStorage.setItem('locadora.ignoreStoreYear', String(state.ignoreStoreYear));
     syncProviderControls();
     if (reload) loadShelf();
@@ -1181,9 +1203,9 @@
 
   function refreshImmersive(direction = 0) {
     if (!immersiveShelf) return;
-    const genre = genres[state.genreIndex];
-    if (direction) immersiveShelf.transition(immersiveTitles(), genreLabel(genre), state.year, state.type, state.stand, direction, immersiveVisuals());
-    else immersiveShelf.update(immersiveTitles(), genreLabel(genre), state.year, state.type, state.stand, immersiveVisuals());
+    const roomLabel = shelfRoomLabel();
+    if (direction) immersiveShelf.transition(immersiveTitles(), roomLabel, state.year, state.type, state.stand, direction, immersiveVisuals());
+    else immersiveShelf.update(immersiveTitles(), roomLabel, state.year, state.type, state.stand, immersiveVisuals());
     $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
   }
 
@@ -1222,11 +1244,10 @@
     try {
       const { createImmersiveShelf } = await import('./immersive-shelf.mjs');
       if (state.mode !== 'immersive' || token !== immersiveToken) return;
-      const genre = genres[state.genreIndex];
       immersiveShelf = createImmersiveShelf({
         container: stage,
         titles: immersiveTitles(),
-        genre: genreLabel(genre),
+        genre: shelfRoomLabel(),
         year: state.year,
         type: state.type,
         stand: state.stand,
@@ -1410,15 +1431,24 @@
     const providerNames = { netflix: 'Netflix', 'prime-video': 'Prime Video', max: 'Max', 'disney-plus': 'Disney+', globoplay: 'Globoplay', 'paramount-plus': 'Paramount+', 'apple-tv-plus': 'Apple TV+', mubi: 'MUBI', crunchyroll: 'Crunchyroll' };
     const providerLabel = state.providers.map((id) => providerNames[id]).filter(Boolean).join(' + ');
     const yearLabel = state.ignoreStoreYear ? t('allYears') : `${state.year - 19}–${state.year}`;
-    $('#shelf-title').textContent = genreLabel(genre);
-    $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${yearLabel}`}`;
+    const credit = state.credit;
+    if (credit) {
+      $('#shelf-title').textContent = `${t('creditStand')}: ${credit.name}`;
+      $('#shelf-caption').textContent = `${creditRoleLabel(credit)} · ${yearLabel}`;
+    } else {
+      $('#shelf-title').textContent = genreLabel(genre);
+      $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${yearLabel}`}`;
+    }
+    $('#back-to-aisle').hidden = !credit;
+    $('#immersive-back-to-aisle').hidden = !credit;
+    $('#credit-stand-all-providers').hidden = true;
     $('#immersive-provider-summary').textContent = `${providerLabel || t('allCatalogues')} · ${state.ignoreStoreYear ? t('allYears') : `${t('storeYearCaption')} ${state.year}`}`;
     $('#shelf-status').textContent = append ? t('openingStand') : t('openingBoxes');
     $('#immersive-status').textContent = append ? t('openingStand') : t('openingBoxes');
     setLoadMoreShelfLoading(append);
     $('#immersive-previous-stand').disabled = true;
     $('#immersive-next-stand').disabled = true;
-    immersiveShelf?.setLoading(genreLabel(genre), state.year, state.type, stand);
+    immersiveShelf?.setLoading(shelfRoomLabel(), state.year, state.type, stand);
     shelf.hidden = false;
     shelf.setAttribute('aria-busy', 'true');
     emptyState.hidden = true;
@@ -1431,8 +1461,12 @@
     }
 
     try {
-      const params = new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear) });
-      const body = await api(`/api/shelf?${params}`, { signal: controller.signal });
+      const useCreditStand = Boolean(state.credit);
+      const params = useCreditStand
+        ? new URLSearchParams({ person: state.credit.id, department: state.credit.department, job: state.credit.job || '', type: state.type, year: state.year, ignoreStoreYear: String(state.ignoreStoreYear), providers: state.credit.allProviders ? '' : state.providers.join(','), stand, locale: state.locale })
+        : new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear) });
+      const endpoint = useCreditStand ? '/api/credit-stand' : '/api/shelf';
+      const body = await api(`${endpoint}?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
       if (!append && !preserveStandHistory) state.renderedTitleKeys = new Set();
       const hasAnotherSourcePage = Boolean(body.hasNextStand);
@@ -1481,6 +1515,11 @@
     shelf.hidden = true;
     $('#load-more-shelf').hidden = true;
     emptyState.hidden = false;
+    const emptyTitle = emptyState.querySelector('h3');
+    const emptyBody = emptyState.querySelector('p');
+    if (emptyTitle) emptyTitle.textContent = state.credit ? t('creditStandEmpty') : t('emptyTitle');
+    if (emptyBody) emptyBody.textContent = t('emptyBody');
+    $('#credit-stand-all-providers').hidden = !(state.credit && !state.credit.allProviders);
   }
 
   function isAtCounter(title) {
@@ -2095,6 +2134,323 @@
     activeVhsViewer?.setBlockActionVisible(state.admin);
   }
 
+  // ---------------------------------------------------------------------------
+  // Credit stands: clickable credits -> person window -> shelf stand.
+  // Metadata only; no player, no stream resolution.
+  // ---------------------------------------------------------------------------
+
+  let personRequestToken = 0;
+  let personTitleToken = 0;
+  let personState = null;
+
+  function departmentLabel(department) {
+    const key = DEPARTMENT_LABEL_KEYS[department];
+    return key ? t(key) : String(department || '');
+  }
+
+  function normalizeCreditJob(department, job) {
+    // The contract filters department=Acting exactly and ignores the job there.
+    if (department === 'Acting') return '';
+    return String(job || '').trim();
+  }
+
+  function creditRoleLabel(credit) {
+    const label = departmentLabel(credit?.department);
+    const job = String(credit?.job || '').trim();
+    if (!job || CREDIT_PRIMARY_DEPARTMENTS.includes(credit?.department)) return label;
+    return `${label} · ${job}`;
+  }
+
+  function creditEntries(value, fallbackDepartment, fallbackJob) {
+    return (Array.isArray(value) ? value : [])
+      .filter((entry) => entry && entry.id && entry.name)
+      .map((entry) => ({
+        id: String(entry.id),
+        name: String(entry.name),
+        department: String(entry.department || fallbackDepartment || ''),
+        job: String(entry.job != null && entry.job !== '' ? entry.job : (fallbackJob || '')),
+      }));
+  }
+
+  // With ids: the three roles already shown on a title, as clickable index entries.
+  function titleCreditGroups(title) {
+    const credits = title?.credits;
+    if (!credits || typeof credits !== 'object') return [];
+    const groups = [];
+    const director = creditEntries(credits.director, 'Directing', 'Director');
+    const writer = creditEntries(credits.writer, 'Writing', 'Writer');
+    const cast = creditEntries(credits.cast, 'Acting', '').slice(0, 10);
+    if (director.length) groups.push({ labelKey: 'directedBy', entries: director });
+    if (writer.length) groups.push({ labelKey: 'writtenBy', entries: writer });
+    if (cast.length) groups.push({ labelKey: 'starring', entries: cast });
+    return groups;
+  }
+
+  // Graceful degrade: cached/older payloads carry only plain-text name arrays.
+  function titleCreditFallbackGroups(title) {
+    const plain = (value) => (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [])
+      .map((name) => String(name).trim()).filter(Boolean);
+    const groups = [];
+    const director = plain(title?.director);
+    const writer = plain(title?.writer);
+    const cast = plain(title?.cast).slice(0, 10);
+    if (director.length) groups.push({ labelKey: 'directedBy', names: director });
+    if (writer.length) groups.push({ labelKey: 'writtenBy', names: writer });
+    if (cast.length) groups.push({ labelKey: 'starring', names: cast });
+    return groups;
+  }
+
+  function renderTitleCredits(title) {
+    const section = document.createElement('section');
+    section.className = 'title-credits';
+    const groups = titleCreditGroups(title);
+    for (const group of groups) {
+      const row = document.createElement('div');
+      row.className = 'title-credits-row';
+      const label = document.createElement('span');
+      label.className = 'title-credits-label';
+      label.textContent = t(group.labelKey);
+      row.append(label);
+      for (const entry of group.entries) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'credit-link';
+        button.dataset.personId = entry.id;
+        button.dataset.department = entry.department;
+        button.dataset.job = entry.job;
+        button.textContent = entry.name;
+        button.addEventListener('click', () => openPerson(entry));
+        row.append(button);
+      }
+      section.append(row);
+    }
+    if (!groups.length) {
+      for (const group of titleCreditFallbackGroups(title)) {
+        const row = document.createElement('div');
+        row.className = 'title-credits-row';
+        const label = document.createElement('span');
+        label.className = 'title-credits-label';
+        label.textContent = t(group.labelKey);
+        row.append(label);
+        for (const name of group.names) {
+          const span = document.createElement('span');
+          span.className = 'credit-name';
+          span.textContent = name;
+          row.append(span);
+        }
+        section.append(row);
+      }
+    }
+    section.hidden = !section.childElementCount;
+    return section;
+  }
+
+  function syncTitleCredits(detail, title) {
+    const current = detail.querySelector('.title-credits');
+    const next = renderTitleCredits(title);
+    if (current) current.replaceWith(next);
+    else detail.append(next);
+  }
+
+  function renderPersonSummary() {
+    if (!personState) return;
+    const photo = $('#person-photo');
+    const profileUrl = personState.profile ? window.locadoraPosterUrl(personState.profile) : '';
+    photo.hidden = !profileUrl;
+    if (profileUrl) photo.src = profileUrl; else photo.removeAttribute('src');
+    photo.alt = personState.name || '';
+    $('#person-name').textContent = personState.name || '';
+    $('#person-known-for').textContent = personState.knownFor || '';
+  }
+
+  function renderPersonRoles() {
+    const roles = $('#person-roles');
+    roles.replaceChildren();
+    if (!personState) { roles.hidden = true; return; }
+    for (const role of personState.roles) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'person-role';
+      button.dataset.department = role.department;
+      button.dataset.job = role.job || '';
+      const active = role.department === personState.role.department
+        && String(role.job || '') === String(personState.role.job || '');
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+      button.textContent = `${creditRoleLabel(role)} (${Number(role.count) || 0})`;
+      button.addEventListener('click', () => selectPersonRole(role));
+      roles.append(button);
+    }
+    roles.hidden = !personState.roles.length;
+    $('#person-view-stand').disabled = !personState.id || !personState.role.department;
+  }
+
+  function renderPersonTitles() {
+    const list = $('#person-titles');
+    list.replaceChildren();
+    if (!personState || personState.loading) return;
+    const titles = personState.titles || [];
+    if (!titles.length) {
+      const empty = document.createElement('p');
+      empty.className = 'panel-copy person-empty';
+      empty.textContent = t('personNoTitles');
+      list.append(empty);
+      return;
+    }
+    titles.forEach((title) => {
+      const item = document.createElement('article');
+      item.className = 'counter-item';
+      const image = document.createElement('img');
+      image.alt = '';
+      image.src = title.poster ? posterTextureUrl(title.poster) : COVER_PLACEHOLDER_URL;
+      image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
+      const text = document.createElement('div');
+      const name = document.createElement('strong');
+      name.textContent = title.name;
+      const meta = document.createElement('span');
+      meta.textContent = `${title.year || '—'} · ${title.type === 'series' ? t('series') : t('movies')}`;
+      text.append(name, meta);
+      const inspect = document.createElement('button');
+      inspect.type = 'button';
+      inspect.id = `person-inspect-${title.type}-${title.id}`;
+      inspect.textContent = state.locale === 'pt-BR' ? 'Ver fita' : 'View tape';
+      const openPersonTitle = () => openTitleFromOrigin(title, { source: 'person', dialogId: 'person-dialog', focusId: inspect.id }, true, posterTextureUrl(title.poster || posterFallback(title)));
+      inspect.addEventListener('click', openPersonTitle);
+      makeTitleClickable(image, `${state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'} ${title.name}`, openPersonTitle);
+      makeTitleClickable(name, `${state.locale === 'pt-BR' ? 'Inspecionar' : 'Inspect'} ${title.name}`, openPersonTitle);
+      item.append(image, text, inspect);
+      list.append(item);
+    });
+  }
+
+  function renderPerson() {
+    renderPersonSummary();
+    renderPersonRoles();
+    renderPersonTitles();
+  }
+
+  async function loadPersonTitles(personToken) {
+    if (!personState) return;
+    const request = ++personTitleToken;
+    const department = personState.role.department || '';
+    const job = normalizeCreditJob(department, personState.role.job);
+    try {
+      const params = new URLSearchParams({
+        person: personState.id,
+        department,
+        job,
+        type: state.type,
+        year: state.year,
+        ignoreStoreYear: 'true',
+        stand: 0,
+        locale: state.locale,
+      });
+      const body = await api(`/api/credit-stand?${params}`);
+      if (request !== personTitleToken || personToken !== personRequestToken || !personState) return;
+      personState.titles = Array.isArray(body.titles) ? body.titles : [];
+      personState.loading = false;
+      $('#person-status').textContent = `${personState.titles.length} ${t('tapesFound')}`;
+      renderPersonTitles();
+    } catch (error) {
+      if (request !== personTitleToken || personToken !== personRequestToken || !personState) return;
+      personState.titles = [];
+      personState.loading = false;
+      renderPersonTitles();
+      $('#person-status').textContent = error.message || t('personNoTitles');
+    }
+  }
+
+  function selectPersonRole(role) {
+    if (!personState) return;
+    personState.role = { department: role.department, job: normalizeCreditJob(role.department, role.job) };
+    personState.loading = true;
+    renderPersonRoles();
+    renderPersonTitles();
+    $('#person-status').textContent = t('openingStand');
+    loadPersonTitles(personRequestToken);
+  }
+
+  async function openPerson(seed) {
+    const id = String(seed?.id || '').trim();
+    if (!id) return;
+    const dialog = $('#person-dialog');
+    const token = ++personRequestToken;
+    const department = String(seed?.department || '');
+    personState = {
+      id,
+      name: String(seed?.name || ''),
+      profile: String(seed?.profile || ''),
+      knownFor: '',
+      roles: [],
+      role: { department, job: normalizeCreditJob(department, seed?.job) },
+      titles: [],
+      loading: true,
+    };
+    renderPerson();
+    $('#person-view-stand').disabled = !personState.role.department;
+    if (!dialog.open) dialog.showModal();
+    $('#person-status').textContent = t('personLoading');
+    try {
+      const { person } = await api(`/api/person?${new URLSearchParams({ id, locale: state.locale })}`);
+      if (token !== personRequestToken || !personState) return;
+      if (person && person.id) {
+        personState.name = person.name || personState.name;
+        personState.profile = person.profile || personState.profile;
+        personState.knownFor = person.knownFor || '';
+        personState.roles = Array.isArray(person.roles) ? person.roles : [];
+        const match = personState.roles.find((role) => role.department === personState.role.department)
+          || (personState.role.department ? null : personState.roles[0]);
+        if (match) personState.role = { department: match.department, job: normalizeCreditJob(match.department, match.job) };
+      }
+      renderPerson();
+      await loadPersonTitles(token);
+    } catch (error) {
+      if (token !== personRequestToken || !personState) return;
+      personState.loading = false;
+      renderPersonTitles();
+      $('#person-status').textContent = error.message || t('personNoTitles');
+    }
+  }
+
+  function applyCreditStand() {
+    if (!personState?.id || !personState.role.department) return;
+    state.credit = {
+      id: String(personState.id),
+      name: personState.name || '',
+      department: personState.role.department,
+      job: normalizeCreditJob(personState.role.department, personState.role.job),
+      profile: personState.profile || '',
+      allProviders: false,
+    };
+    // Credit stands ignore the store year by default; the all-years control is the toggle to respect it.
+    state.ignoreStoreYear = true;
+    localStorage.setItem('locadora.ignoreStoreYear', 'true');
+    syncProviderControls();
+    // Leave the inspector cleanly so the stand is visible; do not let a close handler reopen it.
+    inspectionOrigin = null;
+    returnToCatalogSearch = false;
+    if ($('#person-dialog').open) $('#person-dialog').close();
+    if (titleDialog.open) titleDialog.close();
+    loadShelf();
+  }
+
+  function backToAisle() {
+    if (!state.credit) return;
+    state.credit = null;
+    $('#back-to-aisle').hidden = true;
+    loadShelf();
+  }
+
+  function showAllCreditStreamings() {
+    if (!state.credit) return;
+    state.credit.allProviders = true;
+    loadShelf();
+  }
+
+  function shelfRoomLabel() {
+    return state.credit ? `${t('creditStand')}: ${state.credit.name}` : genreLabel(genres[state.genreIndex]);
+  }
+
   function openTitleFromOrigin(title, origin = {}, hydrate = true, posterUrl) {
     const dialog = origin.dialogId ? $(`#${origin.dialogId}`) : null;
     inspectionOrigin = {
@@ -2135,10 +2491,14 @@
       syncTitleBasketAction();
       syncTitleSavedActions();
       syncTitleOwnerAction();
+      syncTitleCredits(detail, title);
       const existingTeaser = detail.querySelector('.title-review-teaser');
       if (existingTeaser) refreshTitleReviewTeaser(title, existingTeaser);
       if (hydrate) loadTitleMetadata(title).then(() => {
-        if (token === viewerToken && titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl), { preserveView: true });
+        if (token === viewerToken && titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) {
+          activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl), { preserveView: true });
+          syncTitleCredits(detail, title);
+        }
       }).catch(() => {});
       return;
     }
@@ -2202,6 +2562,7 @@
     detail.append(stage);
     syncTitleBasketAction();
     syncTitleSavedActions();
+    syncTitleCredits(detail, title);
     if (!titleDialog.open) titleDialog.showModal();
 
     try {
@@ -2275,7 +2636,10 @@
 
     if (hydrate) {
       loadTitleMetadata(title).then(() => {
-        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl), { preserveView: true });
+        if (titleDialog.open && detail.dataset.titleKey === `${title.type}:${title.id}`) {
+          activeVhsViewer?.update(title, isAtCounter(title), vhsAssets(title, posterUrl), { preserveView: true });
+          syncTitleCredits(detail, title);
+        }
       }).catch(() => {});
     }
   }
@@ -2597,6 +2961,10 @@
     }
     $('#retry-shelf').addEventListener('click', loadShelf);
     $('#load-more-shelf').addEventListener('click', goToNextStand);
+    $('#person-view-stand').addEventListener('click', applyCreditStand);
+    $('#back-to-aisle').addEventListener('click', backToAisle);
+    $('#immersive-back-to-aisle').addEventListener('click', backToAisle);
+    $('#credit-stand-all-providers').addEventListener('click', showAllCreditStreamings);
     const dialogBackdropPresses = new WeakSet();
     for (const dialog of document.querySelectorAll('dialog')) {
       dialog.addEventListener('pointerdown', (event) => {

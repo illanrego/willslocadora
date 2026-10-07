@@ -1,0 +1,123 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+
+const page = readFileSync(require.resolve('../public/index.html'), 'utf8');
+const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
+const css = readFileSync(require.resolve('../public/styles.css'), 'utf8');
+const { COPY } = require('../public/i18n.js');
+
+function functionBody(source, signature) {
+  const start = source.indexOf(signature);
+  assert.notEqual(start, -1, `expected to find ${signature}`);
+  const end = source.indexOf('\n  }', start);
+  return source.slice(start, end === -1 ? undefined : end);
+}
+
+test('the person window is an accessible native dialog modelled on the catalogue search', () => {
+  assert.match(page, /<dialog id="person-dialog" class="panel-dialog person-dialog"/);
+  assert.match(page, /id="person-dialog-heading"/);
+  assert.match(page, /id="person-photo"/);
+  assert.match(page, /id="person-name"/);
+  assert.match(page, /id="person-roles"[^>]*data-i18n-aria-label="personRoles"/);
+  assert.match(page, /id="person-titles"/);
+  assert.match(page, /id="person-status"[^>]*role="status"/);
+  assert.match(page, /id="person-view-stand"[^>]*data-i18n="viewAsStand"/);
+  assert.match(page, /id="person-dialog"[\s\S]*data-i18n-aria-label="close"/);
+});
+
+test('the shelf exposes a credit-stand caption affordance and an all-providers empty action', () => {
+  assert.match(page, /id="back-to-aisle"[^>]*data-i18n="backToAisle"/);
+  assert.match(page, /id="immersive-back-to-aisle"[^>]*data-i18n="backToAisle"[^>]*hidden/);
+  assert.match(page, /id="credit-stand-all-providers"[^>]*data-i18n="seeAllStreamings"[^>]*hidden/);
+  assert.match(app, /\$\('#shelf-title'\)\.textContent = `\$\{t\('creditStand'\)\}: \$\{credit\.name\}`;/);
+  assert.match(app, /function shelfRoomLabel\(\)/);
+  assert.match(app, /immersiveShelf\?\.setLoading\(shelfRoomLabel\(\)/);
+});
+
+test('app.js owns the person + credit-stand state flow', () => {
+  assert.match(app, /credit: null,/);
+  assert.match(app, /function openPerson\(seed\)/);
+  assert.match(app, /function applyCreditStand\(\)/);
+  assert.match(app, /function backToAisle\(\)/);
+  assert.match(app, /state\.credit = \{\s*id:/);
+  assert.match(app, /let personState = null;/);
+  assert.match(app, /function creditRoleLabel\(credit\)/);
+  assert.match(app, /function departmentLabel\(department\)/);
+  assert.match(app, /\/api\/person\?/);
+  assert.match(app, /const endpoint = useCreditStand \? '\/api\/credit-stand' : '\/api\/shelf';/);
+});
+
+test('loadShelf routes to /api/credit-stand when a credit stand is selected', () => {
+  const body = functionBody(app, 'async function loadShelf(');
+  assert.match(body, /useCreditStand/);
+  assert.match(body, /state\.credit\.id/);
+  assert.match(body, /department: state\.credit\.department/);
+  assert.match(body, /job: state\.credit\.job \|\| ''/);
+  assert.match(body, /providers: state\.credit\.allProviders \? '' : state\.providers\.join\(','\)/);
+  assert.match(body, /ignoreStoreYear: String\(state\.ignoreStoreYear\)/);
+  assert.match(body, /state\.standCache\.set\(stand, \{ titles: state\.titles, hasNextStand: hasAnotherSourcePage \}\);/);
+  assert.match(body, /hydrateTapeLogos\(\);/);
+  assert.match(body, /refreshImmersive\(transitionDirection\);/);
+});
+
+test('credit names render as buttons with person data and degrade to plain text without ids', () => {
+  assert.match(app, /function titleCreditGroups\(title\)/);
+  assert.match(app, /function titleCreditFallbackGroups\(title\)/);
+  assert.match(app, /button\.className = 'credit-link';/);
+  assert.match(app, /button\.dataset\.personId = entry\.id;/);
+  assert.match(app, /button\.dataset\.department = entry\.department;/);
+  assert.match(app, /button\.dataset\.job = entry\.job;/);
+  assert.match(app, /className = 'credit-name';/);
+  assert.match(app, /state\.credit = /);
+});
+
+test('credit stands ignore the store year by default with the all-years control as the toggle', () => {
+  const body = functionBody(app, 'function applyCreditStand()');
+  assert.match(body, /state\.ignoreStoreYear = true;/);
+  assert.match(body, /state\.credit = \{/);
+  // The all-years checkbox must stay usable on a credit stand even without saved providers.
+  assert.match(app, /\(enabled \|\| credit\) && state\.ignoreStoreYear/);
+  assert.match(app, /state\.ignoreStoreYear = \(enabled \|\| credit\)/);
+});
+
+test('the empty credit stand offers see-all-streamings without overwriting the saved providers', () => {
+  const body = functionBody(app, 'function showAllCreditStreamings()');
+  assert.match(body, /state\.credit\.allProviders = true;/);
+  assert.doesNotMatch(body, /setProviders\(/);
+  assert.doesNotMatch(body, /localStorage/);
+  assert.match(app, /\$\('#back-to-aisle'\)\.hidden = !credit;/);
+  assert.match(app, /\$\('#credit-stand-all-providers'\)\.hidden = !\(state\.credit && !state\.credit\.allProviders\)/);
+});
+
+test('backToAisle clears the credit source and reloads the genre shelf', () => {
+  const body = functionBody(app, 'function backToAisle()');
+  assert.match(body, /state\.credit = null;/);
+  assert.match(body, /loadShelf\(\);/);
+});
+
+test('department labels and credit-stand copy exist in both locales', () => {
+  const keys = [
+    'viewAsStand', 'creditStand', 'backToAisle', 'creditsOf', 'creditStandEmpty', 'seeAllStreamings',
+    'personLoading', 'personRoles', 'personNoTitles',
+    'departmentDirecting', 'departmentActing', 'departmentWriting', 'departmentCamera', 'departmentEditing',
+    'departmentVisualEffects', 'departmentSound', 'departmentArt', 'departmentProduction', 'departmentMusic',
+    'departmentCostume', 'departmentLighting',
+  ];
+  for (const locale of ['pt-BR', 'en-US']) {
+    for (const key of keys) {
+      assert.equal(typeof COPY[locale][key], 'string', `${locale}.${key} must exist`);
+      assert.ok(COPY[locale][key].length > 0, `${locale}.${key} must not be empty`);
+    }
+  }
+  assert.equal(COPY['pt-BR'].departmentDirecting, 'Direção');
+  assert.equal(COPY['pt-BR'].departmentActing, 'Elenco');
+  assert.equal(COPY['pt-BR'].departmentWriting, 'Roteiro');
+});
+
+test('person and credit-stand surfaces reuse the restrained Locadora chrome', () => {
+  assert.match(css, /\.person-dialog \{/);
+  assert.match(css, /\.person-roles button/);
+  assert.match(css, /\.credit-link \{/);
+  assert.match(css, /\.back-to-aisle \{/);
+});

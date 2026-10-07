@@ -617,6 +617,74 @@ dialog.panel-dialog {
 .return-choices button { min-height: 34px; padding: .42rem .58rem; border: 1px solid #dac383; border-radius: 3px; color: #211914; background: #ead9ad; box-shadow: 2px 2px 0 #241712; }
 .return-choices .primary-inline-action { border-color: #ffe178; color: #17120f; background: var(--yellow); }
 
+/* Credit stands: clickable credits on a title, a person index card, and an aisle return. */
+.title-credits {
+  display: grid;
+  gap: .35rem;
+  width: min(760px, calc(100% - 2rem));
+  margin: .5rem auto 1.4rem;
+  padding: .8rem .9rem;
+  border: 1px solid #564236;
+  border-radius: 4px;
+  background: rgba(16, 24, 39, .5);
+}
+.title-credits[hidden] { display: none; }
+.title-credits-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .6rem; }
+.title-credits-label { color: var(--yellow); font: 900 .68rem/1.4 "Courier New", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.credit-link {
+  min-height: 30px;
+  padding: .25rem .55rem;
+  border: 1px solid #6a5547;
+  border-radius: 3px;
+  color: var(--cream);
+  background: #25384d;
+  cursor: pointer;
+  font: 700 .72rem/1 Arial, sans-serif;
+}
+.credit-link:hover, .credit-link:focus-visible { border-color: #ffe178; filter: brightness(1.14); }
+.credit-name { color: var(--cream); font: 700 .72rem/1 Arial, sans-serif; }
+
+.back-to-aisle {
+  margin-top: .6rem;
+  min-height: 34px;
+  padding: .35rem .7rem;
+  border: 1px solid #dac383;
+  border-radius: 3px;
+  color: #211914;
+  background: #ead9ad;
+  box-shadow: 2px 2px 0 #241712;
+  cursor: pointer;
+  font: 800 .62rem/1 Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.back-to-aisle[hidden] { display: none; }
+.immersive-back-to-aisle { margin: .5rem 0 0; min-height: 34px; padding: .35rem .7rem; border: 1px solid #dac383; border-radius: 3px; color: #211914; background: #ead9ad; cursor: pointer; font: 800 .62rem/1 Arial, sans-serif; text-transform: uppercase; letter-spacing: .06em; }
+.immersive-back-to-aisle[hidden] { display: none; }
+.credit-stand-all { margin-bottom: .8rem; }
+
+.person-dialog { width: min(720px, calc(100% - 1rem)); }
+.person-card { display: flex; align-items: center; gap: .9rem; margin-bottom: .9rem; }
+.person-photo { width: 84px; height: 126px; object-fit: cover; border: 2px solid #715842; border-radius: 4px; background: #31251f; }
+.person-photo[hidden] { display: none; }
+.person-identity { display: grid; gap: .25rem; }
+.person-identity strong { font: 900 1.6rem/1.1 Impact, sans-serif; text-transform: uppercase; color: #fff4d1; }
+.person-identity span { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; }
+.person-roles { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .6rem; }
+.person-roles button {
+  min-height: 32px;
+  padding: .3rem .6rem;
+  border: 1px solid #6a5547;
+  border-radius: 3px;
+  color: var(--cream);
+  background: #25384d;
+  cursor: pointer;
+  font: 800 .68rem/1 Arial, sans-serif;
+}
+.person-roles button.is-active { border-color: #ffe178; color: #17120f; background: var(--yellow); }
+.person-empty { margin: 0; }
+.person-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; margin-top: 1rem; }
+
 /* The immersive menu is a two-line browse console, not a squeezed toolbar. */
 .immersive-hud {
   top: .7rem;

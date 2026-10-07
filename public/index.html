@@ -129,6 +129,7 @@
             <div>
               <p id="shelf-caption">Aisle 01 · Store year 1999</p>
               <h2 id="shelf-title">Action & Adventure</h2>
+              <button id="back-to-aisle" class="back-to-aisle" type="button" data-i18n="backToAisle" hidden>Voltar ao corredor</button>
             </div>
             <p id="shelf-status" role="status" aria-live="polite">Opening the boxes…</p>
           </header>
@@ -140,6 +141,7 @@
             <span class="empty-tape" aria-hidden="true"></span>
             <h3 data-i18n="emptyTitle">Esta prateleira voltou vazia.</h3>
             <p data-i18n="emptyBody">Tente outro corredor, ano, formato ou fonte de catálogo.</p>
+            <button id="credit-stand-all-providers" class="credit-stand-all" type="button" data-i18n="seeAllStreamings" hidden>Ver todos os streamings</button>
             <button id="retry-shelf" type="button" data-i18n="checkBackRoom">Verificar o depósito</button>
           </div>
         </div>
@@ -180,6 +182,7 @@
               </label>
             <button id="immersive-go" type="button" data-i18n="go">Ir</button>
           </div>
+          <button id="immersive-back-to-aisle" class="immersive-back-to-aisle" type="button" data-i18n="backToAisle" hidden>Voltar ao corredor</button>
         </details>
         <header id="immersive-hud" class="immersive-hud">
           <div class="immersive-hud-strip">
@@ -495,6 +498,27 @@
     </form>
     <p id="catalog-search-status" class="panel-copy" role="status" aria-live="polite">Digite ao menos duas letras.</p>
     <div id="catalog-search-results" class="counter-list"></div>
+  </dialog>
+
+  <dialog id="person-dialog" class="panel-dialog person-dialog" aria-labelledby="person-dialog-heading">
+    <form method="dialog" class="panel-header">
+      <div><span class="eyebrow" data-i18n="creditStand">Estante</span><h2 id="person-dialog-heading" data-i18n="creditsOf">Filmografia de</h2></div>
+      <button class="dialog-close" value="close" aria-label="Fechar" data-i18n-aria-label="close">×</button>
+    </form>
+    <section class="person-card">
+      <img id="person-photo" class="person-photo" alt="" loading="lazy" hidden>
+      <div class="person-identity">
+        <strong id="person-name"></strong>
+        <span id="person-known-for"></span>
+      </div>
+    </section>
+    <div id="person-roles" class="person-roles" role="group" data-i18n-aria-label="personRoles" aria-label="Papéis"></div>
+    <p id="person-status" class="panel-copy" role="status" aria-live="polite"></p>
+    <div id="person-titles" class="counter-list"></div>
+    <div class="person-actions">
+      <button id="person-view-stand" class="account-action" type="button" data-i18n="viewAsStand" disabled>Ver como estante</button>
+      <form method="dialog" class="person-close-form"><button class="account-action account-secondary-action" value="close" data-i18n="close">Fechar</button></form>
+    </div>
   </dialog>
 
   <dialog id="sources-dialog" class="panel-dialog sources-dialog">

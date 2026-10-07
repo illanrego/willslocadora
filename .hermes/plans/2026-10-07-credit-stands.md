@@ -84,7 +84,11 @@ Rules:
    starts with `Self ` / `Self-` (talk shows, documentaries "as himself").
 3. Dedupe by `type:tmdbId` keeping the entry with the higher `vote_count`.
 4. Sort: `vote_count` desc, `popularity` desc, release date desc, id asc.
-5. Page size 40; TMDB-side page = `stand + 1`; `hasNextStand` = more titles remain.
+5. Page size 40, but the stand examines a **bounded window of credits** per request: 40 candidates
+   when each costs one TMDB lookup (IMDb id) and 20 when a provider filter adds a second (BR
+   availability) — 41 subrequests total, inside the Workers free-plan cap of 50 that the discover
+   shelf already spends 42 of. A provider-filtered stand may therefore return fewer than 40 titles;
+   `hasNextStand` = more credits remain beyond the window. (Amendment after Phase A.)
 6. `type=movie|series|all` (default `movie`); normalize each title's `type` to `movie`/`series`.
 7. Year window only when `ignoreStoreYear=false`, mirroring `shelf()`:
    `(providers.length ? year - 19 : year - 4) … year`.

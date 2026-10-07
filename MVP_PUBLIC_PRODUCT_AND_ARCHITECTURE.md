@@ -333,6 +333,8 @@ secret:
 public read-only endpoints:
 - GET /v1/shelf
 - GET /v1/title
+- GET /v1/person
+- GET /v1/credit-stand
 - GET /v1/providers
 - GET /v1/watch-links (validated title identity; public Brazil subscription destinations only)
 - GET /v1/image (only if a validated image proxy remains necessary)
@@ -394,6 +396,15 @@ The existing provider-filtered shelf behaviour can reach roughly 42 TMDB subrequ
 Workers in the same account share the daily request quota. Separating `locadora-api` is nevertheless required for security, deployment isolation, and a minimal-secret boundary.
 
 The private data Worker reaches Supabase through Hyperdrive with one request-scoped database client. Hyperdrive SQL response caching stays disabled because authentication and session reads must be current; connection reuse, not stale query results, is the benefit here.
+
+## Credit stands
+
+A credit stand is a filmography shelf: clicking a person's name on a title opens a plain 2D window listing that person's titles, which can then be browsed as a store stand in 2D and 3D. It is a new *shelf source* on top of the existing shelf pipeline, not a new renderer, and it stays metadata-only.
+
+- **Source.** `GET /v1/person` returns the profile and the allowlisted role breakdown from TMDB `/person/{id}?append_to_response=combined_credits`; `GET /v1/credit-stand` returns one 40-title page of that person's credits for a chosen department/job, from the same `combined_credits` payload. Cast entries carry no TMDB department/job, so they are normalized to `Acting`/`Acting`; crew entries keep their real department/job. Both endpoints are read-only, validated, and use the exact CORS allowlist.
+- **Ids.** `GET /v1/title` keeps its existing `director` / `writer` / `cast` name arrays and adds an additive `credits` block carrying TMDB person ids (`director`, `writer`, `cast` with `character`, and an allowlisted `crew` list). This lets the UI make names clickable and degrades to the plain names for cached/older payloads.
+- **Caching.** Person profiles use 1 day browser / 7 days edge; credit stands use 1 hour browser / 1 day edge with a 7-day stale-on-error window. `combined_credits` and the per-title Brazil flatrate availability lookup are edge-cached for 7 days and shared between the title and credit-stand paths.
+- **Boundaries.** Credit stands surface catalogue metadata only. They do not resolve streams, touch Stremio add-ons or private Stremio data, and a provider intersection is informational availability, never a playback or subscription guarantee. The local Node bridge mirrors `GET /api/person` and `GET /api/credit-stand` for development only, TMDB-backed; the legacy local Stremio catalogue path is not extended.
 
 ## Stremio integration boundary
 

@@ -1,10 +1,15 @@
 'use strict';
 
+// Public-API dev parity: /api/person and /api/credit-stand mirror the public Worker's
+// TMDB-backed person/credit-stand endpoints for local development only. They do not use
+// or extend the legacy Stremio catalogue path (the local catalogue itself is unchanged).
+
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { safeFetchImage } = require('./catalogue.js');
 const { BRAZIL_PROVIDERS, normalizeProviderIds } = require('./providers.js');
+const { CREDIT_DEPARTMENTS } = require('./tmdb.js');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const THREE_BUILD = path.dirname(require.resolve('three'));
@@ -56,6 +61,24 @@ function serveThree(requestPath, response) {
     });
     response.end(content);
   });
+}
+
+function validCreditStand(url) {
+  const person = url.searchParams.get('person') || '';
+  const department = url.searchParams.get('department') || '';
+  const job = (url.searchParams.get('job') || '').trim();
+  const requestedType = url.searchParams.get('type') || 'movie';
+  const type = ['movie', 'series', 'all'].includes(requestedType) ? requestedType : null;
+  const year = Number(url.searchParams.get('year'));
+  const stand = Number(url.searchParams.get('stand') || 0);
+  const requested = url.searchParams.get('providers') ?? url.searchParams.get('provider') ?? '';
+  const providers = normalizeProviderIds(requested);
+  const ignoreStoreYear = url.searchParams.get('ignoreStoreYear') === 'true';
+  const locale = url.searchParams.get('locale') || 'pt-BR';
+  if (!/^[1-9][0-9]*$/.test(person) || !CREDIT_DEPARTMENTS.has(department) || job.length > 60 || !type
+    || !Number.isInteger(year) || year < 1920 || year > 2026 || !Number.isInteger(stand) || stand < 0 || stand > 20
+    || (requested && !providers.length) || !['pt-BR', 'en-US'].includes(locale)) return null;
+  return { person, department, job, type, year, stand, providers, ignoreStoreYear, locale };
 }
 
 function createServer({ catalogue, posterFetcher = safeFetchImage, watchFetcher = fetch }) {
@@ -118,6 +141,21 @@ function createServer({ catalogue, posterFetcher = safeFetchImage, watchFetcher 
         if (!['movie', 'series'].includes(type) || !/^[a-zA-Z0-9:_-]+$/.test(id) || !['pt-BR', 'en-US'].includes(locale)) return sendJson(response, 400, { error: 'Invalid title metadata request' });
         const meta = await catalogue.titleMeta({ type, id, locale });
         return sendJson(response, 200, { meta });
+      }
+      if (url.pathname === '/api/person') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        const id = url.searchParams.get('id') || '';
+        const locale = url.searchParams.get('locale') || 'pt-BR';
+        if (!/^[1-9][0-9]*$/.test(id) || !['pt-BR', 'en-US'].includes(locale)) return sendJson(response, 400, { error: 'Invalid person request' });
+        if (!catalogue.tmdbClient?.enabled) return sendJson(response, 502, { error: 'Catalogue service is not configured' });
+        return sendJson(response, 200, { person: await catalogue.tmdbClient.personProfile(id, locale) });
+      }
+      if (url.pathname === '/api/credit-stand') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        const params = validCreditStand(url);
+        if (!params) return sendJson(response, 400, { error: 'Invalid credit stand filters' });
+        if (!catalogue.tmdbClient?.enabled) return sendJson(response, 502, { error: 'Catalogue service is not configured' });
+        return sendJson(response, 200, await catalogue.tmdbClient.personCreditStand(params));
       }
       if (url.pathname === '/api/poster') {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });

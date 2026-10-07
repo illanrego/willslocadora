@@ -1,8 +1,14 @@
 'use strict';
 
+const { PROVIDERS_BY_ID } = require('./providers.js');
+
 const TMDB_API_ROOT = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_ROOT = 'https://image.tmdb.org/t/p';
 const SUPPORTED_LOCALES = new Set(['pt-BR', 'en-US']);
+// Credit-stand department allowlist — mirrors workers/locadora-api/src/index.mjs.
+const CREDIT_DEPARTMENTS = new Set(['Acting', 'Directing', 'Writing', 'Camera', 'Editing', 'Visual Effects', 'Sound', 'Art', 'Production', 'Music', 'Costume & Make-Up', 'Lighting']);
+const CREDIT_WRITER_JOBS = ['Writer', 'Screenplay', 'Story', 'Teleplay'];
+const SELF_CHARACTERS = new Set(['Self', 'Himself', 'Herself']);
 const TMDB_MOVIE_GENRES = Object.freeze({
   Action: 28, Adventure: 12, Animation: 16, Comedy: 35, Crime: 80, Documentary: 99, Drama: 18,
   Family: 10751, Fantasy: 14, Horror: 27, Mystery: 9648, Romance: 10749, 'Sci-Fi': 878, Thriller: 53,
@@ -83,6 +89,92 @@ function brazilAvailability(details) {
     providerLogos: providerLogoEntries(groupedProviders),
     subscriptionProviders: uniqueNames((offers.flatrate || []).map((provider) => provider.provider_name)),
   };
+}
+
+function creditGenreName(tmdbType, genreId) {
+  return tmdbType === 'tv'
+    ? TMDB_TV_GENRE_NAMES[genreId]
+    : Object.keys(TMDB_MOVIE_GENRES).find((name) => TMDB_MOVIE_GENRES[name] === genreId);
+}
+
+function normalizedCreditType(mediaType) {
+  return mediaType === 'tv' ? 'series' : 'movie';
+}
+
+function isSelfCharacter(character) {
+  const value = String(character || '').trim();
+  return SELF_CHARACTERS.has(value) || value.startsWith('Self ') || value.startsWith('Self-');
+}
+
+function brazilFlatrate(details) {
+  const br = details?.results?.BR || {};
+  return { link: typeof br.link === 'string' ? br.link : '', flatrate: Array.isArray(br.flatrate) ? br.flatrate : [] };
+}
+
+// cast entries carry no TMDB department/job, so they are normalized to Acting/Acting.
+function buildRoles(cast, crew) {
+  const counts = new Map();
+  const add = (department, job) => {
+    if (!CREDIT_DEPARTMENTS.has(department)) return;
+    const key = `${department}\u0000${job}`;
+    const entry = counts.get(key) || { department, job, count: 0 };
+    entry.count += 1;
+    counts.set(key, entry);
+  };
+  for (const item of Array.isArray(cast) ? cast : []) add('Acting', 'Acting');
+  for (const item of Array.isArray(crew) ? crew : []) add(item.department, item.job || '');
+  return [...counts.values()].sort((a, b) => b.count - a.count
+    || (a.department < b.department ? -1 : a.department > b.department ? 1 : 0)
+    || (a.job < b.job ? -1 : a.job > b.job ? 1 : 0));
+}
+
+function buildPersonProfile(data, id) {
+  return {
+    id: String(id),
+    name: data?.name || 'Untitled',
+    profile: imageUrl(data?.profile_path, 'w185'),
+    knownFor: data?.known_for_department || '',
+    roles: buildRoles(data?.combined_credits?.cast, data?.combined_credits?.crew),
+  };
+}
+
+function creditEntries(data, { department, job, type }) {
+  const cast = Array.isArray(data?.cast) ? data.cast : [];
+  const crew = Array.isArray(data?.crew) ? data.crew : [];
+  const entries = [];
+  if (department === 'Acting') {
+    for (const item of cast) if (!isSelfCharacter(item.character)) entries.push({ item });
+  } else {
+    for (const item of crew) {
+      if (item.department !== department) continue;
+      if (job && item.job !== job) continue;
+      entries.push({ item });
+    }
+  }
+  return entries.filter((entry) => type === 'all' || normalizedCreditType(entry.item.media_type) === type);
+}
+
+function dedupeCredits(entries) {
+  const byKey = new Map();
+  for (const entry of entries) {
+    const key = `${normalizedCreditType(entry.item.media_type)}:${entry.item.id}`;
+    const current = byKey.get(key);
+    if (!current || (Number(entry.item.vote_count) || 0) > (Number(current.item.vote_count) || 0)) byKey.set(key, entry);
+  }
+  return [...byKey.values()];
+}
+
+function sortCredits(entries) {
+  return [...entries].sort((a, b) => {
+    const votes = (Number(b.item.vote_count) || 0) - (Number(a.item.vote_count) || 0);
+    if (votes) return votes;
+    const popularity = (Number(b.item.popularity) || 0) - (Number(a.item.popularity) || 0);
+    if (popularity) return popularity;
+    const dateA = String(a.item.release_date || a.item.first_air_date || '');
+    const dateB = String(b.item.release_date || b.item.first_air_date || '');
+    if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+    return (Number(a.item.id) || 0) - (Number(b.item.id) || 0);
+  });
 }
 
 function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
@@ -181,10 +273,73 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     }));
   }
 
+  // Public-API dev parity: TMDB-backed person profile + credit stand (no Stremio source).
+  async function personProfile(id, locale = 'pt-BR') {
+    if (!apiKey) throw new Error('TMDB_API_KEY is required');
+    const data = await request(`/person/${encodeURIComponent(id)}?append_to_response=combined_credits`, normalizeLocale(locale));
+    return buildPersonProfile(data, id);
+  }
+
+  async function personCreditStand({ person, department, job = '', type = 'movie', year, ignoreStoreYear = true, providers = [], stand = 0, locale = 'pt-BR' }) {
+    if (!apiKey) throw new Error('TMDB_API_KEY is required');
+    const requestedLocale = normalizeLocale(locale);
+    const data = await request(`/person/${encodeURIComponent(person)}?append_to_response=combined_credits`, requestedLocale);
+    const profile = buildPersonProfile(data, person);
+    const deduped = dedupeCredits(creditEntries(data?.combined_credits || {}, { department, job, type }));
+    const total = deduped.length;
+    let ordered = sortCredits(deduped);
+    if (!ignoreStoreYear) {
+      const span = providers.length ? 19 : 4;
+      ordered = ordered.filter((entry) => {
+        const titleYear = yearFromDate(entry.item.release_date || entry.item.first_air_date);
+        return Number.isInteger(titleYear) && titleYear >= year - span && titleYear <= year;
+      });
+    }
+    const requestedProviders = providers.map((id) => PROVIDERS_BY_ID.get(id)).filter(Boolean);
+    const hydrate = async (entry) => {
+      const item = entry.item;
+      const titleType = normalizedCreditType(item.media_type);
+      const tmdbType = titleType === 'series' ? 'tv' : 'movie';
+      let imdbId = '';
+      try { imdbId = (await request(`/${tmdbType}/${item.id}/external_ids`, requestedLocale)).imdb_id || ''; } catch { imdbId = ''; }
+      if (!/^tt\d+$/.test(imdbId)) return null;
+      let availability = { link: '', providers: [], subscriptionProviders: [] };
+      if (requestedProviders.length) {
+        let br = { link: '', flatrate: [] };
+        try { br = brazilFlatrate(await request(`/${tmdbType}/${item.id}/watch/providers`, requestedLocale)); } catch { return null; }
+        const flatrateIds = new Set((br.flatrate || []).map((provider) => provider.provider_id));
+        const matching = requestedProviders.filter((provider) => flatrateIds.has(provider.tmdbProviderId));
+        if (!matching.length) return null;
+        const names = matching.map((provider) => provider.canonicalName);
+        availability = { link: br.link || '', providers: names, subscriptionProviders: names };
+      }
+      return {
+        id: `tmdb:${item.id}`, imdbId, type: titleType, name: item.title || item.name || 'Untitled',
+        year: yearFromDate(item.release_date || item.first_air_date), poster: imageUrl(item.poster_path, 'w500'),
+        background: imageUrl(item.backdrop_path, 'w1280'), description: item.overview || '',
+        imdbRating: item.vote_average ? String(item.vote_average) : '',
+        genres: (item.genre_ids || []).map((genreId) => creditGenreName(tmdbType, genreId)).filter(Boolean),
+        director: [], writer: [], cast: [], source: 'tmdb-person', availabilityBR: availability,
+      };
+    };
+    const pageStart = stand * 40;
+    const pageEnd = pageStart + 40;
+    const window = ordered.slice(0, pageEnd + 1);
+    const hydrated = (await mapWithConcurrency(window, hydrate, 4)).filter(Boolean);
+    const titles = hydrated.slice(pageStart, pageEnd);
+    const hasNextStand = hydrated.length > pageEnd || ordered.length > window.length;
+    return {
+      person: { id: String(person), name: profile.name, department, job, total, profile: profile.profile },
+      titles, hasNextStand, year, ignoreStoreYear, providers, stand,
+    };
+  }
+
   return {
     enabled: Boolean(apiKey),
     discoverProviderShelf,
     discoverYearHits,
+    personProfile,
+    personCreditStand,
     async enrich(title, locale = 'pt-BR') {
       if (!apiKey) return title;
       const requestedLocale = normalizeLocale(locale);
@@ -236,4 +391,4 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
   };
 }
 
-module.exports = { createTmdbClient };
+module.exports = { createTmdbClient, CREDIT_DEPARTMENTS };

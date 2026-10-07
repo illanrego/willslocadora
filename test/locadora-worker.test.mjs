@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createLocadoraWorker } from '../workers/locadora-api/src/index.mjs';
 
 const env = {
-  ALLOWED_ORIGINS: 'https://will.github.io,http://127.0.0.1:4173',
+  ALLOWED_ORIGINS: 'https://will.github.io,http://127.0.0.1:4173,null',
   TMDB_API_KEY: 'test-key',
 };
 
@@ -207,4 +207,289 @@ test('public worker uses TMDB Brazil flatrate discovery for provider-filtered sh
   assert.equal(discovery.searchParams.get('with_watch_providers'), '119|307');
   assert.equal(discovery.searchParams.get('with_genres'), '10766');
   assert.equal(discovery.searchParams.get('include_adult'), 'false');
+});
+
+// --- Credit stands (Phase A) -------------------------------------------------
+
+function creditStub({ personData, externalIds = {}, availability = {}, requests = [] } = {}) {
+  return async (input) => {
+    const url = new URL(input);
+    requests.push(url);
+    if (/^\/3\/person\/[1-9][0-9]*$/.test(url.pathname)) {
+      assert.equal(url.searchParams.get('append_to_response'), 'combined_credits');
+      return Response.json(personData);
+    }
+    let match = url.pathname.match(/^\/3\/(movie|tv)\/(\d+)\/external_ids$/);
+    if (match) {
+      const key = `${match[1]}:${match[2]}`;
+      return Response.json({ imdb_id: Object.hasOwn(externalIds, key) ? externalIds[key] : `tt${String(match[2]).padStart(7, '0')}` });
+    }
+    match = url.pathname.match(/^\/3\/(movie|tv)\/(\d+)\/watch\/providers$/);
+    if (match) {
+      const key = `${match[1]}:${match[2]}`;
+      return Response.json({ results: { BR: Object.hasOwn(availability, key) ? availability[key] : { link: `https://www.themoviedb.org/movie/${match[2]}/watch?locale=BR`, flatrate: [] } } });
+    }
+    throw new Error(`Unexpected upstream URL: ${url}`);
+  };
+}
+
+function tarantinoFixture() {
+  return {
+    id: 138, name: 'Quentin Tarantino', known_for_department: 'Directing', profile_path: '/qt.jpg',
+    combined_credits: {
+      cast: [
+        { id: 680, media_type: 'movie', title: 'Pulp Fiction', release_date: '1994-10-14', vote_count: 30000, popularity: 90, character: 'Jimmie Dimmick' },
+        { id: 24, media_type: 'movie', title: 'Kill Bill', release_date: '2003-10-10', vote_count: 20000, popularity: 80, character: 'Crazy 88' },
+        { id: 1, media_type: 'movie', title: 'Talk Show', release_date: '2000-01-01', vote_count: 10, popularity: 5, character: 'Self - Guest' },
+        { id: 2, media_type: 'movie', title: 'Documentary', release_date: '2001-01-01', vote_count: 9, popularity: 4, character: 'Himself' },
+      ],
+      crew: [
+        { id: 680, media_type: 'movie', title: 'Pulp Fiction', release_date: '1994-10-14', vote_count: 30000, popularity: 90, department: 'Directing', job: 'Director' },
+        { id: 24, media_type: 'movie', title: 'Kill Bill', release_date: '2003-10-10', vote_count: 20000, popularity: 80, department: 'Directing', job: 'Director' },
+        { id: 680, media_type: 'movie', title: 'Pulp Fiction', release_date: '1994-10-14', vote_count: 100, popularity: 2, department: 'Directing', job: 'Director' },
+        { id: 680, media_type: 'movie', title: 'Pulp Fiction', release_date: '1994-10-14', vote_count: 30000, popularity: 90, department: 'Writing', job: 'Screenplay' },
+        { id: 24, media_type: 'movie', title: 'Kill Bill', release_date: '2003-10-10', vote_count: 20000, popularity: 80, department: 'Writing', job: 'Writer' },
+        { id: 500, media_type: 'movie', title: 'Stunt Reel', release_date: '1990-01-01', vote_count: 5, popularity: 1, department: 'Crew', job: 'Stunts' },
+      ],
+    },
+  };
+}
+
+function actingFixture(count, startYear = 1999) {
+  return {
+    id: 138, name: 'Test Actor', known_for_department: 'Acting', profile_path: '/actor.jpg',
+    combined_credits: {
+      cast: Array.from({ length: count }, (_, index) => ({
+        id: 1000 + index, media_type: 'movie', title: `Film ${index + 1}`, release_date: `${startYear}-01-01`,
+        vote_count: 1000 - index, popularity: 50 - index, genre_ids: [18], poster_path: `/p${index}.jpg`,
+      })),
+      crew: [],
+    },
+  };
+}
+
+test('public worker exposes a person profile with allowlisted roles and long-lived cache headers', async () => {
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData: tarantinoFixture() }) });
+  const response = await worker.fetch(new Request('https://api.example/v1/person?id=138&locale=pt-BR', { headers: { origin: 'https://will.github.io' } }), env, context());
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'public, max-age=86400, s-maxage=604800, stale-if-error=604800');
+  assert.equal(response.headers.get('access-control-allow-origin'), 'https://will.github.io');
+  const { person } = await response.json();
+  assert.equal(person.id, '138');
+  assert.equal(person.name, 'Quentin Tarantino');
+  assert.equal(person.profile, 'https://image.tmdb.org/t/p/w185/qt.jpg');
+  assert.equal(person.knownFor, 'Directing');
+  assert.deepEqual(person.roles, [
+    { department: 'Acting', job: 'Acting', count: 4 },
+    { department: 'Directing', job: 'Director', count: 3 },
+    { department: 'Writing', job: 'Screenplay', count: 1 },
+    { department: 'Writing', job: 'Writer', count: 1 },
+  ]);
+});
+
+test('public worker returns an empty profile image when TMDB has none', async () => {
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData: { id: 5, name: 'No Face', combined_credits: { cast: [], crew: [] } } }) });
+  const response = await worker.fetch(new Request('https://api.example/v1/person?id=5'), env, context());
+  const { person } = await response.json();
+  assert.equal(person.profile, '');
+  assert.deepEqual(person.roles, []);
+});
+
+test('public worker rejects invalid person requests before calling TMDB', async () => {
+  let calls = 0;
+  const worker = createLocadoraWorker({ fetchImpl: async () => { calls += 1; throw new Error('not needed'); } });
+  for (const query of ['id=abc', 'id=0', 'id=138&locale=fr-FR', 'id=']) {
+    const response = await worker.fetch(new Request(`https://api.example/v1/person?${query}`), env, context());
+    assert.equal(response.status, 400, query);
+    assert.deepEqual(await response.json(), { error: 'Invalid person request' });
+  }
+  assert.equal(calls, 0);
+});
+
+test('public worker returns a neutral error when the TMDB person lookup fails', async () => {
+  const worker = createLocadoraWorker({ fetchImpl: async () => new Response('nope', { status: 500 }) });
+  const response = await worker.fetch(new Request('https://api.example/v1/person?id=138'), env, context());
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: 'Catalogue service is temporarily unavailable' });
+});
+
+test('public worker filters a credit stand by department and job, excludes self credits, and dedupes', async () => {
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData: tarantinoFixture() }) });
+  const base = 'https://api.example/v1/credit-stand?person=138&type=movie&year=2004&ignoreStoreYear=true';
+
+  const directing = await worker.fetch(new Request(`${base}&department=Directing&job=Director`), env, context());
+  const directingBody = await directing.json();
+  assert.deepEqual(directingBody.titles.map((title) => title.id), ['tmdb:680', 'tmdb:24']);
+  assert.equal(directingBody.person.total, 2);
+
+  const screenplay = await worker.fetch(new Request(`${base}&department=Writing&job=Screenplay`), env, context());
+  assert.deepEqual((await screenplay.json()).titles.map((title) => title.id), ['tmdb:680']);
+
+  const acting = await worker.fetch(new Request(`${base}&department=Acting`), env, context());
+  const actingBody = await acting.json();
+  assert.deepEqual(actingBody.titles.map((title) => title.id), ['tmdb:680', 'tmdb:24']);
+  assert.equal(actingBody.person.total, 2);
+});
+
+test('public worker pages a credit stand at 40 titles and reports hasNextStand', async () => {
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData: actingFixture(45) }) });
+  const base = 'https://api.example/v1/credit-stand?person=138&department=Acting&type=movie&year=1999&ignoreStoreYear=true';
+
+  const first = await worker.fetch(new Request(`${base}&stand=0`), env, context());
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get('cache-control'), 'public, max-age=3600, s-maxage=86400, stale-if-error=604800');
+  const firstBody = await first.json();
+  assert.equal(firstBody.titles.length, 40);
+  assert.equal(firstBody.titles[0].id, 'tmdb:1000');
+  assert.equal(firstBody.titles[0].imdbId, 'tt0001000');
+  assert.equal(firstBody.titles[0].source, 'tmdb-person');
+  assert.equal(firstBody.hasNextStand, true);
+  assert.deepEqual(firstBody.person, { id: '138', name: 'Test Actor', department: 'Acting', job: '', total: 45, profile: 'https://image.tmdb.org/t/p/w185/actor.jpg' });
+  assert.equal(firstBody.stand, 0);
+
+  const second = await worker.fetch(new Request(`${base}&stand=1`), env, context());
+  const secondBody = await second.json();
+  assert.equal(secondBody.titles.length, 5);
+  assert.equal(secondBody.titles[0].id, 'tmdb:1040');
+  assert.equal(secondBody.hasNextStand, false);
+});
+
+test('public worker applies the store year window only when ignoreStoreYear is false', async () => {
+  const personData = {
+    id: 138, name: 'Y', combined_credits: { cast: [
+      { id: 301, media_type: 'movie', title: 'New', release_date: '1994-05-01', vote_count: 30 },
+      { id: 302, media_type: 'movie', title: 'Edge', release_date: '1990-01-01', vote_count: 20 },
+      { id: 303, media_type: 'movie', title: 'Old', release_date: '1980-01-01', vote_count: 10 },
+    ], crew: [] },
+  };
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData }) });
+  const base = 'https://api.example/v1/credit-stand?person=138&department=Acting&type=movie&year=1994';
+
+  const windowed = await worker.fetch(new Request(`${base}&ignoreStoreYear=false`), env, context());
+  assert.deepEqual((await windowed.json()).titles.map((title) => title.id), ['tmdb:301', 'tmdb:302']);
+
+  const all = await worker.fetch(new Request(`${base}&ignoreStoreYear=true`), env, context());
+  assert.deepEqual((await all.json()).titles.map((title) => title.id), ['tmdb:301', 'tmdb:302', 'tmdb:303']);
+});
+
+test('public worker intersects credit-stand titles with requested Brazil providers', async () => {
+  const personData = {
+    id: 138, name: 'P', combined_credits: { cast: [
+      { id: 401, media_type: 'movie', title: 'On Netflix', release_date: '1999-01-01', vote_count: 30 },
+      { id: 402, media_type: 'movie', title: 'Elsewhere', release_date: '1999-02-01', vote_count: 20 },
+    ], crew: [] },
+  };
+  const availability = {
+    'movie:401': { link: 'https://www.themoviedb.org/movie/401/watch?locale=BR', flatrate: [{ provider_id: 8, provider_name: 'Netflix', logo_path: '/netflix.png' }] },
+    'movie:402': { link: 'https://www.themoviedb.org/movie/402/watch?locale=BR', flatrate: [{ provider_id: 11, provider_name: 'MUBI' }] },
+  };
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData, availability }) });
+  const response = await worker.fetch(new Request('https://api.example/v1/credit-stand?person=138&department=Acting&type=movie&year=1999&ignoreStoreYear=true&providers=netflix'), env, context());
+  const body = await response.json();
+  assert.deepEqual(body.titles.map((title) => title.id), ['tmdb:401']);
+  assert.deepEqual(body.titles[0].availabilityBR, {
+    link: 'https://www.themoviedb.org/movie/401/watch?locale=BR', providers: ['Netflix'], subscriptionProviders: ['Netflix'],
+  });
+  assert.equal(body.person.total, 2);
+  assert.deepEqual(body.providers, ['netflix']);
+});
+
+test('public worker keeps a provider-filtered credit stand inside the Workers subrequest budget', async () => {
+  const personData = actingFixture(45);
+  const availability = Object.fromEntries(Array.from({ length: 45 }, (_, index) => [`movie:${1000 + index}`, {
+    link: `https://www.themoviedb.org/movie/${1000 + index}/watch?locale=BR`,
+    flatrate: [{ provider_id: 8, provider_name: 'Netflix', logo_path: '/netflix.png' }],
+  }]));
+  let upstreamCalls = 0;
+  const stub = creditStub({ personData, availability });
+  const worker = createLocadoraWorker({ fetchImpl: (input, init) => { upstreamCalls += 1; return stub(input, init); } });
+  const base = 'https://api.example/v1/credit-stand?person=138&department=Acting&type=movie&year=1999&ignoreStoreYear=true&providers=netflix';
+
+  const first = await worker.fetch(new Request(`${base}&stand=0`), env, context());
+  const firstBody = await first.json();
+  assert.equal(firstBody.titles.length, 20);
+  assert.equal(firstBody.titles[0].id, 'tmdb:1000');
+  assert.equal(firstBody.person.total, 45);
+  assert.equal(firstBody.hasNextStand, true);
+  // One combined_credits call + 20 availability lookups + 20 IMDb lookups: inside the free-plan cap of 50.
+  assert.ok(upstreamCalls <= 42, `expected at most 42 upstream calls, saw ${upstreamCalls}`);
+
+  const second = await worker.fetch(new Request(`${base}&stand=1`), env, context());
+  const secondBody = await second.json();
+  assert.equal(secondBody.titles[0].id, 'tmdb:1020');
+  assert.equal(secondBody.hasNextStand, true);
+});
+
+test('public worker drops blocked credit-stand titles and titles without a real IMDb id', async () => {
+  const personData = {
+    id: 138, name: 'B', combined_credits: { cast: [
+      { id: 501, media_type: 'movie', title: 'Kept', release_date: '1999-01-01', vote_count: 30 },
+      { id: 502, media_type: 'movie', title: 'Blocked', release_date: '1999-02-01', vote_count: 20 },
+      { id: 503, media_type: 'movie', title: 'No IMDb', release_date: '1999-03-01', vote_count: 10 },
+    ], crew: [] },
+  };
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData, externalIds: { 'movie:503': '' } }) });
+  const catalogueEnv = { ...env, CATALOGUE_POLICY: { async get() { return { version: 9, activeKeys: ['movie:502'] }; } } };
+  const response = await worker.fetch(new Request('https://api.example/v1/credit-stand?person=138&department=Acting&type=movie&year=1999&ignoreStoreYear=true'), catalogueEnv, context());
+  const body = await response.json();
+  assert.deepEqual(body.titles.map((title) => title.id), ['tmdb:501']);
+  assert.equal(body.person.total, 3);
+});
+
+test('public worker rejects invalid credit-stand filters before calling TMDB', async () => {
+  let calls = 0;
+  const worker = createLocadoraWorker({ fetchImpl: async () => { calls += 1; throw new Error('not needed'); } });
+  const queries = [
+    'person=abc&department=Acting&year=1999',
+    'person=138&department=NotADepartment&year=1999',
+    'person=138&department=Acting&year=2027',
+    'person=138&department=Acting&year=1999&stand=99',
+    'person=138&department=Acting&year=1999&providers=unknown',
+    'person=138&department=Acting&year=1999&type=book',
+    'person=138&department=Acting&year=1999&locale=fr-FR',
+    'department=Acting&year=1999',
+  ];
+  for (const query of queries) {
+    const response = await worker.fetch(new Request(`https://api.example/v1/credit-stand?${query}`), env, context());
+    assert.equal(response.status, 400, query);
+    assert.deepEqual(await response.json(), { error: 'Invalid credit stand filters' });
+  }
+  assert.equal(calls, 0);
+});
+
+test('public worker adds id-bearing credits to title metadata without changing the legacy arrays', async () => {
+  const cast = Array.from({ length: 12 }, (_, index) => ({ id: 2000 + index, name: `Actor ${index}`, character: `Role ${index}` }));
+  const crew = [
+    { id: 138, name: 'Quentin Tarantino', department: 'Directing', job: 'Director' },
+    { id: 138, name: 'Quentin Tarantino', department: 'Writing', job: 'Screenplay' },
+    { id: 1000787, name: 'Sally Menke', department: 'Editing', job: 'Editor' },
+    { id: 1000787, name: 'Sally Menke', department: 'Editing', job: 'Editor' },
+    { id: 9, name: 'Grip Person', department: 'Crew', job: 'Grip' },
+  ];
+  const worker = createLocadoraWorker({
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      if (url.pathname === '/3/find/tt0110912') return Response.json({ movie_results: [{ id: 680 }] });
+      assert.equal(url.pathname, '/3/movie/680');
+      return Response.json({
+        title: 'Pulp Fiction', release_date: '1994-10-14', credits: { cast, crew },
+        'watch/providers': { results: {} },
+        external_ids: { imdb_id: 'tt0110912' },
+      });
+    },
+  });
+  const response = await worker.fetch(new Request('https://api.example/v1/title?type=movie&id=tt0110912&locale=pt-BR'), env, context());
+  const { meta } = await response.json();
+  assert.deepEqual(meta.director, ['Quentin Tarantino']);
+  assert.deepEqual(meta.writer, ['Quentin Tarantino']);
+  assert.equal(meta.cast.length, 10);
+  assert.deepEqual(meta.credits.director, [{ id: '138', name: 'Quentin Tarantino' }]);
+  assert.deepEqual(meta.credits.writer, [{ id: '138', name: 'Quentin Tarantino' }]);
+  assert.equal(meta.credits.cast.length, 10);
+  assert.deepEqual(meta.credits.cast[0], { id: '2000', name: 'Actor 0', character: 'Role 0' });
+  assert.deepEqual(meta.credits.crew, [
+    { id: '138', name: 'Quentin Tarantino', department: 'Directing', job: 'Director' },
+    { id: '138', name: 'Quentin Tarantino', department: 'Writing', job: 'Screenplay' },
+    { id: '1000787', name: 'Sally Menke', department: 'Editing', job: 'Editor' },
+  ]);
 });
