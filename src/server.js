@@ -127,7 +127,8 @@ function createServer({ catalogue, posterFetcher = safeFetchImage, watchFetcher 
         const year = Number(url.searchParams.get('year'));
         const genre = url.searchParams.get('genre') || '';
         const genres = genre.split(',').map((item) => item.trim()).filter(Boolean);
-        const type = url.searchParams.get('type') === 'series' ? 'series' : 'movie';
+        const requestedType = url.searchParams.get('type');
+        const type = requestedType === 'series' ? 'series' : requestedType === 'all' ? 'all' : 'movie';
         const stand = Number(url.searchParams.get('stand') || 0);
         const requestedProviders = url.searchParams.get('providers') ?? url.searchParams.get('provider') ?? '';
         const providers = normalizeProviderIds(requestedProviders);

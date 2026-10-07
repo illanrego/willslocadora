@@ -145,6 +145,12 @@ h1 { margin: 0; max-width: 1200px; font: 900 clamp(4rem, 10vw, 10rem)/.76 Impact
 .case-label { position: absolute; inset: auto 7px 6px 18px; padding: .38rem .42rem; text-align: left; color: #17120f; background: rgba(246,235,204,.94); border-top: 3px solid var(--red); box-shadow: 1px 2px 0 #000; }
 .case-label strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 900 .72rem/1.1 "Arial Narrow", Arial, sans-serif; text-transform: uppercase; }
 .case-label small { color: #5a4937; font-size: .55rem; }
+/* Series marker: absolute, non-interactive, so the case layout and click target never change. */
+.case-series-badge { position: absolute; z-index: 3; top: 5px; right: 5px; display: inline-grid; place-items: center; width: 1.15rem; height: 1.15rem; color: #17120f; background: var(--yellow); border: 1px solid #17120f; border-radius: 3px; box-shadow: 1px 1px 0 #000; pointer-events: none; }
+.case-series-badge[hidden] { display: none; }
+.case-series-badge svg { width: .78rem; height: .78rem; fill: none; stroke: currentColor; stroke-width: 2; }
+.series-control { display: flex; align-items: center; gap: .4rem; }
+.series-control input { accent-color: var(--red); }
 
 .load-more-shelf { display: block; min-width: 220px; min-height: 48px; margin: 2rem auto 0; padding: .7rem 1.2rem; border: 2px solid #ffe178; color: #17120f; background: var(--yellow); box-shadow: 4px 4px 0 #7d5e00; cursor: pointer; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
 .load-more-shelf[hidden] { display: none; }
@@ -452,6 +458,8 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 .flat-vhs-front-caption { position: absolute; right: 0; bottom: 0; left: 0; display: grid; gap: .35rem; padding: 1rem 1.2rem 1.3rem; color: var(--cream); background: rgba(8,13,23,.9); }
 .flat-vhs-front-caption strong { font: 900 clamp(1.55rem, 5vw, 3rem)/.95 Impact, "Arial Narrow", sans-serif; text-transform: uppercase; }
 .flat-vhs-front-caption span, .flat-vhs-kicker, .flat-vhs-meta, .flat-vhs-disclaimer { font: 800 .68rem/1.4 "Courier New", monospace; letter-spacing: .04em; text-transform: uppercase; }
+.flat-vhs-series-badge { display: inline-grid; place-items: center; justify-self: start; width: 1.2rem; height: 1.2rem; color: #17120f; background: var(--yellow); border: 1px solid #17120f; border-radius: 3px; }
+.flat-vhs-series-badge svg { width: .82rem; height: .82rem; fill: none; stroke: currentColor; stroke-width: 2; }
 .flat-vhs-flip { position: absolute; z-index: 2; right: 1rem; top: 1rem; min-height: 42px; padding: .55rem .7rem; border: 2px solid var(--yellow); color: var(--cream); background: var(--red); box-shadow: 4px 5px 0 rgba(0,0,0,.55); cursor: pointer; font: 900 .65rem/1 "Courier New", monospace; text-transform: uppercase; }
 .flat-vhs-flip:hover, .flat-vhs-flip:focus-visible { color: var(--black); background: var(--yellow); outline: 0; }
 .flat-vhs-back { border-color: #080d17; background: #101827; }

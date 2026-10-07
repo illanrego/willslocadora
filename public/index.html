@@ -113,6 +113,9 @@
           <output data-lighting-output="warmth" for="normal-lamp-warmth">3200K</output>
           <button id="normal-lamp-reset" data-lighting-reset type="button" data-i18n="resetLights">Reset lights</button>
         </div>
+        <div class="audio-setting series-setting">
+          <label class="series-control" for="normal-series-toggle"><input id="normal-series-toggle" type="checkbox"> <span data-i18n="seriesInShelf">Séries na prateleira</span></label>
+        </div>
         <div class="audio-setting locale-setting">
           <span data-i18n="language">Idioma</span>
           <button id="locale-toggle" class="language-toggle" data-locale-toggle type="button" aria-label="EN">
@@ -249,6 +252,9 @@
               <input id="lamp-warmth" data-lighting-control="warmth" type="range" min="2200" max="4200" value="3200" step="100">
               <output id="lamp-warmth-value" data-lighting-output="warmth" for="lamp-warmth">3200K</output>
               <button id="lamp-reset" data-lighting-reset type="button" data-i18n="resetLights">Reset lights</button>
+            </div>
+            <div class="audio-setting series-setting">
+              <label class="series-control" for="immersive-series-toggle"><input id="immersive-series-toggle" type="checkbox"> <span data-i18n="seriesInShelf">Séries na prateleira</span></label>
             </div>
             <div class="audio-setting locale-setting">
               <span data-i18n="language">Idioma</span>
@@ -549,6 +555,7 @@
         <span class="case-spine"><span class="case-year"></span></span>
         <img class="case-cover" alt="" loading="lazy">
         <img class="case-logo" alt="" loading="eager">
+        <span class="case-series-badge" role="img" hidden><svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 3l4 4 4-4"/></svg></span>
         <span class="case-label"><strong></strong><small></small></span>
       </button>
       <button class="vhs-block-action" type="button" hidden aria-label="Retirar da prateleira">×</button>

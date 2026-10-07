@@ -20,6 +20,15 @@ function list(value, fallback) {
   return values.map((item) => item.trim()).filter(Boolean).join(', ') || fallback;
 }
 
+// Series marker on the cover: a small TV icon with an accessible name, never a new click target.
+function seriesBadge(copy) {
+  const badge = element('span', 'flat-vhs-series-badge');
+  badge.setAttribute('role', 'img');
+  badge.setAttribute('aria-label', copy.seriesBadge || 'series');
+  badge.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 3l4 4 4-4"/></svg>';
+  return badge;
+}
+
 // Ids first, names as fallback: the tape cover only renders chips when /v1/title carried the
 // additive credits block, so cached/older payloads keep the plain joined string.
 function creditGroup(value, fallbackDepartment, fallbackJob) {
@@ -72,6 +81,7 @@ export function createFlatVhsViewer({
       element('strong', '', currentTitle.displayTitle || currentTitle.name),
       element('span', '', `${currentTitle.year || copy.yearUnknown || 'Ano desconhecido'} · ${String(currentTitle.type || copy.video || 'vídeo').toUpperCase()}`),
     );
+    if (currentTitle.type === 'series') caption.append(seriesBadge(copy));
     page.append(cover, caption, button(copy.viewBackCover || 'Ver contracapa', 'flat-vhs-flip', () => show('back', true)));
     return page;
   }

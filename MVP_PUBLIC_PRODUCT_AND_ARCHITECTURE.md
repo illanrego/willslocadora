@@ -391,7 +391,7 @@ The public catalogue Worker limits each client and route to 120 requests/minute,
 - 64 environment variables/secrets per Worker;
 - 3 MB compressed Worker bundle.
 
-The existing provider-filtered shelf behaviour can reach roughly 42 TMDB subrequests (two discovery pages plus up to 40 external-ID lookups). This fits under 50 but leaves little headroom: do not add per-title enrichment to that same request. Cache aggressively and retain a bounded request design.
+The existing provider-filtered shelf behaviour can reach roughly 42 TMDB subrequests (two discovery pages plus up to 40 external-ID lookups). The mixed `type=all` shelf runs the movie and TV discover queries side by side but still spends at most two discovery subrequests (one page per type) plus the same bounded external-ID lookups, so it stays inside that 42-subrequest ceiling. This fits under 50 but leaves little headroom: do not add per-title enrichment to that same request. Cache aggressively and retain a bounded request design.
 
 Workers in the same account share the daily request quota. Separating `locadora-api` is nevertheless required for security, deployment isolation, and a minimal-secret boundary.
 

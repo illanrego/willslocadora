@@ -96,6 +96,8 @@
     providerPreferenceSet: localStorage.getItem('locadora.providers') !== null || localStorage.getItem('locadora.provider') !== null,
     ignoreStoreYear: window.LocadoraSessionSupport.allYearsPreference(localStorage.getItem('locadora.ignoreStoreYear')),
     sort: normalizeSort(localStorage.getItem('locadora.sort')),
+    // Series are opt-in per visitor (default off, like the provider and all-years preferences).
+    series: localStorage.getItem('locadora.series') === 'true',
     lighting: loadLighting(),
     providerRegistry: [],
     titles: [],
@@ -956,6 +958,20 @@
     if (reload) loadShelf();
   }
 
+  function syncSeriesControls() {
+    for (const selector of ['#normal-series-toggle', '#immersive-series-toggle']) {
+      const input = $(selector);
+      if (input) input.checked = state.series;
+    }
+  }
+
+  function setSeries(value, reload = true) {
+    state.series = Boolean(value);
+    localStorage.setItem('locadora.series', String(state.series));
+    syncSeriesControls();
+    if (reload) loadShelf();
+  }
+
   function selectedProviderIds(container) {
     return [...container.querySelectorAll('[data-provider-id]:checked')].map((input) => input.dataset.providerId).sort();
   }
@@ -1099,7 +1115,10 @@
       }
       node.querySelector('.case-year').textContent = title.year || '—';
       node.querySelector('.case-label strong').textContent = title.name;
-      node.querySelector('.case-label small').textContent = `${title.year || 'Year unknown'} · ${title.type}`;
+      node.querySelector('.case-label small').textContent = `${title.year || 'Year unknown'} · ${title.type === 'series' ? t('series') : t('movies')}`;
+      const seriesBadge = node.querySelector('.case-series-badge');
+      seriesBadge.hidden = title.type !== 'series';
+      if (!seriesBadge.hidden) seriesBadge.setAttribute('aria-label', t('seriesBadge'));
       button.setAttribute('aria-label', `Inspect ${title.name}, ${title.year || 'year unknown'}`);
       const blockAction = node.querySelector('.vhs-block-action');
       blockAction.hidden = !state.admin;
@@ -1516,12 +1535,14 @@
     syncSortControls();
     const sortCaption = `${t('sort')}: ${t(SORT_LABEL_KEYS[effectiveSort()])}`;
     const credit = state.credit;
+    // A person stand is always movies + series; the aisle is mixed only when the visitor opted in.
+    const mixedCaption = credit || state.series ? ` · ${t('shelfMixed')}` : '';
     if (credit) {
       $('#shelf-title').textContent = `${t('creditStand')}: ${credit.name}`;
-      $('#shelf-caption').textContent = `${creditRoleLabel(credit)} · ${yearLabel} · ${sortCaption}`;
+      $('#shelf-caption').textContent = `${creditRoleLabel(credit)} · ${yearLabel} · ${sortCaption}${mixedCaption}`;
     } else {
       $('#shelf-title').textContent = genreLabel(genre);
-      $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${yearLabel}`} · ${sortCaption}`;
+      $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${yearLabel}`} · ${sortCaption}${mixedCaption}`;
     }
     $('#back-to-aisle').hidden = !credit;
     $('#immersive-back-to-aisle').hidden = !credit;
@@ -1547,8 +1568,8 @@
     try {
       const useCreditStand = Boolean(state.credit);
       const params = useCreditStand
-        ? new URLSearchParams({ person: state.credit.id, department: state.credit.department, job: state.credit.job || '', type: state.type, year: state.year, ignoreStoreYear: String(state.ignoreStoreYear), providers: state.credit.allProviders ? '' : state.providers.join(','), stand, sort: effectiveSort(), locale: state.locale })
-        : new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear), sort: effectiveSort() });
+        ? new URLSearchParams({ person: state.credit.id, department: state.credit.department, job: state.credit.job || '', type: 'all', year: state.year, ignoreStoreYear: String(state.ignoreStoreYear), providers: state.credit.allProviders ? '' : state.providers.join(','), stand, sort: effectiveSort(), locale: state.locale })
+        : new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.series ? 'all' : 'movie', stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear), sort: effectiveSort() });
       const endpoint = useCreditStand ? '/api/credit-stand' : '/api/shelf';
       const body = await api(`${endpoint}?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
@@ -2496,7 +2517,7 @@
         person: personState.id,
         department,
         job,
-        type: state.type,
+        type: 'all',
         year: state.year,
         ignoreStoreYear: 'true',
         stand: 0,
@@ -2936,6 +2957,7 @@
     });
     syncProviderControls();
     syncSortControls();
+    syncSeriesControls();
     syncLightingControls();
     syncAudioControls('ambience');
     syncAudioControls('music');
@@ -2955,6 +2977,8 @@
     $('#immersive-ignore-store-year').addEventListener('change', (event) => {
       setIgnoreStoreYear(event.currentTarget.checked);
     });
+    $('#normal-series-toggle').addEventListener('change', (event) => setSeries(event.currentTarget.checked));
+    $('#immersive-series-toggle').addEventListener('change', (event) => setSeries(event.currentTarget.checked));
     $('#immersive-toggle').addEventListener('click', () => setMode(state.mode === 'immersive' ? 'normal' : 'immersive'));
     $('#immersive-2d-open').addEventListener('click', () => setMode('normal'));
     $('#immersive-balcony-open').addEventListener('click', () => setMode('balcony'));

@@ -7,7 +7,7 @@ const MAX_TITLES = 40;
 // Part of every edge cache key: bump it when a response shape or ordering changes, so a deploy
 // stops serving the previous behaviour from cache instead of waiting out the TTL (a day for most
 // endpoints).
-const CACHE_SCHEMA = 2;
+const CACHE_SCHEMA = 3;
 const LOCALES = new Set(['pt-BR', 'en-US']);
 // Departments surfaced as credit-stand roles. Kept in sync with the frozen contract.
 const CREDIT_DEPARTMENTS = new Set(['Acting', 'Directing', 'Writing', 'Camera', 'Editing', 'Visual Effects', 'Sound', 'Art', 'Production', 'Music', 'Costume & Make-Up', 'Lighting']);
@@ -106,7 +106,8 @@ function validShelf(url) {
   const year = Number(url.searchParams.get('year'));
   const genre = url.searchParams.get('genre') || '';
   const genres = genre.split(',').map((value) => value.trim()).filter(Boolean);
-  const type = url.searchParams.get('type') === 'series' ? 'series' : 'movie';
+  const requestedType = url.searchParams.get('type');
+  const type = requestedType === 'series' ? 'series' : requestedType === 'all' ? 'all' : 'movie';
   const stand = Number(url.searchParams.get('stand') || 0);
   const requested = url.searchParams.get('providers') ?? url.searchParams.get('provider') ?? '';
   const providers = [...new Set(requested.split(',').map((id) => id.trim()).filter((id) => PROVIDERS_BY_ID.has(id)))].sort();
@@ -416,7 +417,95 @@ function createTmdb(env, fetchImpl) {
   return { request };
 }
 
+// Explicit total order for a merged movie+TV candidate pool. Discover already sorts each type on
+// its own, so merging without re-sorting interleaves the two lists wrongly. Mirrors sortCredits'
+// shape: the requested key first, then stable tie-breakers ending on TMDB id asc.
+function mergedShelfCompare(a, b, sort) {
+  const dateA = String(a.title.release_date || a.title.first_air_date || '');
+  const dateB = String(b.title.release_date || b.title.first_air_date || '');
+  if (sort === 'year') {
+    if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+    const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
+    if (popularity) return popularity;
+    return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
+  }
+  if (sort === 'rating') {
+    const rating = (Number(b.title.vote_average) || 0) - (Number(a.title.vote_average) || 0);
+    if (rating) return rating;
+    const votes = (Number(b.title.vote_count) || 0) - (Number(a.title.vote_count) || 0);
+    if (votes) return votes;
+    const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
+    if (popularity) return popularity;
+    return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
+  }
+  const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
+  if (popularity) return popularity;
+  const votes = (Number(b.title.vote_count) || 0) - (Number(a.title.vote_count) || 0);
+  if (votes) return votes;
+  if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+  return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
+}
+
+// `type=all`: run the movie and TV discover queries side by side, each with its own genre map and
+// date key, merge the candidates, explicitly re-sort them (discover ordering is per type), dedupe
+// by `type:tmdbId`, then slice to MAX_TITLES. One discover page per type plus at most 40
+// `external_ids` lookups keeps the merged path inside the same 42-subrequest budget as the
+// single-type shelf, and no per-title availability lookup is spent here.
+async function shelfAll(filters, env, fetchImpl, cataloguePolicy) {
+  const tmdb = createTmdb(env, fetchImpl);
+  const providerIds = filters.providers.map((id) => PROVIDERS_BY_ID.get(id).tmdbProviderId).sort((a, b) => a - b);
+  const page = filters.stand + 1;
+  const loadType = async (tmdbType) => {
+    const genreMap = tmdbType === 'tv' ? TV_GENRES : MOVIE_GENRES;
+    const genreIds = [...new Set(filters.genres.map((genre) => genreMap[genre]).filter(Boolean))];
+    const dateKey = tmdbType === 'tv' ? 'first_air_date' : 'primary_release_date';
+    const query = new URLSearchParams({ sort_by: shelfSortBy(filters.sort, tmdbType), page: String(page), include_adult: 'false', [`${dateKey}.gte`]: `${filters.ignoreStoreYear ? 1920 : filters.year - (providerIds.length ? 19 : 4)}-01-01`, [`${dateKey}.lte`]: `${filters.ignoreStoreYear ? 2026 : filters.year}-12-31` });
+    if (filters.sort === 'rating') query.set('vote_count.gte', String(RATING_VOTE_FLOOR));
+    if (genreIds.length) query.set('with_genres', genreIds.join('|'));
+    if (providerIds.length) {
+      query.set('watch_region', 'BR');
+      query.set('with_watch_monetization_types', 'flatrate');
+      query.set('with_watch_providers', providerIds.join('|'));
+    }
+    const data = await tmdb.request(`/discover/${tmdbType}?${query}`);
+    const results = (Array.isArray(data.results) ? data.results : []).map((title) => ({ tmdbType, title }));
+    const totalPages = Number(data.total_pages);
+    const currentPage = Number(data.page) || page;
+    const hasMore = Number.isInteger(totalPages) && totalPages > 0 ? currentPage < totalPages : results.length >= 20;
+    return { results, hasMore };
+  };
+  const [movie, tv] = await Promise.all([loadType('movie'), loadType('tv')]);
+  const merged = [...movie.results, ...tv.results].sort((a, b) => mergedShelfCompare(a, b, filters.sort));
+  const seen = new Set();
+  const unique = [];
+  for (const candidate of merged) {
+    const publicType = candidate.tmdbType === 'tv' ? 'series' : 'movie';
+    const key = `${publicType}:${candidate.title.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(candidate);
+  }
+  const selected = unique.slice(0, MAX_TITLES);
+  const imdbIds = await mapWithConcurrency(selected, async (candidate) => {
+    try { return (await tmdb.request(`/${candidate.tmdbType}/${candidate.title.id}/external_ids`)).imdb_id || ''; } catch { return ''; }
+  });
+  const selectedNames = filters.providers.map((id) => PROVIDERS_BY_ID.get(id).canonicalName);
+  const titles = selected.flatMap((candidate, index) => {
+    const publicType = candidate.tmdbType === 'tv' ? 'series' : 'movie';
+    const title = candidate.title;
+    if (!/^tt\d+$/.test(imdbIds[index] || '') || isBlocked(cataloguePolicy, publicType, title.id)) return [];
+    return [{
+      id: `tmdb:${title.id}`, imdbId: imdbIds[index], type: publicType, name: title.title || title.name || 'Untitled', year: yearFromDate(title.release_date || title.first_air_date),
+      genres: (title.genre_ids || []).map((genreId) => genreName(candidate.tmdbType, genreId)).filter(Boolean), poster: imageUrl(title.poster_path, 'w500'), background: imageUrl(title.backdrop_path, 'w1280'),
+      description: title.overview || '', imdbRating: title.vote_average ? String(title.vote_average) : '', director: [], writer: [], cast: [], source: 'tmdb-discover',
+      availabilityBR: { link: '', providers: selectedNames, subscriptionProviders: selectedNames },
+    }];
+  });
+  return { titles, hasNextStand: movie.hasMore || tv.hasMore };
+}
+
 async function shelf(filters, env, fetchImpl, cataloguePolicy) {
+  if (filters.type === 'all') return shelfAll(filters, env, fetchImpl, cataloguePolicy);
   const tmdb = createTmdb(env, fetchImpl);
   const tmdbType = filters.type === 'series' ? 'tv' : 'movie';
   const genreMap = tmdbType === 'tv' ? TV_GENRES : MOVIE_GENRES;

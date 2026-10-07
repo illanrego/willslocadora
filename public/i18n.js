@@ -167,7 +167,10 @@
     "departmentMusic": "Música",
     "departmentCostume": "Figurino e maquiagem",
     "departmentLighting": "Iluminação",
-    "noSynopsis": "Nenhuma sinopse foi incluída por esta fonte de catálogo."
+    "noSynopsis": "Nenhuma sinopse foi incluída por esta fonte de catálogo.",
+    "seriesInShelf": "Séries na prateleira",
+    "seriesBadge": "Série de TV",
+    "shelfMixed": "Filmes e séries"
   },
   "en-US": {
     "skipShelf": "Skip to shelf",
@@ -329,7 +332,10 @@
     "departmentMusic": "Music",
     "departmentCostume": "Costume & make-up",
     "departmentLighting": "Lighting",
-    "noSynopsis": "No synopsis was included by this catalogue source."
+    "noSynopsis": "No synopsis was included by this catalogue source.",
+    "seriesInShelf": "Series on the shelf",
+    "seriesBadge": "TV series",
+    "shelfMixed": "Movies and series"
   }
 });
 

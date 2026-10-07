@@ -305,3 +305,23 @@ test('local server reorders a credit stand by sort and rejects an unknown sort',
   assert.equal(bad.status, 400);
   assert.deepEqual(await bad.json(), { error: 'Invalid credit stand filters' });
 });
+
+test('local server accepts and forwards a mixed type=all shelf request', async (t) => {
+  const requested = [];
+  const server = createServer({ catalogue: { listSources: () => [], shelf: async (options) => { requested.push(options); return []; } } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const { port } = server.address();
+  const base = `http://127.0.0.1:${port}`;
+
+  const mixed = await fetch(`${base}/api/shelf?year=2000&genre=Action&type=all`);
+  assert.equal(mixed.status, 200);
+  assert.equal((await mixed.json()).type, 'all');
+  assert.equal(requested[0].type, 'all');
+
+  // An unknown type still degrades to the historical movie-only shelf.
+  const unknown = await fetch(`${base}/api/shelf?year=2000&genre=Action&type=book`);
+  assert.equal(unknown.status, 200);
+  assert.equal(requested[1].type, 'movie');
+});

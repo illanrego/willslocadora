@@ -653,3 +653,95 @@ test('public worker keeps a provider-filtered sorted credit stand inside the Wor
   const second = await worker.fetch(new Request(`${base}&stand=1`), env, context());
   assert.equal((await second.json()).titles[0].id, 'tmdb:3024');
 });
+
+// --- Series in the shelf (Addendum 3) ---------------------------------------
+
+test('public worker merges movie and TV candidates for a type=all shelf', async () => {
+  const requests = [];
+  const worker = createLocadoraWorker({
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      requests.push(url);
+      if (url.pathname === '/3/discover/movie') return Response.json({ page: 1, total_pages: 1, results: [
+        { id: 501, title: 'Movie A', release_date: '1999-01-01', popularity: 100, vote_count: 900, genre_ids: [878] },
+        { id: 502, title: 'Movie B', release_date: '1999-02-01', popularity: 60, vote_count: 800, genre_ids: [878] },
+      ] });
+      if (url.pathname === '/3/discover/tv') return Response.json({ page: 1, total_pages: 1, results: [
+        { id: 601, name: 'Show A', first_air_date: '2000-01-01', popularity: 90, vote_count: 700, genre_ids: [10765] },
+        { id: 602, name: 'Show B', first_air_date: '2001-01-01', popularity: 30, vote_count: 600, genre_ids: [10765] },
+      ] });
+      const match = url.pathname.match(/^\/3\/(movie|tv)\/(\d+)\/external_ids$/);
+      if (match) return Response.json({ imdb_id: `tt${match[2].padStart(7, '0')}` });
+      throw new Error(`Unexpected upstream URL: ${url}`);
+    },
+  });
+
+  const response = await worker.fetch(new Request('https://api.example/v1/shelf?year=2000&genre=Sci-Fi&type=all'), env, context());
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.type, 'all');
+  // Movie and TV candidates are re-sorted together by popularity, not concatenated per type.
+  assert.deepEqual(body.titles.map((title) => [title.id, title.type]), [
+    ['tmdb:501', 'movie'], ['tmdb:601', 'series'], ['tmdb:502', 'movie'], ['tmdb:602', 'series'],
+  ]);
+  assert.equal(body.titles[1].name, 'Show A');
+  assert.equal(body.hasNextStand, false);
+
+  const discover = requests.filter((url) => url.pathname.startsWith('/3/discover/'));
+  assert.equal(discover.length, 2);
+  const movieDiscover = discover.find((url) => url.pathname === '/3/discover/movie');
+  const tvDiscover = discover.find((url) => url.pathname === '/3/discover/tv');
+  // Own genre map and date key per type.
+  assert.equal(movieDiscover.searchParams.get('with_genres'), '878');
+  assert.equal(movieDiscover.searchParams.get('primary_release_date.gte'), '1996-01-01');
+  assert.equal(movieDiscover.searchParams.get('page'), '1');
+  assert.equal(tvDiscover.searchParams.get('with_genres'), '10765');
+  assert.equal(tvDiscover.searchParams.get('first_air_date.gte'), '1996-01-01');
+  assert.equal(tvDiscover.searchParams.get('page'), '1');
+  // Two discover subrequests + one external_ids per merged title.
+  assert.ok(requests.length <= 42, `expected at most 42 upstream calls, saw ${requests.length}`);
+});
+
+test('public worker pages a type=all shelf and derives hasNextStand from either discover query', async () => {
+  const requests = [];
+  const worker = createLocadoraWorker({
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      requests.push(url);
+      const page = Number(url.searchParams.get('page'));
+      if (url.pathname === '/3/discover/movie') return Response.json({ page, total_pages: 3, results: [
+        { id: 500 + page, title: `Movie ${page}`, release_date: '1999-01-01', popularity: 50 },
+      ] });
+      if (url.pathname === '/3/discover/tv') return Response.json({ page, total_pages: 1, results: [
+        { id: 600 + page, name: `Show ${page}`, first_air_date: '2000-01-01', popularity: 40 },
+      ] });
+      const match = url.pathname.match(/^\/3\/(movie|tv)\/(\d+)\/external_ids$/);
+      if (match) return Response.json({ imdb_id: `tt${match[2].padStart(7, '0')}` });
+      throw new Error(`Unexpected upstream URL: ${url}`);
+    },
+  });
+
+  // Stand 0 maps to discover page 1 for both types; the movie query still has pages, so there is a
+  // next stand even though the TV query is exhausted.
+  const first = await worker.fetch(new Request('https://api.example/v1/shelf?year=2000&genre=Action&type=all&stand=0'), env, context());
+  const firstBody = await first.json();
+  assert.deepEqual(firstBody.titles.map((title) => title.id), ['tmdb:501', 'tmdb:601']);
+  assert.equal(firstBody.hasNextStand, true);
+  assert.equal(requests.find((url) => url.pathname === '/3/discover/movie').searchParams.get('page'), '1');
+  assert.equal(requests.find((url) => url.pathname === '/3/discover/tv').searchParams.get('page'), '1');
+
+  requests.length = 0;
+  const second = await worker.fetch(new Request('https://api.example/v1/shelf?year=2000&genre=Action&type=all&stand=1'), env, context());
+  const secondBody = await second.json();
+  assert.deepEqual(secondBody.titles.map((title) => title.id), ['tmdb:502', 'tmdb:602']);
+  assert.equal(secondBody.hasNextStand, true);
+  assert.equal(requests.find((url) => url.pathname === '/3/discover/movie').searchParams.get('page'), '2');
+
+  requests.length = 0;
+  const third = await worker.fetch(new Request('https://api.example/v1/shelf?year=2000&genre=Action&type=all&stand=2'), env, context());
+  const thirdBody = await third.json();
+  assert.deepEqual(thirdBody.titles.map((title) => title.id), ['tmdb:503', 'tmdb:603']);
+  assert.equal(thirdBody.hasNextStand, false);
+  assert.ok(requests.length <= 42, `expected at most 42 upstream calls, saw ${requests.length}`);
+});
+

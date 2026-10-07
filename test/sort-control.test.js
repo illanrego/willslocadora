@@ -65,8 +65,9 @@ test('loadShelf sends the effective sort on both the shelf and the credit-stand 
 test('the shelf caption shows the active sort for aisles and credit stands', () => {
   const body = functionBody(app, 'async function loadShelf(');
   assert.match(body, /const sortCaption = `\$\{t\('sort'\)\}: \$\{t\(SORT_LABEL_KEYS\[effectiveSort\(\)\]\)\}`;/);
-  assert.match(body, /\$\('#shelf-caption'\)\.textContent = `\$\{creditRoleLabel\(credit\)\} · \$\{yearLabel\} · \$\{sortCaption\}`;/);
-  assert.match(body, /\$\('#shelf-caption'\)\.textContent = `\$\{t\('aisle'\)\} \$\{aisle\}[\s\S]*?· \$\{sortCaption\}`;/);
+  assert.match(body, /const mixedCaption = credit \|\| state\.series \? ` · \$\{t\('shelfMixed'\)\}` : '';/);
+  assert.match(body, /\$\('#shelf-caption'\)\.textContent = `\$\{creditRoleLabel\(credit\)\} · \$\{yearLabel\} · \$\{sortCaption\}\$\{mixedCaption\}`;/);
+  assert.match(body, /\$\('#shelf-caption'\)\.textContent = `\$\{t\('aisle'\)\} \$\{aisle\}[\s\S]*?· \$\{sortCaption\}\$\{mixedCaption\}`;/);
 });
 
 test('the 3D plaque exposes a third sort field wired to the same setSort', () => {

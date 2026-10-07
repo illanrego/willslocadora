@@ -110,6 +110,35 @@ function shelfSortBy(sort, dateKey) {
   return 'popularity.desc';
 }
 
+// Explicit total order for a merged movie+TV candidate pool (type=all). Discover sorts each type on
+// its own, so merging without re-sorting interleaves the two lists wrongly. Mirrors the Worker's
+// comparator.
+function mergedShelfCompare(a, b, sort) {
+  const dateA = String(a.title.release_date || a.title.first_air_date || '');
+  const dateB = String(b.title.release_date || b.title.first_air_date || '');
+  if (sort === 'year') {
+    if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+    const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
+    if (popularity) return popularity;
+    return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
+  }
+  if (sort === 'rating') {
+    const rating = (Number(b.title.vote_average) || 0) - (Number(a.title.vote_average) || 0);
+    if (rating) return rating;
+    const votes = (Number(b.title.vote_count) || 0) - (Number(a.title.vote_count) || 0);
+    if (votes) return votes;
+    const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
+    if (popularity) return popularity;
+    return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
+  }
+  const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
+  if (popularity) return popularity;
+  const votes = (Number(b.title.vote_count) || 0) - (Number(a.title.vote_count) || 0);
+  if (votes) return votes;
+  if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+  return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
+}
+
 function isSelfCharacter(character) {
   const value = String(character || '').trim();
   return SELF_CHARACTERS.has(value) || value.startsWith('Self ') || value.startsWith('Self-');
@@ -241,53 +270,80 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
   async function discoverProviderShelf({ year, genres, type, providerName = '', providerNames = [], providerIds = [], ignoreStoreYear = false, page = 0, locale = 'pt-BR', sort = 'relevance' }) {
     if (!apiKey) return [];
     const requestedLocale = normalizeLocale(locale);
-    const tmdbType = type === 'series' ? 'tv' : 'movie';
     const selectedProviderIds = [...new Set(providerIds.map(Number).filter(Number.isInteger))];
-    if (!selectedProviderIds.length && providerName) {
-      const provider = await providerId(tmdbType, providerName, requestedLocale);
-      if (provider) selectedProviderIds.push(provider);
-    }
-    if (!selectedProviderIds.length) return [];
-    const genreMap = tmdbType === 'tv' ? TMDB_TV_GENRES : TMDB_MOVIE_GENRES;
-    const genreIds = [...new Set((genres || []).map((genre) => genreMap[genre]).filter(Boolean))];
-    const dateKey = tmdbType === 'movie' ? 'primary_release_date' : 'first_air_date';
-    const fetchPage = (number) => {
-      const query = new URLSearchParams({
-        watch_region: 'BR',
-        with_watch_monetization_types: 'flatrate',
-        with_watch_providers: selectedProviderIds.join('|'),
-        page: String(number),
-        sort_by: shelfSortBy(sort, dateKey),
-        [`${dateKey}.gte`]: `${ignoreStoreYear ? 1920 : Number(year) - 19}-01-01`,
-        [`${dateKey}.lte`]: `${ignoreStoreYear ? 2026 : year}-12-31`,
-      });
-      if (sort === 'rating') query.set('vote_count.gte', String(RATING_VOTE_FLOOR));
-      if (genreIds.length) query.set('with_genres', genreIds.join('|'));
-      return request(`/discover/${tmdbType}?${query}`, requestedLocale);
+    const names = providerNames.length ? providerNames : [providerName];
+    // `all` runs the movie and TV discover queries side by side, each with its own genre map/date key.
+    const tmdbTypes = type === 'all' ? ['movie', 'tv'] : [type === 'series' ? 'tv' : 'movie'];
+    const loadType = async (tmdbType) => {
+      let ids = selectedProviderIds;
+      if (!ids.length && providerName) {
+        const provider = await providerId(tmdbType, providerName, requestedLocale);
+        if (!provider) return [];
+        ids = [provider];
+      }
+      if (!ids.length) return [];
+      const genreMap = tmdbType === 'tv' ? TMDB_TV_GENRES : TMDB_MOVIE_GENRES;
+      const genreIds = [...new Set((genres || []).map((genre) => genreMap[genre]).filter(Boolean))];
+      const dateKey = tmdbType === 'movie' ? 'primary_release_date' : 'first_air_date';
+      const fetchPage = (number) => {
+        const query = new URLSearchParams({
+          watch_region: 'BR',
+          with_watch_monetization_types: 'flatrate',
+          with_watch_providers: ids.join('|'),
+          page: String(number),
+          sort_by: shelfSortBy(sort, dateKey),
+          [`${dateKey}.gte`]: `${ignoreStoreYear ? 1920 : Number(year) - 19}-01-01`,
+          [`${dateKey}.lte`]: `${ignoreStoreYear ? 2026 : year}-12-31`,
+        });
+        if (sort === 'rating') query.set('vote_count.gte', String(RATING_VOTE_FLOOR));
+        if (genreIds.length) query.set('with_genres', genreIds.join('|'));
+        return request(`/discover/${tmdbType}?${query}`, requestedLocale);
+      };
+      // Single-type shelves fetch two pages (20 each) to fill one stand; the merged `all` shelf
+      // fetches one page per type so both lists stay inside the same two-discover budget.
+      const firstPage = Math.max(1, type === 'all' ? Number(page) + 1 : Number(page) * 2 + 1);
+      const pageNumbers = type === 'all' ? [firstPage] : [firstPage, firstPage + 1];
+      const pages = await Promise.all(pageNumbers.map(fetchPage));
+      const publicType = tmdbType === 'tv' ? 'series' : 'movie';
+      return pages.flatMap((result) => (result.results || []).map((title) => ({ tmdbType, publicType, title })));
     };
-    const firstPage = Math.max(1, Number(page) * 2 + 1);
-    const pages = await Promise.all([fetchPage(firstPage), fetchPage(firstPage + 1)]);
-    const discovered = pages.flatMap((result) => result.results || []);
-    const imdbIds = await mapWithConcurrency(discovered, async (title) => {
+    const groups = await Promise.all(tmdbTypes.map(loadType));
+    let candidates;
+    if (type === 'all') {
+      // Explicit re-sort: discover ordering is per type, so a bare merge would interleave wrongly.
+      const merged = groups.flat().sort((a, b) => mergedShelfCompare(a, b, sort));
+      const seen = new Set();
+      candidates = [];
+      for (const candidate of merged) {
+        const key = `${candidate.publicType}:${candidate.title.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        candidates.push(candidate);
+        if (candidates.length >= 40) break;
+      }
+    } else {
+      candidates = groups[0] || [];
+    }
+    const imdbIds = await mapWithConcurrency(candidates, async (candidate) => {
       try {
-        const external = await request(`/${tmdbType}/${title.id}/external_ids`, requestedLocale);
+        const external = await request(`/${candidate.tmdbType}/${candidate.title.id}/external_ids`, requestedLocale);
         return external.imdb_id || '';
       } catch { return ''; }
     });
-    const names = providerNames.length ? providerNames : [providerName];
-    const genreName = (genreId) => tmdbType === 'tv'
+    const genreNameFor = (tmdbType, genreId) => tmdbType === 'tv'
       ? TMDB_TV_GENRE_NAMES[genreId]
       : Object.keys(TMDB_MOVIE_GENRES).find((name) => TMDB_MOVIE_GENRES[name] === genreId);
-    return discovered.flatMap((title, index) => {
+    return candidates.flatMap((candidate, index) => {
       const imdbId = imdbIds[index];
       if (!/^tt\d+$/.test(imdbId)) return [];
+      const title = candidate.title;
       return [{
         id: `tmdb:${title.id}`,
         imdbId,
-        type,
+        type: candidate.publicType,
         name: title.title || title.name || 'Untitled',
         year: yearFromDate(title.release_date || title.first_air_date),
-        genres: (title.genre_ids || []).map(genreName).filter(Boolean),
+        genres: (title.genre_ids || []).map((genreId) => genreNameFor(candidate.tmdbType, genreId)).filter(Boolean),
         poster: imageUrl(title.poster_path, 'w500'),
         background: imageUrl(title.backdrop_path, 'w1280'),
         description: title.overview || '',

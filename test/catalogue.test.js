@@ -416,3 +416,46 @@ test('fetchStoreShelf requests the next catalogue pages for a later stand', asyn
   assert.deepEqual(requests.map((url) => Number(url.match(/skip=(\d+)/)[1])), [100, 150]);
   assert.deepEqual(titles.map((item) => item.id), ['h-100', 'h-150']);
 });
+
+test('TMDB merges movie and TV discovery for a mixed type=all provider shelf', async () => {
+  const requests = [];
+  const client = createTmdbClient({
+    apiKey: 'test-key',
+    fetchImpl: async (input) => {
+      const url = new URL(String(input));
+      requests.push(url);
+      if (url.pathname === '/3/discover/movie') return { ok: true, json: async () => ({ page: 1, total_pages: 1, results: [
+        { id: 501, title: 'Movie A', release_date: '2005-01-01', popularity: 50, vote_count: 100, genre_ids: [878] },
+        { id: 502, title: 'Movie B', release_date: '1990-01-01', popularity: 10, vote_count: 50, genre_ids: [878] },
+      ] }) };
+      if (url.pathname === '/3/discover/tv') return { ok: true, json: async () => ({ page: 1, total_pages: 1, results: [
+        { id: 601, name: 'Show A', first_air_date: '2010-01-01', popularity: 40, vote_count: 80, genre_ids: [10765] },
+        { id: 602, name: 'Show B', first_air_date: '1980-01-01', popularity: 5, vote_count: 20, genre_ids: [10765] },
+      ] }) };
+      const match = url.pathname.match(/^\/3\/(movie|tv)\/(\d+)\/external_ids$/);
+      if (match) return { ok: true, json: async () => ({ imdb_id: `tt${match[2].padStart(7, '0')}` }) };
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  });
+
+  const titles = await client.discoverProviderShelf({ year: 2010, genres: ['Sci-Fi'], type: 'all', providerIds: [8], providerNames: ['Netflix'], page: 0, sort: 'year' });
+
+  // Merged and re-sorted across both types by release date (newest first).
+  assert.deepEqual(titles.map((title) => [title.id, title.type]), [
+    ['tmdb:601', 'series'], ['tmdb:501', 'movie'], ['tmdb:502', 'movie'], ['tmdb:602', 'series'],
+  ]);
+  assert.deepEqual(titles[0].genres, ['Sci-Fi']);
+
+  // One discover page per type, each with its own genre map and date key.
+  const discover = requests.filter((url) => url.pathname.startsWith('/3/discover/'));
+  assert.equal(discover.length, 2);
+  const movieDiscover = discover.find((url) => url.pathname === '/3/discover/movie');
+  const tvDiscover = discover.find((url) => url.pathname === '/3/discover/tv');
+  assert.equal(movieDiscover.searchParams.get('page'), '1');
+  assert.equal(movieDiscover.searchParams.get('sort_by'), 'primary_release_date.desc');
+  assert.equal(movieDiscover.searchParams.get('with_genres'), '878');
+  assert.equal(tvDiscover.searchParams.get('page'), '1');
+  assert.equal(tvDiscover.searchParams.get('sort_by'), 'first_air_date.desc');
+  assert.equal(tvDiscover.searchParams.get('with_genres'), '10765');
+});
+
