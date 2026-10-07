@@ -81,6 +81,12 @@ test('normal and immersive modes expose one shared set of preferences', () => {
   assert.match(css, /\.normal-settings \{ display: grid;/);
 });
 
+test('immersive mode does not render the obsolete floating genre/year menu', () => {
+  assert.doesNotMatch(page, /id="immersive-browse-panel"/);
+  assert.doesNotMatch(app, /immersive-browse-panel|immersive-independent-pickers|applyImmersiveFilters/);
+  assert.match(page, /id="immersive-stage"/);
+});
+
 test('store audio stays opt-in without a floating speaker control', () => {
   assert.doesNotMatch(page, /id="audio-master-toggle"/);
   assert.doesNotMatch(css, /\.audio-master-toggle/);
@@ -138,8 +144,8 @@ test('return confirmation dialog is present in the markup', () => {
 });
 
 test('locale refresh relabels each genre selector without indexing across both option lists', () => {
-  assert.doesNotMatch(app, /#genre-select option, #immersive-genre-select option/);
-  assert.match(app, /for \(const select of \[\$\('#genre-select'\), \$\('#immersive-genre-select'\)\]\) \{\s*select\.querySelectorAll\('option'\)\.forEach\(\(option, index\) => \{ option\.textContent = genreLabel\(genres\[index\]\); \}\);/);
+  assert.match(app, /\$\('#genre-select'\)\.querySelectorAll\('option'\)\.forEach\(\(option, index\) => \{ option\.textContent = genreLabel\(genres\[index\]\); \}\);/);
+  assert.doesNotMatch(app, /immersive-genre-select/);
 });
 
 test('collapsed immersive HUD keeps its nested restore button visible', () => {
@@ -184,7 +190,6 @@ test('mobile 3D Balcão separates its compact utility bar from member actions', 
 });
 
 test('immersive mode exposes a basket independently from the Balcony', () => {
-  assert.match(page, /class="immersive-picker immersive-genre-picker"/);
   assert.match(page, /id="immersive-basket-open"[^>]*aria-controls="basket-dialog"[^>]*>\s*[\s\S]*immersive-basket-label/);
   assert.match(page, /id="immersive-2d-open"/);
   assert.match(page, /id="basket-dialog"/);

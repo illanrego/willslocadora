@@ -109,10 +109,22 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     const element = document.createElement('div');
     element.className = 'plaque-field-editor';
     const input = document.createElement(field === 'year' ? 'input' : 'select');
+    let yearSelect = null;
     input.setAttribute('aria-label', plaqueOptions[field + 'Label'] || field);
     if (field === 'year') {
       input.type = 'number'; input.min = '1920'; input.max = '2026'; input.step = '1';
       input.inputMode = 'numeric'; input.required = true; input.value = draft.year;
+      yearSelect = document.createElement('select');
+      yearSelect.setAttribute('aria-label', `${plaqueOptions[field + 'Label'] || field} dropdown`);
+      for (let year = 2026; year >= 1920; year -= 1) {
+        const option = document.createElement('option');
+        option.value = String(year); option.textContent = String(year); yearSelect.append(option);
+      }
+      yearSelect.value = String(draft.year);
+      const controls = document.createElement('span');
+      controls.className = 'plaque-year-controls';
+      controls.append(input, yearSelect);
+      element.append(controls);
     } else {
       const choices = plaqueOptions.genres.map((value) => [value, value]);
       for (const [value, text] of choices) {
@@ -120,7 +132,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       }
       input.value = draft[field];
     }
-    element.append(input);
+    if (field !== 'year') element.append(input);
     const save = () => {
       if (field === 'year') {
         if (!input.checkValidity()) return false;
@@ -134,6 +146,15 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       element.append(all);
     }
     input.addEventListener('change', () => {
+      if (!save()) return;
+      closePlaqueEditor(false);
+      renderer.domElement.focus({ preventScroll: true });
+    });
+    input.addEventListener('input', () => {
+      if (yearSelect) yearSelect.value = input.value;
+    });
+    yearSelect?.addEventListener('change', () => {
+      input.value = yearSelect.value;
       if (!save()) return;
       closePlaqueEditor(false);
       renderer.domElement.focus({ preventScroll: true });

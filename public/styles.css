@@ -22,13 +22,10 @@
 .plaque-field-editor { position: fixed; z-index: 20; display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 4px; color: #101827; background: #e7d8b1; border: 2px solid #9e3634; border-radius: 3px; }
 .plaque-field-editor input, .plaque-field-editor select { flex: 1; width: 0; min-width: 0; min-height: 44px; padding: 4px; font: 700 16px Arial, sans-serif; color: #101827; background: #fff4d1; border: 1px solid #101827; color-scheme: light; }
 .plaque-field-editor input { font: 700 28px "Courier New", monospace; text-align: center; }
+.plaque-year-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, 1fr); gap: 4px; flex: 1 1 100%; min-width: 0; }
+.plaque-year-controls input, .plaque-year-controls select { width: 100%; min-width: 0; }
 .plaque-field-editor button { min-width: 44px; min-height: 44px; border: 1px solid #101827; color: #101827; background: #c99a2e; cursor: pointer; }
 .plaque-field-editor .plaque-all-years { flex-basis: 100%; background: #fff4d1; }
-#immersive-browse-panel.plaque-keyboard-controls:not(:focus-within) {
-  width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden;
-  clip-path: inset(50%); white-space: nowrap;
-}
-
 * { box-sizing: border-box; }
 html { background: var(--night); scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; color: var(--ink); background:
@@ -183,13 +180,9 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-hud.is-collapsed #immersive-hud-toggle { width: 34px; min-height: 32px; padding: 0; font-size: 1rem; }
 .immersive-hud-strip > button { min-height: 38px; padding-inline: .6rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); background: transparent; cursor: pointer; font-size: .62rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .immersive-hud button:hover, .immersive-hud button:focus-visible, .immersive-hud button[aria-pressed="true"], .immersive-hud button[aria-expanded="true"] { color: var(--blue-deep); background: var(--yellow); outline: 0; }
-#immersive-go { color: var(--blue-deep); background: var(--yellow); }
 .immersive-picker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .35rem; min-width: 0; padding: .25rem .55rem; border: 1px solid rgba(246,235,204,.24); color: var(--cream); font: 900 .55rem/1 "Courier New", monospace; letter-spacing: .06em; text-transform: uppercase; }
 .immersive-picker select, .immersive-picker input { min-width: 0; height: 26px; border: 1px solid rgba(246,235,204,.42); color: var(--cream); background: rgba(158, 54, 52, .88); font: 900 .62rem/1 "Courier New", monospace; text-transform: uppercase; }
 .immersive-picker select { padding-inline: .3rem; }
-.immersive-year-picker { grid-template-columns: 1fr; gap: .1rem; }
-.immersive-year-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: .25rem; min-width: 0; }
-.immersive-year-picker input, .immersive-year-picker select { width: 100%; min-width: 0; padding-inline: .3rem; }
 .immersive-provider-picker { grid-template-columns: 1fr; gap: .15rem; }
 .immersive-provider-picker .provider-checkboxes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .immersive-provider-picker .provider-checkboxes label { padding: .25rem; border-color: rgba(246,235,204,.35); color: var(--cream); background: rgba(158, 54, 52, .88); font-size: .52rem; }
@@ -307,8 +300,7 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
   .immersive-hud { top: .25rem; width: calc(100% - .5rem); }
   .immersive-hud-strip { grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); }
   .immersive-hud-strip > .immersive-picker:first-child { grid-column: span 2; }
-  .immersive-year-picker, #immersive-go, #immersive-filters-toggle, #immersive-settings-toggle, #normal-mode-return { grid-column: span 1; }
-  .immersive-year-picker { grid-template-columns: 1fr; }
+  #immersive-filters-toggle, #immersive-settings-toggle, #normal-mode-return { grid-column: span 1; }
   .immersive-filters { grid-template-columns: 1fr; align-items: stretch; }
   .immersive-settings { grid-template-columns: 1fr; }
   .audio-setting { display: grid; grid-template-columns: 1fr auto; }
@@ -358,12 +350,8 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
 /* Immersive HUD: browse, secondary panels, and the counter are distinct destinations. */
 .immersive-hud { width: min(1120px, calc(100% - 1.5rem)); padding: .4rem; border: 1px solid rgba(246,235,204,.35); border-bottom: 3px solid var(--red); }
 .immersive-hud-strip { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .4rem; align-items: stretch; min-height: 40px; }
-.immersive-browse-controls, .immersive-menu-actions { display: flex; gap: .25rem; align-items: stretch; min-width: 0; }
-.immersive-browse-controls { flex: 0 1 520px; justify-content: center; margin-inline: auto; }
+ .immersive-menu-actions { display: flex; gap: .25rem; align-items: stretch; min-width: 0; }
 .immersive-picker { flex: 0 1 auto; min-width: 0; }
-.immersive-browse-controls > .immersive-picker:first-child { flex: 0 1 220px; }
-.immersive-year-picker { flex-basis: 106px; }
-.immersive-year-picker { width: 72px; }
 .immersive-menu-actions { padding-left: .4rem; border-left: 1px solid rgba(246,235,204,.24); }
 .immersive-menu-actions button { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; white-space: nowrap; }
 .immersive-menu-divider { width: 1px; margin: .35rem .1rem; background: rgba(246,235,204,.25); }
@@ -389,7 +377,6 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
   .normal-provider-filters .provider-picker legend { grid-column: auto; }
   .normal-provider-filters .ignore-year-control { border-left: 0; padding-left: 0; }
   .immersive-hud-strip { grid-template-columns: 1fr auto; }
-  .immersive-browse-controls { grid-column: 1 / -1; }
   .immersive-destination { grid-column: 1; }
   .immersive-settings { grid-template-columns: 1fr; }
   /* Touch: pinch/drag replace the fat controls; stand buttons fade into the edges. */
@@ -416,8 +403,6 @@ dialog::backdrop { background: rgba(8, 6, 5, .82); backdrop-filter: blur(3px); }
   .year-machine { grid-column: 1 / -1; grid-row: auto; order: 4; justify-self: center; }
   .normal-provider-filters { order: 5; }
   .immersive-hud { width: calc(100% - .5rem); }
-  .immersive-browse-controls { display: grid; grid-template-columns: minmax(0, 1fr) 68px; }
-  .immersive-browse-controls > .immersive-picker:first-child { grid-column: 1 / -1; }
   .immersive-menu-actions { padding-left: 0; border-left: 0; }
   .immersive-menu-actions button span:last-child { display: none; }
   .immersive-destination-copy { display: none; }
@@ -632,20 +617,7 @@ dialog.panel-dialog {
   transform: translateX(50%);
 }
 .immersive-hud-strip { grid-template-columns: minmax(0, 1fr) auto; gap: .42rem; }
-.immersive-browse-controls {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: minmax(250px, 1fr) 112px 58px;
-  gap: .35rem;
-  width: 100%;
-  max-width: none;
-  margin: 0;
-}
 .immersive-picker { min-width: 0; border-color: rgba(231,216,177,.38); background: rgba(255,255,255,.035); }
-.immersive-genre-picker { min-width: 250px; }
-.immersive-genre-picker select { width: 100%; min-width: 250px; padding-inline: .55rem; font-size: .7rem; }
-.immersive-year-picker { width: auto; min-width: 0; }
-#immersive-go { min-width: 58px; border-color: #ffe178; box-shadow: inset 0 -3px 0 rgba(97,67,0,.45); }
 .immersive-menu-actions { justify-self: start; padding-left: 0; border-left: 0; }
 .immersive-menu-actions button { border-radius: 3px; }
 .immersive-destination { justify-self: end; min-width: 172px; border-width: 2px; box-shadow: 3px 3px 0 rgba(0,0,0,.38), inset 0 0 0 1px rgba(255,225,120,.14); }
@@ -734,19 +706,12 @@ dialog.panel-dialog {
 
 @media (max-width: 760px) {
   .immersive-hud { width: calc(100% - .75rem); }
-  .immersive-browse-controls { grid-template-columns: minmax(220px, 1fr) 96px 124px 50px; }
-  .immersive-genre-picker, .immersive-genre-picker select { min-width: 220px; }
   .immersive-destination-copy { display: grid; }
 }
 @media (max-width: 560px) {
   .header-actions .header-icon-button { display: inline-grid; }
   dialog.panel-dialog { width: calc(100% - .5rem); }
   .immersive-hud { top: .25rem; width: calc(100% - .5rem); }
-  .immersive-browse-controls { grid-template-columns: minmax(0, 1fr) 86px; }
-  .immersive-genre-picker { grid-column: 1 / -1; min-width: 0; }
-  .immersive-genre-picker select { min-width: 0; }
-  .immersive-year-picker { grid-column: 1; }
-  #immersive-go { grid-column: 2; min-height: 34px; }
   .immersive-menu-actions { flex-wrap: wrap; }
   .immersive-menu-actions button span:last-child { display: inline; }
   .immersive-destination { min-width: 0; }
@@ -780,7 +745,6 @@ dialog.panel-dialog {
   transform: none;
 }
 .immersive-hud-strip { display: flex; justify-content: flex-end; min-height: 0; }
-.immersive-hud .immersive-browse-controls,
 .immersive-hud .immersive-destination,
 .immersive-hud .immersive-menu-actions > :not(#immersive-hud-toggle) { display: none; }
 .immersive-hud .immersive-menu-actions { display: flex; padding: 0; border: 0; }
@@ -806,12 +770,6 @@ dialog.panel-dialog {
   box-shadow: 0 8px 0 rgba(0,0,0,.42), 0 18px 38px rgba(0,0,0,.48);
 }
 .immersive-hud:not(.is-collapsed) .immersive-hud-strip { display: grid; gap: .45rem; }
-.immersive-hud:not(.is-collapsed) .immersive-browse-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 74px 116px 52px;
-  gap: .3rem;
-  grid-column: 1 / -1;
-}
 .immersive-hud:not(.is-collapsed) .immersive-menu-actions {
   display: flex;
   flex-wrap: wrap;
@@ -859,9 +817,6 @@ dialog.panel-dialog {
 .balcony-hud button { min-height: 40px; }
 @media (max-width: 560px) {
   .immersive-hud:not(.is-collapsed) { width: calc(100% - 1rem); max-width: none; }
-  .immersive-hud:not(.is-collapsed) .immersive-browse-controls { grid-template-columns: minmax(0, 1fr) 72px; }
-  .immersive-hud:not(.is-collapsed) .immersive-genre-picker { grid-column: 1 / -1; }
-  .immersive-hud:not(.is-collapsed) #immersive-go { grid-column: 2; }
   .immersive-hud:not(.is-collapsed) .immersive-menu-actions { grid-column: 1 / -1; }
   .immersive-hud:not(.is-collapsed) .immersive-destination { grid-column: 1 / -1; }
   .immersive-basket-button { bottom: .75rem; left: .75rem; }
@@ -940,13 +895,6 @@ dialog.panel-dialog {
 .immersive-balcony-button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .immersive-balcony-button:hover, .immersive-balcony-button:focus-visible { color: var(--blue-deep); background: var(--yellow); outline: 0; }
 
-/* Keep the genre label and year field in their own readable control boxes. */
-.immersive-hud:not(.is-collapsed) .immersive-browse-controls { grid-template-columns: minmax(0, 1fr) 82px 116px 52px; }
-.immersive-genre-picker { grid-template-columns: max-content minmax(0, 1fr); min-width: 0; }
-.immersive-genre-picker select { min-width: 0 !important; width: 100%; }
-.immersive-year-picker { display: grid; grid-template-columns: 1fr; gap: .15rem; align-content: center; width: auto; min-width: 0; }
-.immersive-year-picker input { width: 100%; min-width: 0; }
-
 /* Account identity is read-only until the member deliberately enters edit mode. */
 .member-card-username { position: relative; min-width: 0; padding-right: 2.4rem; }
 .member-edit-button { position: absolute; top: 50%; right: 0; display: grid; width: 34px; min-height: 34px; padding: 0; place-items: center; border: 2px solid #24364d; border-radius: 4px; color: #24364d; background: #ead9ad; box-shadow: 2px 2px 0 #6a5525; cursor: pointer; font-size: 1.05rem; transform: translateY(-50%); }
@@ -969,11 +917,6 @@ dialog.panel-dialog {
 .account-saved-collection .saved-row-actions { flex: 0 0 auto; }
 .account-saved-collection .saved-row-actions .saved-icon-action { flex: 0 0 32px; }
 .basket-actions .tip-jar-button { grid-column: 1 / -1; margin: 0; }
-@media (max-width: 760px) {
-  .immersive-hud:not(.is-collapsed) .immersive-browse-controls { grid-template-columns: minmax(0, 1fr) 86px; }
-  .immersive-hud:not(.is-collapsed) .immersive-genre-picker { grid-column: 1 / -1; }
-  .immersive-hud:not(.is-collapsed) .immersive-year-picker { grid-column: 1; }
-}
 @media (max-width: 560px) {
   .immersive-balcony-button { left: 5.25rem; }
   .immersive-balcony-button span { display: none; }
@@ -1390,7 +1333,6 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
     place-items: center;
     border-radius: 50%;
   }
-  .immersive-hud:not(.is-collapsed) .immersive-browse-controls { grid-template-columns: minmax(0, 1fr) 82px; }
   .immersive-hud:not(.is-collapsed) .immersive-menu-actions { padding-right: 2.8rem; }
   .immersive-hud:not(.is-collapsed) .immersive-menu-actions > :not(#immersive-hud-toggle) { min-height: 42px; }
   .immersive-hud:not(.is-collapsed) .immersive-menu-actions button span:last-child { display: inline; }
@@ -1640,37 +1582,11 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   #auth-dialog .password-visibility-toggle { min-width: 76px; padding: .45rem .4rem; font-size: .56rem; }
 }
 
-/* Genre/year has its own disclosure, independent of the Estante menu. */
-.immersive-browse-panel { position: absolute; z-index: 7; top: max(.55rem, env(safe-area-inset-top)); left: max(.55rem, env(safe-area-inset-left)); width: min(360px, calc(100% - 7.5rem)); border: 1px solid #b78636; border-radius: 7px; background: rgba(16,24,39,.96); color: var(--cream); box-shadow: 0 4px 12px #0005; }
-.immersive-browse-panel summary { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; padding: .5rem .65rem; cursor: pointer; list-style: none; font: 900 .62rem/1.2 "Courier New", monospace; text-transform: uppercase; }
-.immersive-browse-panel summary::-webkit-details-marker { display: none; }
-.immersive-browse-panel summary:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
-.immersive-browse-panel:not([open]) .browse-panel-chevron { transform: rotate(180deg); }
-.immersive-independent-pickers { display: grid; grid-template-columns: minmax(0, 1fr) 48px; gap: .4rem; padding: 0 .5rem .5rem; }
-.immersive-independent-pickers .immersive-genre-picker { grid-column: 1 / -1; }
-.immersive-independent-pickers .immersive-year-picker { width: auto; grid-column: 1; }
-.immersive-independent-pickers .immersive-picker { padding: .2rem .35rem; }
-.immersive-independent-pickers select, .immersive-independent-pickers input { height: 32px; width: 100%; }
-.immersive-independent-pickers #immersive-go { grid-column: 2; min-width: 0; min-height: 38px; padding: .3rem; border: 1px solid #ffe178; border-radius: 3px; color: var(--black); background: var(--yellow); cursor: pointer; font: 900 .65rem/1 "Courier New", monospace; }
-@media (max-width: 1000px) {
-  .immersive-room:has(.immersive-browse-panel[open]) .immersive-hud:not(.is-collapsed) { top: calc(max(.55rem, env(safe-area-inset-top)) + 9rem); max-height: calc(100dvh - 15rem - env(safe-area-inset-bottom)); }
-  .immersive-room:has(.immersive-browse-panel:not([open])) .immersive-hud:not(.is-collapsed) { top: calc(max(.55rem, env(safe-area-inset-top)) + 3.25rem); }
-}
-
 @media (max-width: 600px) {
-  .immersive-browse-panel { width: calc(100% - 4.5rem); box-shadow: none; }
-  .immersive-browse-panel summary { padding: .35rem .55rem; font-size: .56rem; }
-  .immersive-independent-pickers { grid-template-columns: minmax(0, 1fr) 64px 32px; gap: .25rem; padding: 0 .4rem .4rem; }
-  .immersive-independent-pickers .immersive-picker { grid-column: auto; display: flex; flex-direction: column; align-items: stretch; gap: .2rem; padding: 0; border: 0; background: transparent; }
-  .immersive-independent-pickers .immersive-picker > span { display: none; }
-  .immersive-independent-pickers select, .immersive-independent-pickers input { height: 38px; font-size: .62rem; }
-  .immersive-independent-pickers #immersive-go { grid-column: 3; }
   .immersive-hud.is-collapsed { top: max(.55rem, env(safe-area-inset-top)); right: max(.55rem, env(safe-area-inset-right)); padding: 0; border: 0; background: transparent; box-shadow: none; }
   .immersive-hud.is-collapsed #immersive-hud-toggle { display: grid; place-items: center; width: 44px; min-width: 44px; height: 44px; padding: 0; border-radius: 7px; }
   .immersive-room #immersive-hud-toggle .immersive-menu-label { display: none; }
   .immersive-2d-button { top: calc(max(.55rem, env(safe-area-inset-top)) + 3.1rem); right: max(.55rem, env(safe-area-inset-right)); left: auto; min-width: 44px; min-height: 38px; padding: .35rem; font-size: .6rem; }
-  .immersive-room:has(.immersive-browse-panel[open]) .immersive-hud:not(.is-collapsed),
-  .immersive-room:has(.immersive-browse-panel:not([open])) .immersive-hud:not(.is-collapsed) { top: calc(max(.55rem, env(safe-area-inset-top)) + 6rem); max-height: calc(100dvh - 12rem - env(safe-area-inset-bottom)); }
   .immersive-primary-actions { left: 50%; right: auto; transform: translateX(-50%); width: min(228px, calc(100% - 1.1rem)); gap: .2rem; padding: .2rem; border-radius: 9px; }
   .immersive-primary-actions > .immersive-basket-button,
   .immersive-primary-actions > .immersive-balcony-button,
@@ -1702,7 +1618,6 @@ body[data-store-mode="balcony"] .store-dock { bottom: max(8.5rem, calc(env(safe-
   .balcony-room .scene-inspection-controls { top: 5.5rem; }
 }
 @media (max-width: 600px) {
-  .immersive-room:has(.immersive-browse-panel[open]) .immersive-hud:not(.is-collapsed) { top: calc(max(.55rem, env(safe-area-inset-top)) + 8.2rem); max-height: calc(100dvh - 14rem - env(safe-area-inset-bottom)); }
   .balcony-hud { padding: .3rem; gap: .25rem; border-radius: 8px; box-shadow: 0 4px 12px #0005; }
   .balcony-hud #balcony-panel-open svg { width: 18px; height: 18px; flex-basis: 18px; }
   .balcony-member-actions { left: 50%; right: auto; width: min(224px, calc(100% - 1.1rem)); transform: translateX(-50%); padding: .2rem; gap: .25rem; border-radius: 9px; }
