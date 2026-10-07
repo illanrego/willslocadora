@@ -1,0 +1,134 @@
+:root {
+  color-scheme: dark;
+  --ink: #080d17;
+  --navy: #101827;
+  --red: #9e3634;
+  --yellow: #c99a2e;
+  --cream: #e7d8b1;
+  --white: #f7edcf;
+  --teal: #73c5ba;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+[hidden] { display: none !important; }
+body { color: var(--cream); background: var(--ink); font: 24px/1.35 Arial, sans-serif; }
+button, input, select { font: inherit; }
+button, input, select, [tabindex="0"] { outline: none; }
+button:focus, input:focus, select:focus, [tabindex="0"]:focus {
+  outline: 6px solid var(--yellow);
+  outline-offset: 5px;
+  box-shadow: 0 0 0 11px rgba(8, 13, 23, .82);
+}
+button { min-height: 58px; padding: 10px 22px; border: 3px solid var(--cream); color: var(--cream); background: var(--navy); font-weight: 900; cursor: pointer; }
+button:disabled { opacity: .38; }
+
+.boot-screen { display: grid; width: 100%; height: 100%; place-items: center; background: radial-gradient(circle, #263954, var(--ink) 68%); }
+.boot-sign { display: grid; gap: 22px; min-width: 760px; padding: 60px 90px; border: 10px solid var(--yellow); text-align: center; background: var(--navy); box-shadow: 24px 24px 0 #05070b; }
+.boot-sign strong { color: var(--red); font: 900 82px/1 Impact, "Arial Narrow", sans-serif; text-shadow: 5px 5px 0 var(--yellow); }
+.boot-sign span { font: 700 28px/1.3 "Courier New", monospace; }
+
+.tv-app { display: grid; grid-template-rows: 132px 1fr 54px; width: 100%; height: 100%; }
+.tv-header { z-index: 5; display: grid; grid-template-columns: 430px 1fr; gap: 24px; align-items: center; padding: 16px 28px; border-bottom: 5px solid var(--yellow); background: rgba(8, 13, 23, .96); }
+.tv-brand { display: grid; gap: 5px; min-width: 0; }
+.tv-brand strong { color: var(--red); font: 900 48px/1 Impact, sans-serif; text-shadow: 3px 3px 0 var(--yellow); }
+.tv-brand span { overflow: hidden; color: var(--cream); font: 700 18px/1.2 "Courier New", monospace; text-overflow: ellipsis; white-space: nowrap; }
+.action-rail { display: flex; gap: 12px; justify-content: flex-end; align-items: center; }
+.action-rail button { min-width: 112px; min-height: 70px; padding: 8px 15px; font-size: 19px; }
+#basket-count { display: inline-grid; min-width: 30px; height: 30px; margin-left: 5px; place-items: center; border-radius: 50%; color: var(--ink); background: var(--yellow); }
+
+.store-stage { position: relative; min-height: 0; overflow: hidden; background: #06090f; }
+.immersive-stage, .immersive-stage > canvas, .flat-shelf { width: 100%; height: 100%; }
+.immersive-canvas { display: block; width: 100%; height: 100%; }
+.stage-message { position: absolute; z-index: 4; inset: 0; display: grid; gap: 30px; place-content: center; justify-items: center; font: 900 34px/1.2 "Courier New", monospace; background: rgba(8, 13, 23, .86); }
+.stage-message[hidden] { display: none; }
+.tv-footer { z-index: 5; display: flex; justify-content: space-between; align-items: center; padding: 0 30px; border-top: 2px solid #604a29; color: #d8cba6; background: #080d17; font: 700 18px/1 "Courier New", monospace; }
+
+.flat-shelf { display: flex; flex-direction: column; gap: 18px; padding: 28px 70px; overflow-x: hidden; overflow-y: auto; background: linear-gradient(#17243a, #080d17); }
+.flat-shelf-grid { display: grid; flex: 1 1 auto; grid-template-columns: repeat(10, 1fr); gap: 20px; align-content: space-between; min-height: 0; }
+.flat-tape { display: grid; min-width: 0; height: 220px; padding: 0; overflow: hidden; border: 8px solid #20160e; background: #16110d; box-shadow: 0 14px 0 #050505; }
+.flat-shelf-navigation { display: flex; flex: 0 0 auto; justify-content: center; gap: 24px; }
+.shelf-navigation-button { min-width: 260px; }
+.flat-tape img { width: 100%; height: 100%; object-fit: cover; }
+.flat-tape span { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+
+.tv-dialog { width: 1180px; max-width: calc(100% - 140px); max-height: calc(100% - 120px); padding: 0 38px 38px; overflow: auto; border: 6px solid var(--yellow); color: var(--cream); background: #15100e; box-shadow: 24px 24px 0 rgba(0, 0, 0, .65); }
+.tv-dialog::backdrop { background: rgba(4, 6, 10, .86); }
+.tv-dialog > header { position: sticky; z-index: 4; top: 0; display: flex; justify-content: space-between; align-items: center; min-height: 112px; margin: 0 -38px 30px; padding: 22px 38px; border-bottom: 4px solid #62461f; background: #15100e; }
+.tv-dialog h2 { margin: 0; color: var(--yellow); font: 900 48px/1 Impact, sans-serif; text-transform: uppercase; }
+.eyebrow { display: block; margin-bottom: 7px; color: var(--teal); font: 900 17px/1 "Courier New", monospace; letter-spacing: .08em; }
+.dialog-close { color: var(--white); background: var(--red); }
+.wide-dialog { width: 1420px; }
+.dialog-copy { max-width: 70ch; color: #d9caac; }
+.remote-hint { margin: -12px 0 28px; color: var(--teal); font: 900 19px/1.2 "Courier New", monospace; }
+.account-dialog { width: 980px; }
+.tv-account-options { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 30px 0; }
+.tv-account-option { display: grid; gap: 10px; min-height: 140px; place-content: center; text-align: center; }
+.tv-account-option strong { color: var(--yellow); font: 900 42px/1 Impact, sans-serif; }
+.tv-account-option small { color: #cbbd9f; font: 700 18px/1.2 "Courier New", monospace; }
+.tv-account-option.paired { border-color: var(--teal); }
+.tv-pair-dialog { width: 980px; text-align: center; }
+.tv-pair-code { display: block; margin: 42px 0 24px; color: var(--yellow); font: 900 112px/1 "Courier New", monospace; letter-spacing: .16em; }
+.tv-pair-dialog #tv-pair-status { min-height: 32px; color: var(--teal); font-weight: 900; }
+
+.tv-form { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.tv-form label { display: grid; gap: 10px; font-weight: 900; }
+.tv-form input, .tv-form select, .search-form input, .tape-row select { min-height: 68px; padding: 10px 18px; border: 3px solid #866538; color: var(--ink); background: var(--cream); }
+.tv-form fieldset { grid-column: 1 / -1; padding: 24px; border: 3px solid #866538; }
+.provider-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.provider-options label, .check-row { display: flex; align-items: center; gap: 14px; min-height: 58px; padding: 8px 14px; border: 2px solid #6b5130; }
+.provider-options input, .check-row input, .tape-row input[type="checkbox"] { width: 32px; height: 32px; }
+.primary-action { color: var(--ink); background: var(--yellow); }
+.tv-form .primary-action { grid-column: 1 / -1; }
+
+.search-form { display: grid; grid-template-columns: 1fr 220px; gap: 20px; }
+.result-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px; margin-top: 24px; }
+.result-card { display: grid; grid-template-rows: 220px auto; gap: 10px; min-width: 0; padding: 10px; text-align: left; }
+.result-card img { width: 100%; height: 220px; object-fit: cover; }
+.result-card span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.title-dialog { width: 1600px; height: 940px; max-width: calc(100% - 100px); max-height: calc(100% - 70px); overflow: hidden; }
+.title-dialog > header { margin-bottom: 12px; }
+.title-stage { height: 640px; overflow: hidden; }
+.title-stage .vhs-canvas { display: block; width: 100%; height: 100%; }
+.title-actions { display: flex; gap: 18px; justify-content: center; padding-top: 12px; }
+.title-actions button { min-width: 180px; }
+#title-status { min-height: 28px; margin: 10px 0 0; text-align: center; }
+
+.flat-vhs-viewer { height: 100%; }
+.flat-vhs-page { display: grid; height: 100%; }
+.flat-vhs-page[hidden] { display: none; }
+.flat-vhs-front { grid-template-columns: 440px 1fr; gap: 48px; align-items: center; justify-content: center; max-width: 1180px; margin: auto; }
+.flat-vhs-cover { width: 420px; height: 580px; object-fit: cover; border: 8px solid #211914; box-shadow: 18px 18px 0 #050505; }
+.flat-vhs-front-caption { display: grid; gap: 24px; }
+.flat-vhs-front-caption strong { color: var(--yellow); font: 900 64px/1 Impact, sans-serif; }
+.flat-vhs-back { grid-template-columns: 1fr 1fr; gap: 22px 40px; padding: 22px 60px; overflow: hidden; border: 5px solid var(--yellow); background: var(--navy); }
+.flat-vhs-back-header, .flat-vhs-copy, .flat-vhs-details, .flat-vhs-disclaimer { min-width: 0; }
+.flat-vhs-back-header h2 { font-size: 40px; }
+.flat-vhs-back-media { display: grid; grid-template-columns: 1fr 1.5fr; gap: 15px; }
+.flat-vhs-back-media img { width: 100%; height: 210px; object-fit: cover; }
+.flat-vhs-details { display: grid; grid-template-columns: 180px 1fr; gap: 8px 15px; margin: 0; font-size: 19px; }
+.flat-vhs-details dt { color: var(--yellow); font-weight: 900; }
+.flat-vhs-details dd { margin: 0; }
+.flat-vhs-actions, .flat-vhs-flip { display: none; }
+
+.streaming-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 30px; }
+.streaming-actions button { min-height: 90px; }
+.tape-list { display: grid; gap: 18px; margin: 28px 0; }
+.tape-row { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 20px; align-items: center; min-height: 96px; padding: 15px 20px; border: 3px solid #654c2d; background: #1b2638; }
+.tape-row img { width: 58px; height: 78px; object-fit: cover; }
+.tape-row strong { display: block; overflow: hidden; color: var(--cream); font-size: 26px; text-overflow: ellipsis; white-space: nowrap; }
+.tape-row small { color: #bcae8f; }
+.tape-row-actions { display: flex; gap: 16px; align-items: center; }
+.toast { position: fixed; z-index: 20; right: 60px; bottom: 90px; max-width: 720px; padding: 24px 34px; border: 4px solid var(--yellow); color: var(--cream); background: #101827; box-shadow: 12px 12px 0 #000; font: 900 25px/1.3 "Courier New", monospace; }
+.toast[hidden] { display: none; }
+
+@media (max-width: 1400px) {
+  body { font-size: 20px; }
+  .tv-app { grid-template-rows: 112px 1fr 46px; }
+  .tv-header { grid-template-columns: 330px 1fr; padding: 12px 20px; }
+  .tv-brand strong { font-size: 38px; }
+  .action-rail { gap: 8px; }
+  .action-rail button { min-width: 90px; min-height: 58px; padding: 6px 10px; font-size: 15px; }
+  .tv-pair-code { font-size: 84px; }
+}

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets"
+        xmlns:tizen="http://tizen.org/ns/widgets"
+        id="https://willslocadora.sitedoillan.com.br/tv"
+        version="0.1.0"
+        viewmodes="fullscreen">
+  <tizen:application id="WillsLocTV.WillsLocadora" package="WillsLocTV" required_version="5.5"/>
+  <content src="index.html"/>
+  <icon src="icon.png"/>
+  <name>Will's Locadora</name>
+  <description>Locadora brasileira de filmes para Samsung TV.</description>
+  <tizen:profile name="tv-samsung"/>
+  <tizen:setting screen-orientation="landscape"
+                 context-menu="disable"
+                 background-support="disable"
+                 encryption="disable"
+                 install-location="auto"
+                 hwkey-event="enable"
+                 pointing-device-support="disable"/>
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/application.info"/>
+  <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+  <access origin="https://locadora-api.willstartpage.workers.dev" subdomains="false"/>
+  <access origin="https://locadora-data.willstartpage.workers.dev" subdomains="false"/>
+</widget>

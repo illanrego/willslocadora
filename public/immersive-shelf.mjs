@@ -79,7 +79,7 @@ function featuredMovies(titles) {
   return titles.filter((title) => title.type === 'movie').slice(0, 3);
 }
 
-export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect, onSwipe, plaqueOptions, onConfigure }) {
+export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect, onSwipe, onBoundary, plaqueOptions, onConfigure, performanceProfile = 'default' }) {
   let draft = { genre, year, ignoreStoreYear: Boolean(plaqueOptions?.ignoreStoreYear) };
   let plaqueEditor = null;
   function closePlaqueEditor(save = true) {
@@ -199,9 +199,10 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     return raycaster.intersectObject(sign, false).find((hit) => hit.face.materialIndex === 4);
   }
   let activeTheme = theme || { backing: '#2f526b', trim: '#527f9e', sign: '#101827', lamp: '#c99a2e' };
-  const mobilePerformance = window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
+  const tvPerformance = performanceProfile === 'tv' || performanceProfile === 'tv-low';
+  const mobilePerformance = tvPerformance || window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
   const renderer = new THREE.WebGLRenderer({ antialias: !mobilePerformance, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobilePerformance ? 1.25 : 2));
+  renderer.setPixelRatio(tvPerformance ? 1 : Math.min(window.devicePixelRatio || 1, mobilePerformance ? 1.25 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = !mobilePerformance;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -284,6 +285,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   function renderFeaturedPosters(nextTitles) {
     if (disposed) return;
     clearFeaturedPosters();
+    if (performanceProfile === 'tv-low') return;
     featuredMovies(nextTitles).forEach((title, index) => {
       const frame = new THREE.Mesh(new THREE.BoxGeometry(4.8, 6.8, 0.08), new THREE.MeshStandardMaterial({ color: 0x171310, roughness: 0.65 }));
       frame.position.set([-9.2, 0, 9.2][index], 1.2, -2.94);
@@ -818,10 +820,22 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       return;
     }
     if (!tapeRecords.length) return;
-    if (event.key === 'ArrowLeft') selected = Math.max(0, selected - 1);
-    else if (event.key === 'ArrowRight') selected = Math.min(tapeRecords.length - 1, selected + 1);
-    else if (event.key === 'ArrowUp') selected = Math.max(0, selected - activeColumns);
-    else if (event.key === 'ArrowDown') selected = Math.min(tapeRecords.length - 1, selected + activeColumns);
+    if (event.key === 'ArrowLeft') {
+      if (selected % activeColumns === 0 && onBoundary) onBoundary('left');
+      else selected = Math.max(0, selected - 1);
+    }
+    else if (event.key === 'ArrowRight') {
+      if ((selected + 1) % activeColumns === 0 || selected === tapeRecords.length - 1) onBoundary?.('right');
+      else selected = Math.min(tapeRecords.length - 1, selected + 1);
+    }
+    else if (event.key === 'ArrowUp') {
+      if (selected < activeColumns && onBoundary) onBoundary('up');
+      else selected = Math.max(0, selected - activeColumns);
+    }
+    else if (event.key === 'ArrowDown') {
+      if (selected + activeColumns >= tapeRecords.length && onBoundary) onBoundary('down');
+      else selected = Math.min(tapeRecords.length - 1, selected + activeColumns);
+    }
     else if (event.key === 'Enter' || event.key === ' ') {
       const record = tapeRecords[selected];
       if (record) onSelect(record.title, record.posterUrl);

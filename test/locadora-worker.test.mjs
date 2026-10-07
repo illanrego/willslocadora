@@ -12,6 +12,13 @@ function context() {
   return { waitUntil() {} };
 }
 
+test('Worker allows the exact null origin emitted by signed Samsung widgets', async () => {
+  const worker = createLocadoraWorker({ fetchImpl: async () => Response.json({ title: 'The Matrix' }) });
+  const response = await worker.fetch(new Request('https://api.example/v1/health', { headers: { origin: 'null' } }), env);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), 'null');
+});
+
 test('public worker exposes the Brazil provider registry with exact CORS', async () => {
   const worker = createLocadoraWorker({ fetchImpl: async () => { throw new Error('not needed'); } });
   const response = await worker.fetch(new Request('https://api.example/v1/providers', {

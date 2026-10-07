@@ -4,7 +4,9 @@ compatibility_date = "2026-07-22"
 
 # Exact public origins plus intentional local development origin.
 [vars]
-ALLOWED_ORIGINS = "https://illanrego.github.io,https://sitedoillan.com.br,https://www.sitedoillan.com.br,https://willslocadora.sitedoillan.com.br,http://127.0.0.1:4173"
+# `null` is the exact origin emitted by Samsung Tizen widgets loaded from their
+# signed local package. The Worker remains read-only and does not reflect arbitrary origins.
+ALLOWED_ORIGINS = "https://illanrego.github.io,https://sitedoillan.com.br,https://www.sitedoillan.com.br,https://willslocadora.sitedoillan.com.br,http://127.0.0.1:4173,null"
 
 # Provision and bind the shared CATALOGUE_POLICY KV namespace before deploying
 # catalogue moderation. The Worker keeps the binding optional for local tests.

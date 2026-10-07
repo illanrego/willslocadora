@@ -1115,16 +1115,16 @@ dialog.panel-dialog {
 .immersive-room .immersive-zoom button { border-radius: 50%; }
 .immersive-room .immersive-hud button[aria-expanded="true"],
 .immersive-room .immersive-hud button[aria-pressed="true"] { color: var(--cream) !important; background: var(--red) !important; }
-.immersive-basket-button:hover, .immersive-basket-button:focus-visible,
-.immersive-balcony-button:hover, .immersive-balcony-button:focus-visible,
-.immersive-account-button:hover, .immersive-account-button:focus-visible,
-.immersive-2d-button:hover, .immersive-2d-button:focus-visible,
-.immersive-room .immersive-zoom button:hover, .immersive-room .immersive-zoom button:focus-visible,
-.immersive-room .immersive-stand-button:hover, .immersive-room .immersive-stand-button:focus-visible,
-.immersive-room #immersive-hud-toggle:hover, .immersive-room #immersive-hud-toggle:focus-visible,
-.immersive-room .immersive-hud-strip > button:hover, .immersive-room .immersive-hud-strip > button:focus-visible,
-.immersive-room .immersive-menu-actions button:hover, .immersive-room .immersive-menu-actions button:focus-visible,
-.immersive-room .immersive-settings button:hover, .immersive-room .immersive-settings button:focus-visible,
+.immersive-room button:hover, .immersive-room button:focus-visible {
+  color: var(--control-ink, #082a29) !important;
+  background: var(--control-fill, #73c5ba) !important;
+  filter: brightness(1.14) saturate(1.06);
+  transform: translateY(-2px);
+  outline: 2px solid var(--cream);
+  outline-offset: 2px;
+}
+.immersive-room .immersive-basket-button:hover .immersive-basket-label,
+.immersive-room .immersive-basket-button:focus-visible .immersive-basket-label { color: inherit !important; }
 .title-member-actions button:hover, .title-member-actions button:focus-visible,
 .title-utility-actions button:hover, .title-utility-actions button:focus-visible,
 .vhs-focus-controls button:hover, .vhs-focus-controls button:focus-visible,
@@ -1136,7 +1136,6 @@ dialog.panel-dialog {
   background: var(--red) !important;
   outline: 0;
 }
-.immersive-basket-button:hover .immersive-basket-label, .immersive-basket-button:focus-visible .immersive-basket-label { color: var(--cream) !important; }
 .title-utility-actions .title-review-teaser strong, .title-utility-actions .title-review-teaser span { color: inherit !important; }
 
 /* Action colors follow the same destinations in both store modes. */

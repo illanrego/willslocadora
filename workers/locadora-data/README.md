@@ -10,6 +10,10 @@ Browser CORS headers are emitted only for allowed origins. All mutation and memb
 
 - `GET /v1/titles/:type/:tmdbId/reviews` — public aggregate and the 20 most recent public reviews for one canonical movie or series.
 - `/api/auth/*` — Better Auth sign-up, email/username sign-in, session, and sign-out endpoints.
+- `POST /v1/tv/pairing/start` and `GET /v1/tv/pairing/status?code=...` — short-lived password-free TV pairing handshake.
+- `POST /v1/tv/pairing/authorize` — signed-in web member authorizes the code shown on their TV.
+- `GET /v1/tv/state`, `POST /v1/tv/rentals`, and `POST /v1/tv/rental-items/:id/return` — private TV account operations authenticated by a revocable paired-device token.
+- `DELETE /v1/tv/device` — revokes the current TV device token.
 - `GET /v1/titles/:type/:tmdbId/review-eligibility` — verifies the signed-in member has returned that exact title as `watched`.
 - `POST /v1/titles/:type/:tmdbId/review` — creates or replaces the signed-in member’s public written review and `0.5`–`5` half-star rating. The database independently enforces watched-history eligibility.
 - `GET /v1/state` — the member's profile, active Assistir depois/Favoritos collections, current rental, and recent return history.
@@ -27,7 +31,7 @@ Active catalogue blocks are excluded from saved collections. Existing active ren
 
 ## One-time setup
 
-1. Create the Locadora Supabase project. Apply `../../supabase/migrations/20260730_locadora_core.sql`, followed by every later migration in filename order, including `20260801_fix_return_rental_item.sql`, `20260802_add_title_reviews.sql`, and `20260803_saved_title_collections.sql`, with the Supabase SQL editor or Supabase CLI.
+1. Create the Locadora Supabase project. Apply `../../supabase/migrations/20260730_locadora_core.sql`, followed by every later migration in filename order, including `20260801_fix_return_rental_item.sql`, `20260802_add_title_reviews.sql`, `20260803_saved_title_collections.sql`, and `20260922_tv_pairing.sql`, with the Supabase SQL editor or Supabase CLI.
 2. Configure a Better Auth database connection to the Supabase Postgres project. Apply `20260905_better_auth.sql` and `20260907_protect_will_identity.sql` after the existing Locadora migrations.
 3. From this directory, authenticate the intended Cloudflare account, then set secrets interactively — never put values in files or source control:
 

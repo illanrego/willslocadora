@@ -136,9 +136,10 @@ test('mobile 3D renderers favor responsiveness over expensive supersampling and 
   const immersive = read('public/immersive-shelf.mjs');
   const viewer = read('public/vhs-3d.mjs');
   for (const source of [immersive, viewer]) {
-    assert.match(source, /const mobilePerformance = window\.matchMedia/);
+    assert.match(source, /const tvPerformance = performanceProfile === 'tv' \|\| performanceProfile === 'tv-low'/);
+    assert.match(source, /const mobilePerformance = tvPerformance \|\| window\.matchMedia/);
     assert.match(source, /antialias: !mobilePerformance/);
-    assert.match(source, /mobilePerformance \? 1\.25 : 2/);
+    assert.match(source, /tvPerformance \? 1 : Math\.min\(window\.devicePixelRatio \|\| 1, mobilePerformance \? 1\.25 : 2\)/);
   }
   assert.match(immersive, /renderer\.shadowMap\.enabled = !mobilePerformance/);
   assert.match(viewer, /const immediateMotion = mobilePerformance/);

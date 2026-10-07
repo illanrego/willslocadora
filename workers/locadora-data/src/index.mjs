@@ -14,9 +14,9 @@ function allowedOrigins(value) {
   return new Set(String(value || '').split(',').map((origin) => origin.trim()).filter(Boolean));
 }
 
-function corsHeaders(request, env) {
+function corsHeaders(request, env, { allowTvOrigin = false } = {}) {
   const origin = request.headers.get('origin') || '';
-  if (!allowedOrigins(env.ALLOWED_ORIGINS).has(origin)) return {};
+  if (!allowedOrigins(env.ALLOWED_ORIGINS).has(origin) && !(allowTvOrigin && origin === 'null')) return {};
   return {
     'access-control-allow-origin': origin,
     'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -25,8 +25,35 @@ function corsHeaders(request, env) {
   };
 }
 
-function response(request, env, body, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...corsHeaders(request, env) } });
+function response(request, env, body, status = 200, options = {}) {
+  return new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...corsHeaders(request, env, options) } });
+}
+
+function randomToken(prefix = '') {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return `${prefix}${Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function pairingCode() {
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return String(bytes[0] % 1000000).padStart(6, '0');
+}
+
+export async function hashOpaqueValue(value) {
+  const bytes = new TextEncoder().encode(String(value));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), (item) => item.toString(16).padStart(2, '0')).join('');
+}
+
+function normalizePairingCode(value) {
+  const code = String(value || '').replace(/\D/g, '');
+  return /^\d{6}$/.test(code) ? code : '';
+}
+
+function tvResponse(request, env, body, status = 200) {
+  return response(request, env, body, status, { allowTvOrigin: true });
 }
 
 function required(value, label) {
@@ -424,6 +451,60 @@ export function createSupabaseRepository(env) {
       if (isReservedWillUsername(username) && (!result.data || result.data.id !== userId || String(result.data.email || '').trim().toLowerCase() !== adminEmail(env))) return false;
       return !result.data || result.data.id === userId;
     },
+    async createTvPairing(codeHash, expiresAt) {
+      const result = await database.from('tv_pairing_challenges').insert({ code_hash: codeHash, expires_at: expiresAt }).select('id, expires_at').single();
+      if (result.error) throw result.error;
+      return { id: result.data.id, expiresAt: result.data.expires_at };
+    },
+    async authorizeTvPairing(codeHash, userId) {
+      const now = new Date().toISOString();
+      const result = await database.from('tv_pairing_challenges')
+        .update({ user_id: userId, authorized_at: now })
+        .eq('code_hash', codeHash).is('user_id', null).is('claimed_at', null).gt('expires_at', now)
+        .select('id').maybeSingle();
+      if (result.error) throw result.error;
+      if (!result.data) return null;
+      const user = await database.from('user').select('username').eq('id', userId).maybeSingle();
+      databaseError(user.error);
+      return { pairingId: result.data.id, username: user.data?.username || '' };
+    },
+    async claimTvPairing(codeHash) {
+      const current = await database.from('tv_pairing_challenges').select('id, user_id, expires_at, claimed_at').eq('code_hash', codeHash).maybeSingle();
+      if (current.error) throw current.error;
+      if (!current.data) return { status: 'missing' };
+      if (new Date(current.data.expires_at).getTime() <= Date.now()) return { status: 'expired' };
+      if (!current.data.user_id) return { status: 'pending' };
+      if (current.data.claimed_at) return { status: 'claimed' };
+
+      const claimedAt = new Date().toISOString();
+      const claim = await database.from('tv_pairing_challenges')
+        .update({ claimed_at: claimedAt })
+        .eq('id', current.data.id).is('claimed_at', null).select('id, user_id').maybeSingle();
+      if (claim.error) throw claim.error;
+      if (!claim.data) return { status: 'claimed' };
+
+      const token = randomToken('tv_');
+      const tokenHash = await hashOpaqueValue(token);
+      const device = await database.from('tv_device_tokens').insert({ user_id: claim.data.user_id, token_hash: tokenHash, label: 'Samsung TV' }).select('id').single();
+      if (device.error) throw device.error;
+      const user = await database.from('user').select('username').eq('id', claim.data.user_id).maybeSingle();
+      databaseError(user.error);
+      return { status: 'paired', token, deviceId: device.data.id, username: user.data?.username || '' };
+    },
+    async resolveTvDeviceToken(token) {
+      const tokenHash = await hashOpaqueValue(token);
+      const result = await database.from('tv_device_tokens').select('id, user_id').eq('token_hash', tokenHash).is('revoked_at', null).maybeSingle();
+      databaseError(result.error);
+      if (!result.data) return null;
+      await database.from('tv_device_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', result.data.id);
+      return { id: result.data.id, userId: result.data.user_id };
+    },
+    async revokeTvDeviceToken(token) {
+      const tokenHash = await hashOpaqueValue(token);
+      const result = await database.from('tv_device_tokens').update({ revoked_at: new Date().toISOString() }).eq('token_hash', tokenHash).is('revoked_at', null).select('id').maybeSingle();
+      databaseError(result.error);
+      return { revoked: Boolean(result.data) };
+    },
     async listAdminUsers() {
       const [usersResult, rentalsResult, reviewsResult] = await Promise.all([
         database.from('user').select('id, email, username, emailVerified, createdAt, updatedAt').order('createdAt', { ascending: false }),
@@ -610,7 +691,7 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
     async fetch(request, env, ctx) {
       const url = new URL(request.url);
       if (request.method === 'OPTIONS') {
-        const headers = corsHeaders(request, env);
+        const headers = corsHeaders(request, env, { allowTvOrigin: url.pathname.startsWith('/v1/tv/') });
         if (url.pathname.startsWith('/api/auth')) {
           headers['access-control-allow-credentials'] = 'true';
           headers['access-control-expose-headers'] = 'set-auth-token';
@@ -645,6 +726,74 @@ export function createLocadoraDataWorker({ authenticate = authenticateBetterAuth
           return response(request, env, { error: 'Authentication service unavailable' }, 503);
         } finally {
           await runtime.close?.();
+        }
+      }
+      const isTvPairingStart = request.method === 'POST' && url.pathname === '/v1/tv/pairing/start';
+      const isTvPairingAuthorize = request.method === 'POST' && url.pathname === '/v1/tv/pairing/authorize';
+      const isTvPairingStatus = request.method === 'GET' && url.pathname === '/v1/tv/pairing/status';
+      const isTvStateRequest = request.method === 'GET' && url.pathname === '/v1/tv/state';
+      const isTvRentalRequest = request.method === 'POST' && url.pathname === '/v1/tv/rentals';
+      const tvReturnMatch = request.method === 'POST' ? url.pathname.match(/^\/v1\/tv\/rental-items\/([^/]+)\/return$/) : null;
+      const isTvDeviceRevoke = request.method === 'DELETE' && url.pathname === '/v1/tv/device';
+      if (isTvPairingStart || isTvPairingAuthorize || isTvPairingStatus || isTvStateRequest || isTvRentalRequest || tvReturnMatch || isTvDeviceRevoke) {
+        try {
+          const repository = createRepository(env);
+          if (isTvPairingStart) {
+            let created = null;
+            let code = '';
+            for (let attempt = 0; attempt < 5 && !created; attempt += 1) {
+              code = pairingCode();
+              try { created = await repository.createTvPairing(await hashOpaqueValue(code), new Date(Date.now() + 10 * 60 * 1000).toISOString()); }
+              catch (error) { if (error?.code !== '23505') throw error; }
+            }
+            if (!created) return tvResponse(request, env, { error: 'Could not create a TV pairing code' }, 503);
+            return tvResponse(request, env, { code, expiresAt: created.expiresAt });
+          }
+
+          const pairingBody = isTvPairingAuthorize ? await readJson(request) : null;
+          const code = normalizePairingCode(url.searchParams.get('code') || pairingBody?.code);
+          if ((isTvPairingAuthorize || isTvPairingStatus) && !code) return tvResponse(request, env, { error: 'A six-digit pairing code is required' }, 400);
+          if (isTvPairingAuthorize) {
+            const userId = await authenticate(request, env);
+            if (!userId) return tvResponse(request, env, { error: 'Authentication required' }, 401);
+            const result = await repository.authorizeTvPairing(await hashOpaqueValue(code), userId);
+            if (!result) return tvResponse(request, env, { error: 'Pairing code not found, expired, or already used' }, 404);
+            return tvResponse(request, env, { authorized: true, username: result.username });
+          }
+          if (isTvPairingStatus) {
+            const result = await repository.claimTvPairing(await hashOpaqueValue(code));
+            if (result.status === 'missing') return tvResponse(request, env, { error: 'Pairing code not found' }, 404);
+            if (result.status === 'expired') return tvResponse(request, env, { error: 'Pairing code expired', code: 'PAIRING_EXPIRED' }, 410);
+            if (result.status === 'pending') return tvResponse(request, env, { status: 'pending' });
+            if (result.status === 'claimed') return tvResponse(request, env, { status: 'claimed' }, 409);
+            return tvResponse(request, env, { status: 'paired', token: result.token, username: result.username });
+          }
+
+          const authorization = request.headers.get('authorization') || '';
+          const token = /^Bearer\s+(.+)$/i.exec(authorization)?.[1]?.trim() || '';
+          const device = token ? await repository.resolveTvDeviceToken(token) : null;
+          if (!device) return tvResponse(request, env, { error: 'TV pairing required', code: 'TV_PAIRING_REQUIRED' }, 401);
+          if (isTvDeviceRevoke) return tvResponse(request, env, await repository.revokeTvDeviceToken(token));
+          if (isTvStateRequest) return tvResponse(request, env, await repository.getState(device.userId));
+          if (isTvRentalRequest) {
+            const body = await readJson(request);
+            const titles = Array.isArray(body?.titles) ? body.titles.map((title) => normalizeTitle(title, { requireSource: false })) : [];
+            const distinct = new Set(titles.filter(Boolean).map((title) => title.canonicalKey));
+            if (titles.length < 1 || titles.length > 3 || titles.some((title) => !title) || distinct.size !== titles.length) return tvResponse(request, env, { error: 'Choose one to three distinct titles' }, 400);
+            const blocked = (await Promise.all(titles.map((title) => repository.isTitleBlocked?.(title.canonicalKey)))).some(Boolean);
+            if (blocked) return tvResponse(request, env, { error: 'That title is no longer available in the catalogue', code: 'CATALOGUE_TITLE_BLOCKED' }, 409);
+            return tvResponse(request, env, { rental: await repository.rentTitles(device.userId, titles) }, 201);
+          }
+          if (tvReturnMatch) {
+            const itemId = tvReturnMatch[1];
+            const body = await readJson(request);
+            const watchedStatus = body?.watchedStatus;
+            if (!isUuid(itemId) || !['watched', 'not_watched', 'unknown'].includes(watchedStatus)) return tvResponse(request, env, { error: 'Invalid rental return' }, 400);
+            return tvResponse(request, env, { rentalItem: await repository.returnRentalItem(device.userId, itemId, watchedStatus) });
+          }
+        } catch (error) {
+          console.error('TV account request failed', error);
+          return tvResponse(request, env, { error: error.message || 'The Locadora TV account service is unavailable' }, error.status || 503);
         }
       }
       const isAdminUsersRequest = request.method === 'GET' && url.pathname === '/v1/admin/users';

@@ -132,6 +132,11 @@ test('Minha conta is a floating destination on the immersive shelf, not a HUD me
   assert.match(css, /\.immersive-account-button/);
 });
 
+test('immersive button hover keeps each destination color instead of replacing it with red', () => {
+  assert.match(css, /\.immersive-room button:hover, \.immersive-room button:focus-visible \{[\s\S]*background: var\(--control-fill, #73c5ba\) !important;[\s\S]*filter: brightness\(1\.14\) saturate\(1\.06\);/);
+  assert.match(css, /\.immersive-room \.immersive-basket-button:hover \.immersive-basket-label,[\s\S]*color: inherit !important;/);
+});
+
 test('return confirmation dialog is present in the markup', () => {
   assert.match(page, /id="return-confirmation-dialog"[^>]*class="panel-dialog return-confirmation-dialog"/);
   assert.match(css, /@keyframes return-stamp/);
@@ -193,8 +198,6 @@ test('immersive mode exposes a basket independently from the Balcony', () => {
   assert.match(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openBasket\)/);
   assert.match(app, /function takeBasketToCounter\(\)[\s\S]*state\.mode === 'immersive'[\s\S]*setMode\('balcony'\)/);
   assert.doesNotMatch(app, /\$\('#immersive-basket-open'\)\.addEventListener\('click', openRentalDesk\)/);
-  assert.match(css, /\.immersive-genre-picker/);
-  assert.match(css, /\.immersive-genre-picker select/);
   assert.match(css, /\.immersive-hud \{[^}]*position: absolute;/);
   assert.match(css, /\.immersive-basket-button/);
   assert.match(css, /\.store-dock \.counter-button > span\.basket-spines/);

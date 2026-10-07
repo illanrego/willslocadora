@@ -268,6 +268,7 @@
     accountButton.title = profile?.username ? `Carteirinha · ${profile.username}` : 'Carteirinha';
     $('#account-sign-in').hidden = !configured || signedIn;
     $('#account-sign-out').hidden = !signedIn;
+    $('#account-tv-pair').hidden = !signedIn;
     if (!profile) usernameEditing = signedIn;
     const editing = signedIn && (!profile || usernameEditing);
     $('#username-form').hidden = !editing;
@@ -625,6 +626,26 @@
     if (message) $('#account-status').textContent = message;
     if (!$('#account-dialog').open) $('#account-dialog').showModal();
   }
+
+  async function pairTvFromWeb() {
+    const code = window.prompt('Digite o código de 6 números que aparece na TV:')?.replace(/\D/g, '') || '';
+    if (!/^\d{6}$/.test(code)) {
+      $('#account-tv-pair-status').textContent = 'Digite o código de 6 números exibido na TV.';
+      return;
+    }
+    const button = $('#account-tv-pair');
+    button.disabled = true;
+    $('#account-tv-pair-status').textContent = 'Autorizando esta TV…';
+    try {
+      const result = await window.LocadoraAccount.request('/v1/tv/pairing/authorize', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }),
+      });
+      $('#account-tv-pair-status').textContent = `TV conectada como ${result.username || state.member.profile?.username || 'este usuário'}.`;
+    } catch (error) {
+      $('#account-tv-pair-status').textContent = error.message || 'Não foi possível conectar a TV.';
+    } finally { button.disabled = false; }
+  }
+
   function openWatchlist(collection = activeSavedCollection) { activeSavedCollection = collection; renderWatchlist(); if (!$('#watchlist-dialog').open) $('#watchlist-dialog').showModal(); }
 
   async function saveTitleCollection(title, collection, { confirm = false } = {}) {
@@ -2885,6 +2906,7 @@
       try { await window.LocadoraAccount.signOut(); $('#account-dialog').close(); }
       catch (error) { $('#account-status').textContent = error.message; }
     });
+    $('#account-tv-pair').addEventListener('click', pairTvFromWeb);
     $('#username-input').addEventListener('input', (event) => {
       window.clearTimeout(usernameAvailabilityTimer);
       usernameAvailabilityState = 'checking';

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#080d17">
+  <title>Will's Locadora TV</title>
+  <link rel="stylesheet" href="./tv.css">
+</head>
+<body>
+  <section id="boot-screen" class="boot-screen" aria-live="polite">
+    <div class="boot-sign">
+      <strong>WILL'S LOCADORA</strong>
+      <span id="boot-status">Acendendo as luzes…</span>
+    </div>
+  </section>
+
+  <main id="tv-app" class="tv-app" hidden>
+    <header class="tv-header">
+      <div class="tv-brand">
+        <strong>WILL'S LOCADORA</strong>
+        <span id="shelf-heading">AÇÃO E AVENTURA · 1999</span>
+      </div>
+      <nav id="action-rail" class="action-rail" aria-label="Ações da Locadora">
+        <button id="previous-stand" type="button">‹ Estante</button>
+        <button id="next-stand" type="button">Estante ›</button>
+        <button id="filters-open" type="button">Filtros</button>
+        <button id="search-open" type="button">Pesquisar</button>
+        <button id="basket-open" type="button">Cesta <span id="basket-count">0</span></button>
+        <button id="counter-open" type="button">Balcão</button>
+        <button id="account-open" type="button">Escolher usuário</button>
+        <button id="mode-toggle" type="button">Modo 2D</button>
+        <button id="sound-toggle" type="button" aria-pressed="false">Som desligado</button>
+        <button id="locale-toggle" type="button">EN</button>
+      </nav>
+    </header>
+
+    <section id="store-stage" class="store-stage" aria-label="Estante da Locadora">
+      <div id="immersive-stage" class="immersive-stage"></div>
+      <section id="flat-shelf" class="flat-shelf" hidden aria-label="Estante 2D"></section>
+      <div id="loading-state" class="stage-message" role="status">Abrindo as caixas…</div>
+      <div id="empty-state" class="stage-message" hidden>
+        <strong>Esta estante voltou vazia.</strong>
+        <button id="retry-shelf" type="button">Tentar novamente</button>
+      </div>
+    </section>
+
+    <footer class="tv-footer">
+      <span id="shelf-status" role="status">Conectando ao catálogo…</span>
+      <span>Setas para navegar · OK para escolher · Voltar para o menu</span>
+    </footer>
+  </main>
+
+  <dialog id="filters-dialog" class="tv-dialog">
+    <header><h2>Escolher estante</h2><button class="dialog-close" type="button" data-close>Fechar</button></header>
+    <p class="remote-hint">← → trocar campo · ↑ ↓ mudar valor · OK confirmar</p>
+    <form id="filters-form" class="tv-form">
+      <label>Gênero<select id="genre-select"></select></label>
+      <label>Ano da loja<input id="year-input" type="number" min="1920" max="2026" step="1"></label>
+      <fieldset>
+        <legend>Seus streamings</legend>
+        <div id="provider-options" class="provider-options"></div>
+      </fieldset>
+      <label class="check-row"><input id="all-years" type="checkbox"> Todos os anos</label>
+      <button class="primary-action" type="submit">Abrir estante</button>
+    </form>
+  </dialog>
+
+  <dialog id="account-dialog" class="tv-dialog account-dialog">
+    <header><div><span class="eyebrow">CARTEIRINHA DA TV</span><h2>Quem está na Locadora?</h2></div><button class="dialog-close" type="button" data-close>Fechar</button></header>
+    <p class="dialog-copy">Escolha seu usuário. A TV lembra a autorização; não precisamos digitar a senha novamente.</p>
+    <div id="tv-account-options" class="tv-account-options"></div>
+    <p id="tv-account-status" role="status"></p>
+    <button id="tv-account-anonymous" type="button" class="account-secondary-action">Explorar sem usuário</button>
+  </dialog>
+
+  <dialog id="tv-pair-dialog" class="tv-dialog tv-pair-dialog">
+    <header><div><span class="eyebrow">CONECTAR A TV</span><h2 id="tv-pair-heading">Conectar usuário</h2></div><button class="dialog-close" type="button" data-close>Cancelar</button></header>
+    <p class="dialog-copy">No celular ou computador, entre na sua Carteirinha da Locadora e escolha “Conectar esta TV”. Digite o código abaixo.</p>
+    <strong id="tv-pair-code" class="tv-pair-code">------</strong>
+    <p id="tv-pair-status" role="status">Aguardando autorização…</p>
+  </dialog>
+
+  <dialog id="search-dialog" class="tv-dialog wide-dialog">
+    <header><h2>Pesquisar títulos</h2><button class="dialog-close" type="button" data-close>Fechar</button></header>
+    <form id="search-form" class="search-form">
+      <input id="search-input" type="search" minlength="2" placeholder="Digite o nome do filme" autocomplete="off">
+      <button class="primary-action" type="submit">Pesquisar</button>
+    </form>
+    <p id="search-status" role="status">Digite pelo menos duas letras.</p>
+    <div id="search-results" class="result-grid"></div>
+  </dialog>
+
+  <dialog id="title-dialog" class="tv-dialog title-dialog">
+    <header>
+      <div><span class="eyebrow">FITA SELECIONADA</span><h2 id="title-heading">Título</h2></div>
+      <button class="dialog-close" type="button" data-close>Fechar</button>
+    </header>
+    <div id="title-stage" class="title-stage"></div>
+    <nav class="title-actions" aria-label="Ações da fita">
+      <button id="title-rotate" type="button">Girar fita</button>
+      <button id="title-front" type="button">Capa</button>
+      <button id="title-back" type="button">Contracapa</button>
+      <button id="title-basket" type="button">Botar na Cesta</button>
+      <button id="title-streamings" type="button">Ver streamings</button>
+      <button id="title-stremio" type="button">Stremio</button>
+    </nav>
+    <p id="title-status" role="status"></p>
+  </dialog>
+
+  <dialog id="streaming-dialog" class="tv-dialog wide-dialog">
+    <header><div><span class="eyebrow">ABRIR FORA DA LOCADORA</span><h2 id="streaming-heading">Streamings</h2></div><button class="dialog-close" type="button" data-close>Fechar</button></header>
+    <p class="dialog-copy">A disponibilidade no Brasil pode mudar. Confirme o título e seu plano no serviço.</p>
+    <div id="streaming-actions" class="streaming-actions"></div>
+    <p id="streaming-status" role="status"></p>
+  </dialog>
+
+  <dialog id="basket-dialog" class="tv-dialog wide-dialog">
+    <header><div><span class="eyebrow">SUA SELEÇÃO</span><h2>Cesta</h2></div><button class="dialog-close" type="button" data-close>Fechar</button></header>
+    <div id="basket-list" class="tape-list"></div>
+    <p id="basket-status" role="status"></p>
+    <button id="basket-counter" class="primary-action" type="button">Levar ao Balcão</button>
+  </dialog>
+
+  <dialog id="counter-dialog" class="tv-dialog wide-dialog">
+    <header><div><span class="eyebrow">ALUGUEL LOCAL</span><h2>Balcão</h2></div><button class="dialog-close" type="button" data-close>Fechar</button></header>
+    <p class="dialog-copy">Escolha até três fitas. Este protótipo guarda o aluguel somente nesta TV.</p>
+    <div id="counter-list" class="tape-list"></div>
+    <p id="counter-status" role="status"></p>
+    <button id="rent-selected" class="primary-action" type="button">Alugar pacote</button>
+  </dialog>
+
+  <dialog id="rental-dialog" class="tv-dialog wide-dialog">
+    <header><div><span class="eyebrow">PACOTE ATIVO</span><h2>Devoluções</h2></div><button class="dialog-close" type="button" data-close>Fechar</button></header>
+    <p class="dialog-copy">Marque as fitas que deseja devolver e conte como foi a sessão.</p>
+    <div id="rental-list" class="tape-list"></div>
+    <p id="rental-status" role="status"></p>
+    <button id="return-selected" class="primary-action" type="button">Devolver selecionadas</button>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script>
+    (function () {
+      function showBootFailure(reason) {
+        var screen = document.getElementById('boot-screen');
+        var status = document.getElementById('boot-status');
+        if (screen) screen.hidden = false;
+        if (status) status.textContent = 'Falha ao iniciar: ' + String(reason || 'erro desconhecido');
+      }
+      window.addEventListener('error', function (event) { showBootFailure(event.message); });
+      window.addEventListener('unhandledrejection', function (event) {
+        var reason = event.reason && event.reason.message ? event.reason.message : event.reason;
+        showBootFailure(reason);
+      });
+    }());
+  </script>
+  <script src="./app-core.js"></script>
+  <script src="./i18n.js"></script>
+  <script src="./genre-themes.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

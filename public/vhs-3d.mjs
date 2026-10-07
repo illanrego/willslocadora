@@ -360,11 +360,12 @@ function drawPoster(context, image, title, logoImage = null) {
   context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 92, 1366);
 }
 
-export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, savedCollections = [], showSavedActions = false, showBlockAction = false, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onWatchLater, onFavorite, onBlock, onClose, copy }) {
+export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, savedCollections = [], showSavedActions = false, showBlockAction = false, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onWatchLater, onFavorite, onBlock, onClose, copy, performanceProfile = 'default' }) {
   const labels = { noSynopsis: 'No synopsis was included by this catalogue source.', ...copy };
-  const mobilePerformance = window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
+  const tvPerformance = performanceProfile === 'tv' || performanceProfile === 'tv-low';
+  const mobilePerformance = tvPerformance || window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !mobilePerformance });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobilePerformance ? 1.25 : 2));
+  renderer.setPixelRatio(tvPerformance ? 1 : Math.min(window.devicePixelRatio || 1, mobilePerformance ? 1.25 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLocadoraDataWorker, databaseError, isReservedWillUsername, mapActiveRentalRow, normalizeCatalogueBlock, sendResendEmail } from '../workers/locadora-data/src/index.mjs';
+import { createLocadoraDataWorker, databaseError, hashOpaqueValue, isReservedWillUsername, mapActiveRentalRow, normalizeCatalogueBlock, sendResendEmail } from '../workers/locadora-data/src/index.mjs';
 
 function jsonRequest(path, { method = 'GET', token = 'valid-token', body } = {}) {
   return new Request(`https://data.example${path}`, {
@@ -29,6 +29,18 @@ function createRepository() {
   };
 }
 
+function tvRequest(path, { method = 'GET', token = '', body } = {}) {
+  return new Request(`https://data.example${path}`, {
+    method,
+    headers: {
+      origin: 'null',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(body ? { 'content-type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
 test('active rental state excludes tapes that have already been returned', () => {
   const active = mapActiveRentalRow({
     id: 'rental-1',
@@ -40,6 +52,29 @@ test('active rental state excludes tapes that have already been returned', () =>
   });
 
   assert.deepEqual(active.items.map((item) => item.id), ['item-active']);
+});
+
+test('TV pairing authorizes a browser account and returns a device token without TV password login', async () => {
+  let pairingHash = '';
+  const repository = {
+    async createTvPairing(codeHash) { pairingHash = codeHash; return { id: 'pair-1', expiresAt: '2026-09-22T12:10:00Z' }; },
+    async authorizeTvPairing(codeHash, userId) { assert.equal(codeHash, pairingHash); assert.equal(userId, 'user-will'); return { pairingId: 'pair-1', username: 'will' }; },
+    async claimTvPairing(codeHash) { assert.equal(codeHash, pairingHash); return { status: 'paired', token: 'tv_issued_token_123456789012345', username: 'will' }; },
+    async resolveTvDeviceToken(token) { return token === 'tv_issued_token_123456789012345' ? { id: 'device-1', userId: 'user-will' } : null; },
+    async getState(userId) { assert.equal(userId, 'user-will'); return { profile: { username: 'will' }, activeRental: null, history: [] }; },
+  };
+  const worker = createLocadoraDataWorker({ authenticate: async () => 'user-will', createRepository: () => repository });
+  const start = await worker.fetch(tvRequest('/v1/tv/pairing/start', { method: 'POST', body: {} }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal(start.status, 200);
+  const { code } = await start.json();
+  assert.match(code, /^\d{6}$/);
+  const authorize = await worker.fetch(tvRequest('/v1/tv/pairing/authorize', { method: 'POST', body: { code } }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.deepEqual(await authorize.json(), { authorized: true, username: 'will' });
+  const status = await worker.fetch(tvRequest(`/v1/tv/pairing/status?code=${code}`), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.deepEqual(await status.json(), { status: 'paired', token: 'tv_issued_token_123456789012345', username: 'will' });
+  const state = await worker.fetch(tvRequest('/v1/tv/state', { token: 'tv_issued_token_123456789012345' }), { ALLOWED_ORIGINS: 'https://www.sitedoillan.com.br' });
+  assert.equal((await state.json()).profile.username, 'will');
+  assert.equal(await hashOpaqueValue('pairing-test').then((value) => value.length), 64);
 });
 
 test('active rental state marks a blocked tape unavailable without losing its rental identity', () => {

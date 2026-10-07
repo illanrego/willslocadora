@@ -17,6 +17,17 @@ test('Better Auth schema stores credentials in protected auth tables', () => {
   assert.match(authMigration, /enable row level security/i);
 });
 
+test('TV pairing stores only hashed device tokens and revocable pairing state', () => {
+  const tvMigration = readFileSync(new URL('../supabase/migrations/20260922_tv_pairing.sql', import.meta.url), 'utf8');
+  assert.match(tvMigration, /create table if not exists public\.tv_pairing_challenges/i);
+  assert.match(tvMigration, /code_hash text not null unique/i);
+  assert.match(tvMigration, /create table if not exists public\.tv_device_tokens/i);
+  assert.match(tvMigration, /token_hash text not null unique/i);
+  assert.match(tvMigration, /revoked_at timestamptz/i);
+  assert.match(tvMigration, /enable row level security/i);
+  assert.doesNotMatch(tvMigration, /password/i);
+});
+
 test('production Better Auth uses uncached Hyperdrive with request-scoped pg connections', () => {
   const worker = readFileSync(new URL('../workers/locadora-data/src/index.mjs', import.meta.url), 'utf8');
   const wrangler = readFileSync(new URL('../workers/locadora-data/wrangler.toml', import.meta.url), 'utf8');

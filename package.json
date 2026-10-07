@@ -6,12 +6,18 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
-    "build:pages": "node scripts/build-pages.mjs"
+    "build:pages": "node scripts/build-pages.mjs",
+    "build:tv": "node scripts/build-tv.mjs",
+    "test:tv": "node --test test/tv-*.test.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "three-tv": "npm:three@^0.162.0"
   }
 }
