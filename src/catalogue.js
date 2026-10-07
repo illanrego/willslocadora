@@ -279,6 +279,7 @@ class CatalogueStore {
         providerNames: providers.map((provider) => provider.canonicalName),
         ignoreStoreYear: Boolean(options.ignoreStoreYear),
         page: options.page,
+        sort: options.sort || 'relevance',
       });
     }
     const sources = options.sourceId ? this.sources.filter((source) => source.id === options.sourceId) : this.sources;

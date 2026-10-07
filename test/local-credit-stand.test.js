@@ -158,7 +158,7 @@ test('local server exposes person and credit-stand routes with Worker-shaped val
   assert.deepEqual(standBody.titles.map((title) => title.id), ['tmdb:680', 'tmdb:24']);
   assert.deepEqual(standBody.person, { id: '138', name: 'Quentin Tarantino', department: 'Directing', job: 'Director', total: 2, profile: 'https://image.tmdb.org/t/p/w185/qt.jpg' });
 
-  for (const query of ['person=abc&department=Directing&year=2004', 'person=138&department=Nope&year=2004', 'person=138&department=Directing&year=2027']) {
+  for (const query of ['person=abc&department=Directing&year=2004', 'person=138&department=Nope&year=2004', 'person=138&department=Directing&year=2027', 'person=138&department=Directing&year=2004&sort=chrono']) {
     const response = await fetch(`${base}/api/credit-stand?${query}`);
     assert.equal(response.status, 400, query);
     assert.deepEqual(await response.json(), { error: 'Invalid credit stand filters' });
@@ -175,4 +175,119 @@ test('local server reports an unconfigured TMDB bridge without leaking a secret'
   const response = await fetch(`http://127.0.0.1:${port}/api/person?id=138`);
   assert.equal(response.status, 502);
   assert.deepEqual(await response.json(), { error: 'Catalogue service is not configured' });
+});
+
+// --- Sort by year or rating (Addendum 2) -------------------------------------
+
+function ratedFixture() {
+  return {
+    id: 138, name: 'Rated Person', known_for_department: 'Acting', profile_path: '/rated.jpg',
+    combined_credits: {
+      cast: [
+        { id: 701, media_type: 'movie', title: 'Old Masterpiece', release_date: '1970-01-01', vote_count: 500, vote_average: 9.0, popularity: 5 },
+        { id: 702, media_type: 'movie', title: 'New Blockbuster', release_date: '2019-01-01', vote_count: 400, vote_average: 7.0, popularity: 80 },
+        { id: 703, media_type: 'movie', title: 'Middle', release_date: '1995-01-01', vote_count: 300, vote_average: 8.0, popularity: 20 },
+      ],
+      crew: [],
+    },
+  };
+}
+
+test('local TMDB client maps provider-shelf sort to TMDB sort_by and a rating vote floor', async () => {
+  const requests = [];
+  const client = createTmdbClient({
+    apiKey: 'test-key',
+    fetchImpl: async (input) => {
+      const url = new URL(String(input));
+      requests.push(url);
+      if (url.pathname.startsWith('/3/discover/')) return { ok: true, json: async () => ({ results: [] }) };
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  });
+  const discover = () => requests.filter((url) => url.pathname.startsWith('/3/discover/'));
+
+  await client.discoverProviderShelf({ year: 2000, genres: ['Action'], type: 'movie', providerIds: [8], sort: 'relevance' });
+  assert.ok(discover().length);
+  assert.ok(discover().every((url) => url.searchParams.get('sort_by') === 'popularity.desc' && !url.searchParams.has('vote_count.gte')));
+
+  requests.length = 0;
+  await client.discoverProviderShelf({ year: 2000, genres: ['Action'], type: 'movie', providerIds: [8], sort: 'year' });
+  assert.ok(discover().every((url) => url.searchParams.get('sort_by') === 'primary_release_date.desc'));
+
+  requests.length = 0;
+  await client.discoverProviderShelf({ year: 2000, genres: ['Action'], type: 'series', providerIds: [8], sort: 'year' });
+  assert.ok(discover().every((url) => url.searchParams.get('sort_by') === 'first_air_date.desc'));
+
+  requests.length = 0;
+  await client.discoverProviderShelf({ year: 2000, genres: ['Action'], type: 'movie', providerIds: [8], sort: 'rating' });
+  assert.ok(discover().every((url) => url.searchParams.get('sort_by') === 'vote_average.desc' && url.searchParams.get('vote_count.gte') === '200'));
+});
+
+test('local TMDB client reorders a credit stand by year and rating', async () => {
+  const client = createTmdbClient({ apiKey: 'test-key', fetchImpl: stub({ personData: ratedFixture() }) });
+  const base = { person: '138', department: 'Acting', type: 'movie', year: 2020, ignoreStoreYear: true };
+
+  assert.deepEqual((await client.personCreditStand({ ...base, sort: 'relevance' })).titles.map((title) => title.id), ['tmdb:701', 'tmdb:702', 'tmdb:703']);
+  assert.deepEqual((await client.personCreditStand({ ...base, sort: 'year' })).titles.map((title) => title.id), ['tmdb:702', 'tmdb:703', 'tmdb:701']);
+  const rating = await client.personCreditStand({ ...base, sort: 'rating' });
+  assert.deepEqual(rating.titles.map((title) => title.id), ['tmdb:701', 'tmdb:703', 'tmdb:702']);
+  assert.equal(rating.sort, 'rating');
+});
+
+test('local TMDB client reorders the filmography before slicing so sorted paging stays monotone', async () => {
+  const personData = { id: 138, name: 'Ordered', combined_credits: { cast: Array.from({ length: 45 }, (_, index) => ({
+    id: 2000 + index, media_type: 'movie', title: `Film ${index}`, release_date: `${1950 + index}-01-01`,
+    vote_count: 1000 - index, popularity: 100 - index,
+  })), crew: [] } };
+  const client = createTmdbClient({ apiKey: 'test-key', fetchImpl: stub({ personData }) });
+  const base = { person: '138', department: 'Acting', type: 'movie', year: 2020, ignoreStoreYear: true, sort: 'year' };
+
+  const first = await client.personCreditStand({ ...base, stand: 0 });
+  assert.equal(first.titles.length, 40);
+  assert.equal(first.titles[0].id, 'tmdb:2044');
+  assert.equal(first.titles[39].id, 'tmdb:2005');
+
+  const second = await client.personCreditStand({ ...base, stand: 1 });
+  assert.equal(second.titles.length, 5);
+  assert.equal(second.titles[0].id, 'tmdb:2004');
+  assert.equal(second.titles[4].id, 'tmdb:2000');
+});
+
+test('local server validates and forwards the shelf sort parameter', async (t) => {
+  const requested = [];
+  const server = createServer({ catalogue: { listSources: () => [], shelf: async (options) => { requested.push(options); return []; } } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const { port } = server.address();
+  const base = `http://127.0.0.1:${port}`;
+
+  const ok = await fetch(`${base}/api/shelf?year=1999&genre=Action&type=movie&sort=rating`);
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).sort, 'rating');
+  assert.equal(requested[0].sort, 'rating');
+
+  const bad = await fetch(`${base}/api/shelf?year=1999&genre=Action&type=movie&sort=chrono`);
+  assert.equal(bad.status, 400);
+  assert.deepEqual(await bad.json(), { error: 'Invalid shelf filters' });
+});
+
+test('local server reorders a credit stand by sort and rejects an unknown sort', async (t) => {
+  const client = createTmdbClient({ apiKey: 'test-key', fetchImpl: stub({ personData: ratedFixture() }) });
+  const server = createServer({ catalogue: { listSources: () => [], tmdbClient: client } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const { port } = server.address();
+  const base = `http://127.0.0.1:${port}`;
+
+  const year = await fetch(`${base}/api/credit-stand?person=138&department=Acting&type=movie&year=2020&ignoreStoreYear=true&sort=year`);
+  assert.equal(year.status, 200);
+  const yearBody = await year.json();
+  assert.deepEqual(yearBody.titles.map((title) => title.id), ['tmdb:702', 'tmdb:703', 'tmdb:701']);
+  assert.equal(yearBody.sort, 'year');
+
+  const bad = await fetch(`${base}/api/credit-stand?person=138&department=Acting&type=movie&year=2020&ignoreStoreYear=true&sort=chrono`);
+  assert.equal(bad.status, 400);
+  assert.deepEqual(await bad.json(), { error: 'Invalid credit stand filters' });
 });

@@ -9,6 +9,11 @@ const LOCALES = new Set(['pt-BR', 'en-US']);
 const CREDIT_DEPARTMENTS = new Set(['Acting', 'Directing', 'Writing', 'Camera', 'Editing', 'Visual Effects', 'Sound', 'Art', 'Production', 'Music', 'Costume & Make-Up', 'Lighting']);
 const WRITER_JOBS = Object.freeze(['Writer', 'Screenplay', 'Story', 'Teleplay']);
 const SELF_CHARACTERS = new Set(['Self', 'Himself', 'Herself']);
+// Shelf/credit-stand ordering. `relevance` is the historical default and must stay byte-for-byte.
+const SORT_VALUES = new Set(['relevance', 'year', 'rating']);
+// A rating sort on discover needs a vote-count floor, otherwise a 10.0 from a handful of votes
+// wins every aisle. 200 matches the "well-voted" threshold and still leaves room in a 40-title shelf.
+const RATING_VOTE_FLOOR = 200;
 
 const PROVIDERS = Object.freeze([
   ['netflix', 8, 'Netflix', 'Netflix', '/images/providers/netflix.svg'],
@@ -101,8 +106,17 @@ function validShelf(url) {
   const requested = url.searchParams.get('providers') ?? url.searchParams.get('provider') ?? '';
   const providers = [...new Set(requested.split(',').map((id) => id.trim()).filter((id) => PROVIDERS_BY_ID.has(id)))].sort();
   const ignoreStoreYear = url.searchParams.get('ignoreStoreYear') === 'true';
-  if (!Number.isInteger(year) || year < 1920 || year > 2026 || !genres.length || genres.length > 3 || genres.some((value) => value.length > 20) || !Number.isInteger(stand) || stand < 0 || stand > 20 || (requested && !providers.length) || (ignoreStoreYear && !providers.length)) return null;
-  return { year, genre, genres, type, stand, providers, ignoreStoreYear };
+  const sort = url.searchParams.get('sort') || 'relevance';
+  if (!SORT_VALUES.has(sort) || !Number.isInteger(year) || year < 1920 || year > 2026 || !genres.length || genres.length > 3 || genres.some((value) => value.length > 20) || !Number.isInteger(stand) || stand < 0 || stand > 20 || (requested && !providers.length) || (ignoreStoreYear && !providers.length)) return null;
+  return { year, genre, genres, type, stand, providers, ignoreStoreYear, sort };
+}
+
+// Maps the public `sort` value to a TMDB discover `sort_by`. `year` follows the type-specific
+// release-date key; `rating` is paired with RATING_VOTE_FLOOR at the call site.
+function shelfSortBy(sort, tmdbType) {
+  if (sort === 'year') return tmdbType === 'tv' ? 'first_air_date.desc' : 'primary_release_date.desc';
+  if (sort === 'rating') return 'vote_average.desc';
+  return 'popularity.desc';
 }
 
 function imageUrl(path, size) {
@@ -226,14 +240,40 @@ function dedupeCredits(entries) {
   return [...byKey.values()];
 }
 
-function sortCredits(entries) {
+function creditDate(item) {
+  return String(item.release_date || item.first_air_date || '');
+}
+
+// Reorders the filmography for a credit stand. `relevance` keeps today's exact comparator
+// (vote_count desc, popularity desc, release date desc, id asc); `year` and `rating` add their own
+// primary key but always end on id asc so the total order — and therefore paging — stays monotone.
+function sortCredits(entries, sort = 'relevance') {
   return [...entries].sort((a, b) => {
+    if (sort === 'year') {
+      const dateA = creditDate(a.item);
+      const dateB = creditDate(b.item);
+      if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+      const votes = (Number(b.item.vote_count) || 0) - (Number(a.item.vote_count) || 0);
+      if (votes) return votes;
+      const popularity = (Number(b.item.popularity) || 0) - (Number(a.item.popularity) || 0);
+      if (popularity) return popularity;
+      return (Number(a.item.id) || 0) - (Number(b.item.id) || 0);
+    }
+    if (sort === 'rating') {
+      const rating = (Number(b.item.vote_average) || 0) - (Number(a.item.vote_average) || 0);
+      if (rating) return rating;
+      const votes = (Number(b.item.vote_count) || 0) - (Number(a.item.vote_count) || 0);
+      if (votes) return votes;
+      const popularity = (Number(b.item.popularity) || 0) - (Number(a.item.popularity) || 0);
+      if (popularity) return popularity;
+      return (Number(a.item.id) || 0) - (Number(b.item.id) || 0);
+    }
     const votes = (Number(b.item.vote_count) || 0) - (Number(a.item.vote_count) || 0);
     if (votes) return votes;
     const popularity = (Number(b.item.popularity) || 0) - (Number(a.item.popularity) || 0);
     if (popularity) return popularity;
-    const dateA = String(a.item.release_date || a.item.first_air_date || '');
-    const dateB = String(b.item.release_date || b.item.first_air_date || '');
+    const dateA = creditDate(a.item);
+    const dateB = creditDate(b.item);
     if (dateA !== dateB) return dateA < dateB ? 1 : -1;
     return (Number(a.item.id) || 0) - (Number(b.item.id) || 0);
   });
@@ -270,12 +310,14 @@ async function person({ id, locale }, env, fetchImpl, ctx) {
 }
 
 async function creditStand(filters, env, fetchImpl, cataloguePolicy, ctx) {
-  const { person: personId, department, job, type, year, ignoreStoreYear, providers, stand, locale } = filters;
+  const { person: personId, department, job, type, year, ignoreStoreYear, providers, stand, locale, sort } = filters;
   const data = await personCredits(personId, locale, env, fetchImpl, ctx);
   const profile = buildPersonProfile(data, personId);
   const deduped = dedupeCredits(creditEntries(data?.combined_credits || {}, { department, job, type }));
   const total = deduped.length;
-  let ordered = sortCredits(deduped);
+  // Reorder the whole filmography BEFORE the candidate window is sliced so every stand page reads
+  // from the same monotone order and paging never repeats or skips a title.
+  let ordered = sortCredits(deduped, sort);
   if (!ignoreStoreYear) {
     const span = providers.length ? 19 : 4;
     ordered = ordered.filter((entry) => {
@@ -323,7 +365,7 @@ async function creditStand(filters, env, fetchImpl, cataloguePolicy, ctx) {
   const hasNextStand = ordered.length > candidateStart + candidateBudget || accepted.length > MAX_TITLES;
   return {
     person: { id: String(personId), name: profile.name, department, job, total, profile: profile.profile },
-    titles, hasNextStand, year, ignoreStoreYear, providers, stand,
+    titles, hasNextStand, year, ignoreStoreYear, providers, stand, sort,
   };
 }
 
@@ -346,10 +388,11 @@ function validCreditStand(url) {
   const providers = [...new Set(requested.split(',').map((id) => id.trim()).filter((id) => PROVIDERS_BY_ID.has(id)))].sort();
   const ignoreStoreYear = url.searchParams.get('ignoreStoreYear') === 'true';
   const locale = url.searchParams.get('locale') || 'pt-BR';
+  const sort = url.searchParams.get('sort') || 'relevance';
   if (!/^[1-9][0-9]*$/.test(personId) || !CREDIT_DEPARTMENTS.has(department) || job.length > 60 || !type
     || !Number.isInteger(year) || year < 1920 || year > 2026 || !Number.isInteger(stand) || stand < 0 || stand > 20
-    || (requested && !providers.length) || !LOCALES.has(locale)) return null;
-  return { person: personId, department, job, type, year, stand, providers, ignoreStoreYear, locale };
+    || !SORT_VALUES.has(sort) || (requested && !providers.length) || !LOCALES.has(locale)) return null;
+  return { person: personId, department, job, type, year, stand, providers, ignoreStoreYear, locale, sort };
 }
 
 function createTmdb(env, fetchImpl) {
@@ -374,7 +417,8 @@ async function shelf(filters, env, fetchImpl, cataloguePolicy) {
   const providerIds = filters.providers.map((id) => PROVIDERS_BY_ID.get(id).tmdbProviderId).sort((a, b) => a - b);
   const firstPage = filters.stand * 2 + 1;
   const loadPage = (page) => {
-    const query = new URLSearchParams({ page: String(page), include_adult: 'false', [`${dateKey}.gte`]: `${filters.ignoreStoreYear ? 1920 : filters.year - (providerIds.length ? 19 : 4)}-01-01`, [`${dateKey}.lte`]: `${filters.ignoreStoreYear ? 2026 : filters.year}-12-31` });
+    const query = new URLSearchParams({ sort_by: shelfSortBy(filters.sort, tmdbType), page: String(page), include_adult: 'false', [`${dateKey}.gte`]: `${filters.ignoreStoreYear ? 1920 : filters.year - (providerIds.length ? 19 : 4)}-01-01`, [`${dateKey}.lte`]: `${filters.ignoreStoreYear ? 2026 : filters.year}-12-31` });
+    if (filters.sort === 'rating') query.set('vote_count.gte', String(RATING_VOTE_FLOOR));
     if (genreIds.length) query.set('with_genres', genreIds.join('|'));
     if (providerIds.length) {
       query.set('watch_region', 'BR');
@@ -553,7 +597,7 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
         if (url.pathname === '/v1/credit-stand') {
           const filters = validCreditStand(url);
           if (!filters) return json({ error: 'Invalid credit stand filters' }, 400, policy.headers);
-          return await edgeCached(url, ['person', 'department', 'job', 'type', 'year', 'ignoreStoreYear', 'providers', 'stand', 'locale'], policy, ctx, async () => {
+          return await edgeCached(url, ['person', 'department', 'job', 'type', 'year', 'ignoreStoreYear', 'providers', 'stand', 'locale', 'sort'], policy, ctx, async () => {
             const body = await creditStand(filters, env, fetchImpl, cataloguePolicy, ctx);
             return json(body, 200, { 'cache-control': browserAndEdgeCache(3600, 86400, 604800) });
           });
@@ -561,9 +605,9 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
         if (url.pathname === '/v1/shelf') {
           const filters = validShelf(url);
           if (!filters) return json({ error: 'Invalid shelf filters' }, 400, policy.headers);
-          return await edgeCached(url, ['genre', 'year', 'type', 'stand', 'providers', 'ignoreStoreYear'], policy, ctx, async () => {
+          return await edgeCached(url, ['genre', 'year', 'type', 'stand', 'providers', 'ignoreStoreYear', 'sort'], policy, ctx, async () => {
             const shelfPage = await shelf(filters, env, fetchImpl, cataloguePolicy);
-            return json({ titles: shelfPage.titles, hasNextStand: shelfPage.hasNextStand, year: filters.year, genre: filters.genre, type: filters.type, stand: filters.stand, providers: filters.providers, ignoreStoreYear: filters.ignoreStoreYear }, 200, { 'cache-control': browserAndEdgeCache(3600, 86400, 604800) });
+            return json({ titles: shelfPage.titles, hasNextStand: shelfPage.hasNextStand, year: filters.year, genre: filters.genre, type: filters.type, stand: filters.stand, providers: filters.providers, ignoreStoreYear: filters.ignoreStoreYear, sort: filters.sort }, 200, { 'cache-control': browserAndEdgeCache(3600, 86400, 604800) });
           });
         }
         return json({ error: 'Not found' }, 404, policy.headers);

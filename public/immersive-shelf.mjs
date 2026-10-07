@@ -80,7 +80,7 @@ function featuredMovies(titles) {
 }
 
 export function createImmersiveShelf({ container, titles = [], genre, year, type, stand = 0, theme, lighting, providers = [], onSelect, onSwipe, onBoundary, plaqueOptions, onConfigure, performanceProfile = 'default' }) {
-  let draft = { genre, year, ignoreStoreYear: Boolean(plaqueOptions?.ignoreStoreYear) };
+  let draft = { genre, year, ignoreStoreYear: Boolean(plaqueOptions?.ignoreStoreYear), sort: plaqueOptions?.sort || 'relevance' };
   let plaqueEditor = null;
   function closePlaqueEditor(save = true) {
     if (!plaqueEditor) return;
@@ -92,7 +92,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
   }
   function positionPlaqueEditor() {
     if (!plaqueEditor) return;
-    const point = sign.localToWorld(new THREE.Vector3(plaqueEditor.field === 'genre' ? 0 : plaqueEditor.field === 'year' ? -2.23 : .87, plaqueEditor.field === 'genre' ? .33 : -.36, .12)).project(camera);
+    const point = sign.localToWorld(new THREE.Vector3(plaqueEditor.field === 'genre' ? 0 : plaqueEditor.field === 'sort' ? .87 : plaqueEditor.field === 'year' ? -2.23 : .87, plaqueEditor.field === 'genre' || plaqueEditor.field === 'sort' ? .33 : -.36, .12)).project(camera);
     const bounds = renderer.domElement.getBoundingClientRect();
     const viewport = window.visualViewport;
     const width = Math.min(plaqueEditor.field === 'genre' ? 310 : 230, (viewport?.width || window.innerWidth) - 16);
@@ -114,7 +114,7 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       input.type = 'number'; input.min = '1920'; input.max = '2026'; input.step = '1';
       input.inputMode = 'numeric'; input.required = true; input.value = draft.year;
     } else {
-      const choices = plaqueOptions.genres.map((value) => [value, value]);
+      const choices = field === 'sort' ? (plaqueOptions.sortChoices || []) : plaqueOptions.genres.map((value) => [value, value]);
       for (const [value, text] of choices) {
         const option = document.createElement('option'); option.value = value; option.textContent = text; input.append(option);
       }
@@ -160,11 +160,14 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
     context.fillStyle = activeTheme.sign;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.font = '900 64px Impact, Arial, sans-serif';
-    context.fillText(draft.genre.toUpperCase(), 512, 70, 790);
-    context.font = '900 26px Arial'; context.fillText('▾', 887, 70);
+    context.font = '900 56px Impact, Arial, sans-serif';
+    context.fillText(draft.genre.toUpperCase(), 290, 70, 460);
+    const sortChoice = (plaqueOptions.sortChoices || []).find(([value]) => value === draft.sort);
+    context.font = '900 44px Impact, Arial, sans-serif';
+    context.fillText(String(sortChoice ? sortChoice[1] : draft.sort).toUpperCase(), 780, 70, 300);
     context.font = '900 64px Arial';
-    context.fillText('‹', 55, 70); context.fillText('›', 969, 70);
+    context.fillText('‹', 45, 70); context.fillText('›', 535, 70);
+    context.fillText('‹', 585, 70); context.fillText('›', 965, 70);
     context.fillText('‹', 55, 174); context.fillText('›', 500, 174);
     context.font = draft.ignoreStoreYear ? '900 30px Arial' : '900 76px Courier New';
     context.fillText(draft.ignoreStoreYear ? plaqueOptions.allYears : String(draft.year), 278, 174, 360);
@@ -640,6 +643,8 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       plaqueOptions.allowAllYears = nextVisuals.providers.length > 0;
       if (typeof nextVisuals.ignoreStoreYear === 'boolean') draft.ignoreStoreYear = nextVisuals.ignoreStoreYear;
     }
+    if (plaqueOptions && Array.isArray(nextVisuals.sortChoices)) plaqueOptions.sortChoices = nextVisuals.sortChoices;
+    if (typeof nextVisuals.sort === 'string') draft.sort = nextVisuals.sort;
     activeTheme = nextVisuals.theme || activeTheme;
     activeProviders = Array.isArray(nextVisuals.providers) ? nextVisuals.providers : activeProviders;
     backingMaterial.color.set(activeTheme.backing);
@@ -787,10 +792,17 @@ export function createImmersiveShelf({ container, titles = [], genre, year, type
       const x = plaque.uv.x * 1024;
       const y = (1 - plaque.uv.y) * 240;
       if (y < 120) {
-        if (x > 100 && x < 920) { editPlaque('genre'); return; }
-        const choices = plaqueOptions.genres;
-        const index = choices.indexOf(draft.genre);
-        draft.genre = choices[(index + (x < 512 ? -1 : 1) + choices.length) % choices.length];
+        if (x > 65 && x < 515) { editPlaque('genre'); return; }
+        if (x > 630 && x < 930) { editPlaque('sort'); return; }
+        if (x < 560) {
+          const choices = plaqueOptions.genres;
+          const index = choices.indexOf(draft.genre);
+          draft.genre = choices[(index + (x < 290 ? -1 : 1) + choices.length) % choices.length];
+        } else {
+          const choices = (plaqueOptions.sortChoices || []).map(([value]) => value);
+          const index = choices.indexOf(draft.sort);
+          if (index !== -1) draft.sort = choices[(index + (x < 780 ? -1 : 1) + choices.length) % choices.length];
+        }
       } else if (x < 560) {
         if (x > 100 && x < 455) { editPlaque('year'); return; }
         else {

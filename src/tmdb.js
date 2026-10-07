@@ -23,6 +23,8 @@ const TMDB_TV_GENRE_NAMES = Object.freeze({
 });
 
 const PREFERRED_PROVIDER_IDS = Object.freeze({ 'Amazon Prime Video': 119 });
+// Rating sorts on discover need a vote-count floor so low-vote titles do not win; mirrors the Worker.
+const RATING_VOTE_FLOOR = 200;
 
 function normalizeLocale(locale) {
   return SUPPORTED_LOCALES.has(locale) ? locale : 'pt-BR';
@@ -101,6 +103,13 @@ function normalizedCreditType(mediaType) {
   return mediaType === 'tv' ? 'series' : 'movie';
 }
 
+// Maps the public `sort` value to a TMDB discover `sort_by`, mirroring the Worker.
+function shelfSortBy(sort, dateKey) {
+  if (sort === 'year') return `${dateKey}.desc`;
+  if (sort === 'rating') return 'vote_average.desc';
+  return 'popularity.desc';
+}
+
 function isSelfCharacter(character) {
   const value = String(character || '').trim();
   return SELF_CHARACTERS.has(value) || value.startsWith('Self ') || value.startsWith('Self-');
@@ -164,14 +173,40 @@ function dedupeCredits(entries) {
   return [...byKey.values()];
 }
 
-function sortCredits(entries) {
+function creditDate(item) {
+  return String(item.release_date || item.first_air_date || '');
+}
+
+// Mirrors the Worker comparator. `relevance` keeps today's exact order (vote_count desc,
+// popularity desc, release date desc, id asc); `year`/`rating` add a primary key but still end on
+// id asc so paging stays monotone.
+function sortCredits(entries, sort = 'relevance') {
   return [...entries].sort((a, b) => {
+    if (sort === 'year') {
+      const dateA = creditDate(a.item);
+      const dateB = creditDate(b.item);
+      if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+      const votes = (Number(b.item.vote_count) || 0) - (Number(a.item.vote_count) || 0);
+      if (votes) return votes;
+      const popularity = (Number(b.item.popularity) || 0) - (Number(a.item.popularity) || 0);
+      if (popularity) return popularity;
+      return (Number(a.item.id) || 0) - (Number(b.item.id) || 0);
+    }
+    if (sort === 'rating') {
+      const rating = (Number(b.item.vote_average) || 0) - (Number(a.item.vote_average) || 0);
+      if (rating) return rating;
+      const votes = (Number(b.item.vote_count) || 0) - (Number(a.item.vote_count) || 0);
+      if (votes) return votes;
+      const popularity = (Number(b.item.popularity) || 0) - (Number(a.item.popularity) || 0);
+      if (popularity) return popularity;
+      return (Number(a.item.id) || 0) - (Number(b.item.id) || 0);
+    }
     const votes = (Number(b.item.vote_count) || 0) - (Number(a.item.vote_count) || 0);
     if (votes) return votes;
     const popularity = (Number(b.item.popularity) || 0) - (Number(a.item.popularity) || 0);
     if (popularity) return popularity;
-    const dateA = String(a.item.release_date || a.item.first_air_date || '');
-    const dateB = String(b.item.release_date || b.item.first_air_date || '');
+    const dateA = creditDate(a.item);
+    const dateB = creditDate(b.item);
     if (dateA !== dateB) return dateA < dateB ? 1 : -1;
     return (Number(a.item.id) || 0) - (Number(b.item.id) || 0);
   });
@@ -200,7 +235,7 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     return id || null;
   }
 
-  async function discoverProviderShelf({ year, genres, type, providerName = '', providerNames = [], providerIds = [], ignoreStoreYear = false, page = 0, locale = 'pt-BR' }) {
+  async function discoverProviderShelf({ year, genres, type, providerName = '', providerNames = [], providerIds = [], ignoreStoreYear = false, page = 0, locale = 'pt-BR', sort = 'relevance' }) {
     if (!apiKey) return [];
     const requestedLocale = normalizeLocale(locale);
     const tmdbType = type === 'series' ? 'tv' : 'movie';
@@ -219,9 +254,11 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
         with_watch_monetization_types: 'flatrate',
         with_watch_providers: selectedProviderIds.join('|'),
         page: String(number),
+        sort_by: shelfSortBy(sort, dateKey),
         [`${dateKey}.gte`]: `${ignoreStoreYear ? 1920 : Number(year) - 19}-01-01`,
         [`${dateKey}.lte`]: `${ignoreStoreYear ? 2026 : year}-12-31`,
       });
+      if (sort === 'rating') query.set('vote_count.gte', String(RATING_VOTE_FLOOR));
       if (genreIds.length) query.set('with_genres', genreIds.join('|'));
       return request(`/discover/${tmdbType}?${query}`, requestedLocale);
     };
@@ -280,14 +317,15 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     return buildPersonProfile(data, id);
   }
 
-  async function personCreditStand({ person, department, job = '', type = 'movie', year, ignoreStoreYear = true, providers = [], stand = 0, locale = 'pt-BR' }) {
+  async function personCreditStand({ person, department, job = '', type = 'movie', year, ignoreStoreYear = true, providers = [], stand = 0, locale = 'pt-BR', sort = 'relevance' }) {
     if (!apiKey) throw new Error('TMDB_API_KEY is required');
     const requestedLocale = normalizeLocale(locale);
     const data = await request(`/person/${encodeURIComponent(person)}?append_to_response=combined_credits`, requestedLocale);
     const profile = buildPersonProfile(data, person);
     const deduped = dedupeCredits(creditEntries(data?.combined_credits || {}, { department, job, type }));
     const total = deduped.length;
-    let ordered = sortCredits(deduped);
+    // Reorder the filmography before the window is sliced so paging stays monotone for every sort.
+    let ordered = sortCredits(deduped, sort);
     if (!ignoreStoreYear) {
       const span = providers.length ? 19 : 4;
       ordered = ordered.filter((entry) => {
@@ -330,7 +368,7 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     const hasNextStand = hydrated.length > pageEnd || ordered.length > window.length;
     return {
       person: { id: String(person), name: profile.name, department, job, total, profile: profile.profile },
-      titles, hasNextStand, year, ignoreStoreYear, providers, stand,
+      titles, hasNextStand, year, ignoreStoreYear, providers, stand, sort,
     };
   }
 

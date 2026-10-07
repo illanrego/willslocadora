@@ -454,6 +454,7 @@ test('public worker rejects invalid credit-stand filters before calling TMDB', a
     'person=138&department=Acting&year=1999&providers=unknown',
     'person=138&department=Acting&year=1999&type=book',
     'person=138&department=Acting&year=1999&locale=fr-FR',
+    'person=138&department=Acting&year=1999&sort=chrono',
     'department=Acting&year=1999',
   ];
   for (const query of queries) {
@@ -499,4 +500,133 @@ test('public worker adds id-bearing credits to title metadata without changing t
     { id: '138', name: 'Quentin Tarantino', department: 'Writing', job: 'Screenplay' },
     { id: '1000787', name: 'Sally Menke', department: 'Editing', job: 'Editor' },
   ]);
+});
+
+// --- Sort by year or rating (Addendum 2) -------------------------------------
+
+function ratedFixture() {
+  return {
+    id: 138, name: 'Rated Person', known_for_department: 'Acting', profile_path: '/rated.jpg',
+    combined_credits: {
+      cast: [
+        { id: 701, media_type: 'movie', title: 'Old Masterpiece', release_date: '1970-01-01', vote_count: 500, vote_average: 9.0, popularity: 5 },
+        { id: 702, media_type: 'movie', title: 'New Blockbuster', release_date: '2019-01-01', vote_count: 400, vote_average: 7.0, popularity: 80 },
+        { id: 703, media_type: 'movie', title: 'Middle', release_date: '1995-01-01', vote_count: 300, vote_average: 8.0, popularity: 20 },
+      ],
+      crew: [],
+    },
+  };
+}
+
+function datedFixture(count) {
+  return {
+    id: 138, name: 'Ordered', combined_credits: { cast: Array.from({ length: count }, (_, index) => ({
+      id: 2000 + index, media_type: 'movie', title: `Film ${index}`, release_date: `${1950 + index}-01-01`,
+      vote_count: 1000 - index, popularity: 100 - index,
+    })), crew: [] },
+  };
+}
+
+test('public worker maps shelf sort to TMDB sort_by and a rating vote floor', async () => {
+  const requests = [];
+  const worker = createLocadoraWorker({
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      requests.push(url);
+      if (url.pathname === '/3/discover/movie' || url.pathname === '/3/discover/tv') return Response.json({ results: [] });
+      throw new Error(`Unexpected upstream URL: ${url}`);
+    },
+  });
+  const discover = () => requests.filter((url) => url.pathname.startsWith('/3/discover/'));
+
+  const relevance = await worker.fetch(new Request('https://api.example/v1/shelf?year=2000&genre=Action&type=movie&sort=relevance'), env, context());
+  assert.equal(relevance.status, 200);
+  assert.equal((await relevance.json()).sort, 'relevance');
+  assert.ok(discover().length);
+  assert.ok(discover().every((url) => url.searchParams.get('sort_by') === 'popularity.desc' && !url.searchParams.has('vote_count.gte')));
+
+  requests.length = 0;
+  const movieYear = await worker.fetch(new Request('https://api.example/v1/shelf?year=2000&genre=Action&type=movie&sort=year'), env, context());
+  assert.equal(movieYear.status, 200);
+  assert.ok(discover().every((url) => url.searchParams.get('sort_by') === 'primary_release_date.desc' && !url.searchParams.has('vote_count.gte')));
+
+  requests.length = 0;
+  await worker.fetch(new Request('https://api.example/v1/shelf?year=2000&genre=Action&type=series&sort=year'), env, context());
+  assert.ok(discover().every((url) => url.pathname === '/3/discover/tv' && url.searchParams.get('sort_by') === 'first_air_date.desc'));
+
+  requests.length = 0;
+  await worker.fetch(new Request('https://api.example/v1/shelf?year=2000&genre=Action&type=movie&sort=rating'), env, context());
+  assert.ok(discover().every((url) => url.searchParams.get('sort_by') === 'vote_average.desc' && url.searchParams.get('vote_count.gte') === '200'));
+});
+
+test('public worker rejects an unknown shelf sort before calling TMDB', async () => {
+  let calls = 0;
+  const worker = createLocadoraWorker({ fetchImpl: async () => { calls += 1; throw new Error('not needed'); } });
+  const response = await worker.fetch(new Request('https://api.example/v1/shelf?year=2000&genre=Action&type=movie&sort=chrono'), env, context());
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: 'Invalid shelf filters' });
+  assert.equal(calls, 0);
+});
+
+test('public worker reorders a credit stand by year and rating while relevance stays the default', async () => {
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData: ratedFixture() }) });
+  const base = 'https://api.example/v1/credit-stand?person=138&department=Acting&type=movie&year=2020&ignoreStoreYear=true';
+
+  const relevance = await worker.fetch(new Request(`${base}&sort=relevance`), env, context());
+  const relevanceBody = await relevance.json();
+  assert.deepEqual(relevanceBody.titles.map((title) => title.id), ['tmdb:701', 'tmdb:702', 'tmdb:703']);
+  assert.equal(relevanceBody.sort, 'relevance');
+
+  const year = await worker.fetch(new Request(`${base}&sort=year`), env, context());
+  assert.deepEqual((await year.json()).titles.map((title) => title.id), ['tmdb:702', 'tmdb:703', 'tmdb:701']);
+
+  const rating = await worker.fetch(new Request(`${base}&sort=rating`), env, context());
+  assert.deepEqual((await rating.json()).titles.map((title) => title.id), ['tmdb:701', 'tmdb:703', 'tmdb:702']);
+});
+
+test('public worker reorders the filmography before slicing so sorted paging stays monotone', async () => {
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData: datedFixture(45) }) });
+  const base = 'https://api.example/v1/credit-stand?person=138&department=Acting&type=movie&year=2020&ignoreStoreYear=true&sort=year';
+
+  const first = await worker.fetch(new Request(`${base}&stand=0`), env, context());
+  const firstBody = await first.json();
+  assert.equal(firstBody.titles.length, 40);
+  assert.equal(firstBody.titles[0].id, 'tmdb:2044');
+  assert.equal(firstBody.titles[39].id, 'tmdb:2005');
+  assert.equal(firstBody.hasNextStand, true);
+
+  const second = await worker.fetch(new Request(`${base}&stand=1`), env, context());
+  const secondBody = await second.json();
+  assert.equal(secondBody.titles.length, 5);
+  assert.equal(secondBody.titles[0].id, 'tmdb:2004');
+  assert.equal(secondBody.titles[4].id, 'tmdb:2000');
+  assert.equal(secondBody.hasNextStand, false);
+
+  const relevance = await worker.fetch(new Request(`${base.replace('&sort=year', '&sort=relevance')}&stand=0`), env, context());
+  assert.equal((await relevance.json()).titles[0].id, 'tmdb:2000');
+});
+
+test('public worker keeps a provider-filtered sorted credit stand inside the Workers subrequest budget', async () => {
+  const personData = { id: 138, name: 'P', combined_credits: { cast: Array.from({ length: 45 }, (_, index) => ({
+    id: 3000 + index, media_type: 'movie', title: `Film ${index}`, release_date: `${1950 + index}-01-01`,
+    vote_count: 1000 - index, popularity: 100 - index,
+  })), crew: [] } };
+  const availability = Object.fromEntries(Array.from({ length: 45 }, (_, index) => [`movie:${3000 + index}`, {
+    link: `https://www.themoviedb.org/movie/${3000 + index}/watch?locale=BR`,
+    flatrate: [{ provider_id: 8, provider_name: 'Netflix', logo_path: '/netflix.png' }],
+  }]));
+  let upstreamCalls = 0;
+  const stub = creditStub({ personData, availability });
+  const worker = createLocadoraWorker({ fetchImpl: (input, init) => { upstreamCalls += 1; return stub(input, init); } });
+  const base = 'https://api.example/v1/credit-stand?person=138&department=Acting&type=movie&year=2020&ignoreStoreYear=true&providers=netflix&sort=year';
+
+  const first = await worker.fetch(new Request(`${base}&stand=0`), env, context());
+  const firstBody = await first.json();
+  assert.equal(firstBody.titles.length, 20);
+  assert.equal(firstBody.titles[0].id, 'tmdb:3044');
+  assert.equal(firstBody.sort, 'year');
+  assert.ok(upstreamCalls <= 42, `expected at most 42 upstream calls, saw ${upstreamCalls}`);
+
+  const second = await worker.fetch(new Request(`${base}&stand=1`), env, context());
+  assert.equal((await second.json()).titles[0].id, 'tmdb:3024');
 });

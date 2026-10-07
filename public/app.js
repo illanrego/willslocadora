@@ -42,6 +42,14 @@
   // The three roles already on a title; crew departments are the second pass.
   const CREDIT_PRIMARY_DEPARTMENTS = Object.freeze(['Directing', 'Writing', 'Acting']);
 
+  // One global shelf ordering shared by genre aisles and person stands (2D and 3D).
+  const SORT_OPTIONS = Object.freeze(['relevance', 'year', 'rating']);
+  const SORT_LABEL_KEYS = Object.freeze({ relevance: 'sortRelevance', year: 'sortYear', rating: 'sortRating' });
+
+  function normalizeSort(value) {
+    return SORT_OPTIONS.includes(value) ? value : 'relevance';
+  }
+
   function loadLocalSavedTitles() {
     try {
       const saved = JSON.parse(localStorage.getItem('locadora.savedTitles') || '[]');
@@ -77,6 +85,7 @@
     providers: (() => { try { const saved = JSON.parse(localStorage.getItem('locadora.providers') || '[]'); return Array.isArray(saved) ? saved.filter((id) => ['netflix', 'prime-video', 'max', 'disney-plus', 'globoplay', 'paramount-plus', 'apple-tv-plus', 'mubi', 'crunchyroll'].includes(id)).sort() : []; } catch { const legacy = localStorage.getItem('locadora.provider'); return ['netflix', 'prime-video'].includes(legacy) ? [legacy] : []; } })(),
     providerPreferenceSet: localStorage.getItem('locadora.providers') !== null || localStorage.getItem('locadora.provider') !== null,
     ignoreStoreYear: window.LocadoraSessionSupport.allYearsPreference(localStorage.getItem('locadora.ignoreStoreYear')),
+    sort: normalizeSort(localStorage.getItem('locadora.sort')),
     lighting: loadLighting(),
     providerRegistry: [],
     titles: [],
@@ -760,7 +769,7 @@
   function immersiveVisuals() {
     const genre = genres[state.genreIndex];
     const providers = state.providers.map((id) => state.providerRegistry.find((provider) => provider.id === id)).filter(Boolean);
-    return { theme: getGenreTheme(genre.theme), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers, ignoreStoreYear: state.ignoreStoreYear };
+    return { theme: getGenreTheme(genre.theme), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers, ignoreStoreYear: state.ignoreStoreYear, sort: state.sort, sortChoices: SORT_OPTIONS.map((value) => [value, t(SORT_LABEL_KEYS[value])]) };
   }
 
   async function loadProviderRegistry() {
@@ -917,6 +926,18 @@
     if (reload) loadShelf();
   }
 
+  function syncSortControls() {
+    const select = $('#sort-select');
+    if (select) select.value = state.sort;
+  }
+
+  function setSort(value, reload = true) {
+    state.sort = normalizeSort(value);
+    localStorage.setItem('locadora.sort', state.sort);
+    syncSortControls();
+    if (reload) loadShelf();
+  }
+
   function selectedProviderIds(container) {
     return [...container.querySelectorAll('[data-provider-id]:checked')].map((input) => input.dataset.providerId).sort();
   }
@@ -989,12 +1010,15 @@
     const pickedYear = $('#store-year-select').value;
     const year = pickedYear === '' ? state.year : pickedYear;
     const genreIndex = Number($('#genre-select').value);
+    const sort = normalizeSort($('#sort-select').value);
     const yearChanged = clampStoreYear(year) !== state.year;
     const genreChanged = genreIndex !== state.genreIndex;
-    if (!yearChanged && !genreChanged) return;
+    const sortChanged = sort !== state.sort;
+    if (!yearChanged && !genreChanged && !sortChanged) return;
     leaveCreditStand();
     if (yearChanged) setYear(year, false);
     if (genreChanged) selectGenre(genreIndex, false);
+    if (sortChanged) setSort(sort, false);
     loadShelf();
   }
 
@@ -1283,16 +1307,18 @@
         type: state.type,
         stand: state.stand,
         ...immersiveVisuals(),
-        plaqueOptions: { genres: genres.map(genreLabel), go: t('go'), allYears: t('allYears'), allProviders: state.locale === 'pt-BR' ? 'TODOS' : 'ALL', ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0, genreLabel: t('genre'), yearLabel: t('year') },
+        plaqueOptions: { genres: genres.map(genreLabel), go: t('go'), allYears: t('allYears'), allProviders: state.locale === 'pt-BR' ? 'TODOS' : 'ALL', ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0, genreLabel: t('genre'), yearLabel: t('year'), sort: state.sort, sortChoices: SORT_OPTIONS.map((value) => [value, t(SORT_LABEL_KEYS[value])]), sortLabel: t('sort') },
         onConfigure: (draft) => {
           const genreIndex = genres.findIndex((genre) => genreLabel(genre) === draft.genre);
           const genreChanged = genreIndex !== state.genreIndex;
           const yearChanged = clampStoreYear(draft.year) !== state.year;
+          const sortChanged = normalizeSort(draft.sort) !== state.sort;
           // The plaque is the 3D aisle menu: applying it leaves a credit stand the same way the 2D
           // pickers do, otherwise the shelf stays pinned to the person.
-          if (genreChanged || yearChanged) leaveCreditStand();
+          if (genreChanged || yearChanged || sortChanged) leaveCreditStand();
           setYear(draft.year, false);
           selectGenre(genreIndex, false);
+          setSort(draft.sort, false);
           setIgnoreStoreYear(draft.ignoreStoreYear, false);
           loadShelf();
         },
@@ -1468,13 +1494,14 @@
     const providerNames = { netflix: 'Netflix', 'prime-video': 'Prime Video', max: 'Max', 'disney-plus': 'Disney+', globoplay: 'Globoplay', 'paramount-plus': 'Paramount+', 'apple-tv-plus': 'Apple TV+', mubi: 'MUBI', crunchyroll: 'Crunchyroll' };
     const providerLabel = state.providers.map((id) => providerNames[id]).filter(Boolean).join(' + ');
     const yearLabel = state.ignoreStoreYear ? t('allYears') : `${state.year - 19}–${state.year}`;
+    const sortCaption = `${t('sort')}: ${t(SORT_LABEL_KEYS[state.sort])}`;
     const credit = state.credit;
     if (credit) {
       $('#shelf-title').textContent = `${t('creditStand')}: ${credit.name}`;
-      $('#shelf-caption').textContent = `${creditRoleLabel(credit)} · ${yearLabel}`;
+      $('#shelf-caption').textContent = `${creditRoleLabel(credit)} · ${yearLabel} · ${sortCaption}`;
     } else {
       $('#shelf-title').textContent = genreLabel(genre);
-      $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${yearLabel}`}`;
+      $('#shelf-caption').textContent = `${t('aisle')} ${aisle} · ${providerLabel ? `${yearLabel} · ${providerLabel} · BR` : `${t('allCatalogues')} · ${yearLabel}`} · ${sortCaption}`;
     }
     $('#back-to-aisle').hidden = !credit;
     $('#immersive-back-to-aisle').hidden = !credit;
@@ -1500,8 +1527,8 @@
     try {
       const useCreditStand = Boolean(state.credit);
       const params = useCreditStand
-        ? new URLSearchParams({ person: state.credit.id, department: state.credit.department, job: state.credit.job || '', type: state.type, year: state.year, ignoreStoreYear: String(state.ignoreStoreYear), providers: state.credit.allProviders ? '' : state.providers.join(','), stand, locale: state.locale })
-        : new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear) });
+        ? new URLSearchParams({ person: state.credit.id, department: state.credit.department, job: state.credit.job || '', type: state.type, year: state.year, ignoreStoreYear: String(state.ignoreStoreYear), providers: state.credit.allProviders ? '' : state.providers.join(','), stand, sort: state.sort, locale: state.locale })
+        : new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear), sort: state.sort });
       const endpoint = useCreditStand ? '/api/credit-stand' : '/api/shelf';
       const body = await api(`${endpoint}?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
@@ -2872,6 +2899,7 @@
       setMobileMenu(!$('#store-header').classList.contains('is-mobile-menu-open'));
     });
     syncProviderControls();
+    syncSortControls();
     syncLightingControls();
     syncAudioControls('ambience');
     syncAudioControls('music');

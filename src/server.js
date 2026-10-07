@@ -12,6 +12,8 @@ const { BRAZIL_PROVIDERS, normalizeProviderIds } = require('./providers.js');
 const { CREDIT_DEPARTMENTS } = require('./tmdb.js');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+// Mirrors the Worker's accepted shelf/credit-stand sort values.
+const SORT_VALUES = new Set(['relevance', 'year', 'rating']);
 const THREE_BUILD = path.dirname(require.resolve('three'));
 const THREE_FILES = Object.freeze({
   '/vendor/three.module.js': path.join(THREE_BUILD, 'three.module.js'),
@@ -75,10 +77,11 @@ function validCreditStand(url) {
   const providers = normalizeProviderIds(requested);
   const ignoreStoreYear = url.searchParams.get('ignoreStoreYear') === 'true';
   const locale = url.searchParams.get('locale') || 'pt-BR';
+  const sort = url.searchParams.get('sort') || 'relevance';
   if (!/^[1-9][0-9]*$/.test(person) || !CREDIT_DEPARTMENTS.has(department) || job.length > 60 || !type
     || !Number.isInteger(year) || year < 1920 || year > 2026 || !Number.isInteger(stand) || stand < 0 || stand > 20
-    || (requested && !providers.length) || !['pt-BR', 'en-US'].includes(locale)) return null;
-  return { person, department, job, type, year, stand, providers, ignoreStoreYear, locale };
+    || !SORT_VALUES.has(sort) || (requested && !providers.length) || !['pt-BR', 'en-US'].includes(locale)) return null;
+  return { person, department, job, type, year, stand, providers, ignoreStoreYear, locale, sort };
 }
 
 function createServer({ catalogue, posterFetcher = safeFetchImage, watchFetcher = fetch }) {
@@ -129,9 +132,10 @@ function createServer({ catalogue, posterFetcher = safeFetchImage, watchFetcher 
         const requestedProviders = url.searchParams.get('providers') ?? url.searchParams.get('provider') ?? '';
         const providers = normalizeProviderIds(requestedProviders);
         const ignoreStoreYear = url.searchParams.get('ignoreStoreYear') === 'true';
-        if (!Number.isInteger(year) || year < 1920 || year > 2026 || !genres.length || genres.length > 3 || genres.some((item) => item.length > 20) || !Number.isInteger(stand) || stand < 0 || stand > 20 || (requestedProviders && !providers.length) || (ignoreStoreYear && !providers.length)) return sendJson(response, 400, { error: 'Invalid shelf filters' });
-        const titles = await catalogue.shelf({ year, genre: genres[0], genres, type, page: stand, providers, ignoreStoreYear, sourceId: url.searchParams.get('source') || '' });
-        return sendJson(response, 200, { titles, year, genre, type, stand, providers, ignoreStoreYear });
+        const sort = url.searchParams.get('sort') || 'relevance';
+        if (!SORT_VALUES.has(sort) || !Number.isInteger(year) || year < 1920 || year > 2026 || !genres.length || genres.length > 3 || genres.some((item) => item.length > 20) || !Number.isInteger(stand) || stand < 0 || stand > 20 || (requestedProviders && !providers.length) || (ignoreStoreYear && !providers.length)) return sendJson(response, 400, { error: 'Invalid shelf filters' });
+        const titles = await catalogue.shelf({ year, genre: genres[0], genres, type, page: stand, providers, ignoreStoreYear, sort, sourceId: url.searchParams.get('source') || '' });
+        return sendJson(response, 200, { titles, year, genre, type, stand, providers, ignoreStoreYear, sort });
       }
       if (url.pathname === '/api/meta') {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
