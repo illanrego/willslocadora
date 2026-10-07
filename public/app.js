@@ -859,7 +859,6 @@
     state.year = clampStoreYear(value);
     localStorage.setItem('locadora.year', state.year);
     $('#store-year-select').value = String(state.year);
-    $('#immersive-year-input').value = state.year;
     $('#immersive-year-select').value = String(state.year);
     storeAudio?.setYear(state.year).catch((error) => {
       syncAudioControls('music', false);
@@ -917,7 +916,8 @@
   }
 
   function applyImmersiveFilters() {
-    const year = $('#immersive-year-input').value;
+    const pickedYear = $('#immersive-year-select').value;
+    const year = pickedYear === '' ? state.year : pickedYear;
     const genreIndex = Number($('#immersive-genre-select').value);
     const providers = selectedProviderIds($('#immersive-provider-checkboxes'));
     const ignoreStoreYear = $('#immersive-ignore-store-year').checked;
@@ -930,6 +930,18 @@
     if (genreChanged) selectGenre(genreIndex, false);
     if (providerChanged) setProviders(providers, false);
     if (ignoreChanged) setIgnoreStoreYear(ignoreStoreYear, false);
+    loadShelf();
+  }
+
+  function applyNormalMenuFilters() {
+    const pickedYear = $('#store-year-select').value;
+    const year = pickedYear === '' ? state.year : pickedYear;
+    const genreIndex = Number($('#genre-select').value);
+    const yearChanged = clampStoreYear(year) !== state.year;
+    const genreChanged = genreIndex !== state.genreIndex;
+    if (!yearChanged && !genreChanged) return;
+    if (yearChanged) setYear(year, false);
+    if (genreChanged) selectGenre(genreIndex, false);
     loadShelf();
   }
 
@@ -2397,25 +2409,15 @@
     $('#mobile-menu-toggle').addEventListener('click', () => {
       setMobileMenu(!$('#store-header').classList.contains('is-mobile-menu-open'));
     });
-    $('#immersive-year-input').value = state.year;
     syncProviderControls();
     syncLightingControls();
     syncAudioControls('ambience');
     syncAudioControls('music');
+    // The 2D menu is transactional: pick genre and year, then "Ir" loads one shelf.
     $('#year-form').addEventListener('submit', (event) => {
       event.preventDefault();
-      setYear($('#store-year-select').value);
+      applyNormalMenuFilters();
     });
-    $('#store-year-select').addEventListener('change', (event) => {
-      setYear(event.currentTarget.value);
-    });
-    $('#immersive-year-input').addEventListener('input', (event) => {
-      $('#immersive-year-select').value = String(event.currentTarget.value);
-    });
-    $('#immersive-year-select').addEventListener('change', (event) => {
-      $('#immersive-year-input').value = event.currentTarget.value;
-    });
-    genreSelect.addEventListener('change', (event) => selectGenre(Number(event.currentTarget.value)));
     $('#normal-filters-toggle').addEventListener('click', () => setNormalFilters($('#normal-provider-filters').hidden));
     $('#normal-settings-toggle').addEventListener('click', () => setNormalSettings($('#normal-settings').hidden));
     setNormalFilters(!state.providerPreferenceSet);

@@ -188,8 +188,7 @@ footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem
 .immersive-picker select, .immersive-picker input { min-width: 0; height: 26px; border: 1px solid rgba(246,235,204,.42); color: var(--cream); background: rgba(158, 54, 52, .88); font: 900 .62rem/1 "Courier New", monospace; text-transform: uppercase; }
 .immersive-picker select { padding-inline: .3rem; }
 .immersive-year-picker { grid-template-columns: 1fr; gap: .1rem; }
-.immersive-year-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: .25rem; min-width: 0; }
-.immersive-year-picker input, .immersive-year-picker select { width: 100%; min-width: 0; padding-inline: .3rem; }
+.immersive-year-picker select { width: 100%; min-width: 0; padding-inline: .3rem; }
 .immersive-provider-picker { grid-template-columns: 1fr; gap: .15rem; }
 .immersive-provider-picker .provider-checkboxes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .immersive-provider-picker .provider-checkboxes label { padding: .25rem; border-color: rgba(246,235,204,.35); color: var(--cream); background: rgba(158, 54, 52, .88); font-size: .52rem; }
