@@ -79,6 +79,20 @@ test('local TMDB client exposes a person profile with allowlisted roles', async 
   ]);
 });
 
+test('local TMDB client drops undated credits so announced projects stay off a stand', async () => {
+  const personData = {
+    id: 138, name: 'U', combined_credits: { cast: [
+      { id: 601, media_type: 'movie', title: 'Released', release_date: '1999-05-01', vote_count: 30 },
+      { id: 602, media_type: 'movie', title: 'Announced', vote_count: 900 },
+    ], crew: [] },
+  };
+  const client = createTmdbClient({ apiKey: 'test-key', fetchImpl: stub({ personData }) });
+  const stand = await client.personCreditStand({ person: '138', department: 'Acting', type: 'movie', year: 1999, ignoreStoreYear: true });
+
+  assert.deepEqual(stand.titles.map((title) => title.id), ['tmdb:601']);
+  assert.equal(stand.person.total, 1);
+});
+
 test('local TMDB client filters a credit stand by department, job, self-credit, and dedupe', async () => {
   const client = createTmdbClient({ apiKey: 'test-key', fetchImpl: stub({ personData: tarantinoFixture() }) });
   const base = { person: '138', type: 'movie', year: 2004, ignoreStoreYear: true };

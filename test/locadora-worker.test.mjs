@@ -443,6 +443,22 @@ test('public worker drops blocked credit-stand titles and titles without a real 
   assert.equal(body.person.total, 3);
 });
 
+test('public worker drops undated credits so announced projects stay off a stand', async () => {
+  const personData = {
+    id: 138, name: 'U', combined_credits: { cast: [
+      { id: 601, media_type: 'movie', title: 'Released', release_date: '1999-05-01', vote_count: 30 },
+      { id: 602, media_type: 'movie', title: 'Announced', release_date: '', vote_count: 900 },
+      { id: 603, media_type: 'movie', title: 'Rumoured', vote_count: 800 },
+    ], crew: [] },
+  };
+  const worker = createLocadoraWorker({ fetchImpl: creditStub({ personData }) });
+  const response = await worker.fetch(new Request('https://api.example/v1/credit-stand?person=138&department=Acting&type=movie&year=1999&ignoreStoreYear=true'), env, context());
+  const body = await response.json();
+  // Both undated entries outrank the released one, so their absence proves the date filter.
+  assert.deepEqual(body.titles.map((title) => title.id), ['tmdb:601']);
+  assert.equal(body.person.total, 1);
+});
+
 test('public worker rejects invalid credit-stand filters before calling TMDB', async () => {
   let calls = 0;
   const worker = createLocadoraWorker({ fetchImpl: async () => { calls += 1; throw new Error('not needed'); } });

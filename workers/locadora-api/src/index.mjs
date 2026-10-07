@@ -227,7 +227,10 @@ function creditEntries(data, { department, job, type }) {
       entries.push({ item, department: item.department, job: item.job || '' });
     }
   }
-  return entries.filter((entry) => type === 'all' || normalizedCreditType(entry.item.media_type) === type);
+  // Undated credits are announced or rumoured projects (TMDB leaves the date empty): they are not
+  // rentable tapes, so they never enter the filmography, its total or the candidate window.
+  return entries.filter((entry) => Boolean(yearFromDate(entry.item.release_date || entry.item.first_air_date))
+    && (type === 'all' || normalizedCreditType(entry.item.media_type) === type));
 }
 
 function dedupeCredits(entries) {
