@@ -443,6 +443,13 @@ test('public worker drops blocked credit-stand titles and titles without a real 
   assert.equal(body.person.total, 3);
 });
 
+test('the edge cache key carries a schema version so a deploy can invalidate it', async () => {
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('../workers/locadora-api/src/index.mjs', import.meta.url), 'utf8');
+  assert.match(source, /const CACHE_SCHEMA = \d+;/);
+  assert.match(source, /key\.searchParams\.set\('_schema', String\(CACHE_SCHEMA\)\);/);
+});
+
 test('public worker drops undated credits so announced projects stay off a stand', async () => {
   const personData = {
     id: 138, name: 'U', combined_credits: { cast: [

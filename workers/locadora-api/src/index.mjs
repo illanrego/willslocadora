@@ -4,6 +4,10 @@ const TMDB_ROOT = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_HOST = 'image.tmdb.org';
 const CATALOGUE_POLICY_KEY = 'catalogue-policy-v1';
 const MAX_TITLES = 40;
+// Part of every edge cache key: bump it when a response shape or ordering changes, so a deploy
+// stops serving the previous behaviour from cache instead of waiting out the TTL (a day for most
+// endpoints).
+const CACHE_SCHEMA = 2;
 const LOCALES = new Set(['pt-BR', 'en-US']);
 // Departments surfaced as credit-stand roles. Kept in sync with the frozen contract.
 const CREDIT_DEPARTMENTS = new Set(['Acting', 'Directing', 'Writing', 'Camera', 'Editing', 'Visual Effects', 'Sound', 'Art', 'Production', 'Music', 'Costume & Make-Up', 'Lighting']);
@@ -48,6 +52,7 @@ function cacheKey(url, parameters = []) {
     for (const value of url.searchParams.getAll(name).sort()) key.searchParams.append(name, value);
   }
   if (url.searchParams.has('_policy')) key.searchParams.set('_policy', url.searchParams.get('_policy'));
+  key.searchParams.set('_schema', String(CACHE_SCHEMA));
   return new Request(key, { method: 'GET' });
 }
 
