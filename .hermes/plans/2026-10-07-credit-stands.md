@@ -219,6 +219,36 @@ caching, boundaries).
 **C5.** Worker deploy + live check — **ask the owner first**: `wrangler.toml` has uncommitted
 changes, so `npx wrangler deploy` would ship them.
 
+## Addendum: credits live on the tape cover, the panel becomes the deep view
+
+Owner decision (after the first pass): the credit names **on the tape cover** must be clickable,
+and the floating credits panel becomes an **on-demand deep listing** opened from a `[mais]`/`[more]`
+affordance at the end of the cast row.
+
+- 3D (`public/vhs-3d.mjs`): `drawBack` draws each credit name as its own run (same metrics as today:
+  names from x=242, maxWidth 710, lineHeight 27, 2 lines per group, caps 4/4/10) and records a
+  texture-space rect per name in a `creditRegions` array plus a rect for the `[mais]` chip after the
+  cast row. `clickableActions()` includes those rects (pointer cursor), the click router calls
+  `onCreditPerson(entry)` / `onMoreCredits()`, and `doubleClick` treats them as clickable (no flip).
+  Clickable names get a 1px cream underline at ~.45 alpha; the chip is yellow. Without `title.credits`
+  (cached payload) a group falls back to today's plain joined string with no rects.
+- Flat (`public/vhs-flat.mjs`): the DIREÇÃO/ROTEIRO/ELENCO values render as `button.credit-link` chips
+  when `title.credits` carries the group, plus a `[mais]` button; same two callbacks.
+- Frozen viewer contract: `onCreditPerson({ id, name, department, job })` and `onMoreCredits()` on both
+  `createVhsViewer` and `createFlatVhsViewer`; the entry shape is exactly what `openPerson()` consumes.
+  Tape rows map to `{department:'Directing', job:'Director'}`, `{department:'Writing', job:'Writer'}`,
+  `{department:'Acting', job:'Acting'}`.
+- Panel (`public/app.js`): `renderTitleCredits` gains the deep mode — full cast (≤20) plus crew
+  department groups from `meta.credits.crew`, labelled with `DEPARTMENT_LABEL_KEYS` — and renders
+  hidden; `toggleTitleCreditsPanel()` (wired to `onMoreCredits`) shows/hides it. `syncTitleCredits`
+  no longer auto-shows it.
+- i18n: `moreCredits` (pt "mais" / en "more") and `creditsPanelTitle` (pt "Ficha técnica" / en
+  "Credits") in both locales.
+- Tests: 3D per-name rects + callbacks wired; panel hidden by default, toggled by the callback, deep
+  groups include crew departments; flat chips + `[mais]`.
+- Known limit: `credits.crew` is capped at 24 entries per title by the Worker, so the deep panel is
+  truncated for very large crews (v1).
+
 ## Risks / open questions
 
 - Ranking by `vote_count` can surface obscure late work for A-list people; acceptable for v1.
