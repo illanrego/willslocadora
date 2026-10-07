@@ -37,14 +37,16 @@ body:not(.is-immersive) .normal-settings button[aria-pressed="true"] { color: #1
 body:not(.is-immersive) #counter-open { position: static; display: inline-flex; align-items: center; gap: .45rem; width: auto; height: auto; transform: none; border-color: #050a12 !important; color: var(--cream) !important; background: #243e61 !important; box-shadow: 3px 3px 0 #08101d; }
 body:not(.is-immersive) #counter-open > span { margin: 0; width: auto; height: auto; background: transparent; border-radius: 0; }
 body:not(.is-immersive) #counter-open #counter-count { display: grid; min-width: 24px; height: 24px; place-items: center; color: var(--cream); background: var(--red); border-radius: 50%; }
-body:not(.is-immersive) .store-header > .browse-menu { display: grid; grid-template-columns: minmax(190px, 1fr) auto auto; align-items: end; gap: 1rem; padding: .85rem clamp(1rem, 4vw, 3.5rem); background: var(--blue-deep); border-top: 1px solid #ffffff1f; border-bottom: 0; }
+body:not(.is-immersive) .store-header > .browse-menu { display: grid; grid-template-columns: minmax(190px, 1fr) auto auto; align-items: stretch; gap: 1rem; padding: .85rem clamp(1rem, 4vw, 3.5rem); background: var(--blue-deep); border-top: 1px solid #ffffff1f; border-bottom: 0; }
 body:not(.is-immersive) .browse-menu .browse-select { display: grid; grid-column: 1; grid-template-columns: 1fr; order: 0; gap: .35rem; }
 body:not(.is-immersive) .browse-select > span,
 body:not(.is-immersive) .year-label { color: var(--yellow); font: 800 .6rem/1 "Courier New", monospace; letter-spacing: .12em; text-transform: uppercase; }
 body:not(.is-immersive) .browse-select select { min-height: 40px; width: 100%; padding: .55rem .65rem; border: 2px solid #f8e8bc; border-radius: 0; color: var(--blue); background: var(--paper); font-family: inherit; font-size: 1rem; font-weight: 800; line-height: 1.2; text-transform: none; }
-body:not(.is-immersive) .browse-menu .year-machine { grid-column: 2; order: 0; grid-template-columns: 34px 92px 34px 44px; gap: .35rem 0; margin: 0; }
+body:not(.is-immersive) .browse-menu .browse-select > select { align-self: stretch; }
+body:not(.is-immersive) .browse-menu .year-machine { grid-column: 2; order: 0; grid-template-columns: 34px 88px minmax(112px, 1fr) 34px 44px; gap: .35rem; margin: 0; }
 body:not(.is-immersive) .year-label { display: block; grid-column: 1 / -1; text-align: left; }
 body:not(.is-immersive) .year-machine input { min-height: 40px; height: 40px; border: 2px solid #3f526b; border-radius: 0; color: #ff765a; background: #101a28; font: 800 1.1rem/1 "Courier New", monospace; }
+body:not(.is-immersive) .year-machine select { min-height: 40px; height: 40px; min-width: 0; padding: .45rem .4rem; border: 2px solid #f8e8bc; border-radius: 0; color: var(--blue); background: var(--paper); font: 800 .78rem/1 "Courier New", monospace; }
 body:not(.is-immersive) .year-machine button { padding: .45rem; }
 body:not(.is-immersive) .browse-menu .normal-filters-toggle { grid-column: 3; order: 0; min-height: 40px; }
 body:not(.is-immersive) .normal-provider-filters { grid-column: 1 / -1; width: 100%; }
@@ -78,7 +80,7 @@ body:not(.is-immersive) footer { padding: 1rem clamp(1rem, 4vw, 4rem); color: #8
   body:not(.is-immersive) .header-actions { display: grid; grid-column: 1; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
   body:not(.is-immersive) .header-actions button { min-width: 0; padding: .55rem .3rem; font-size: .54rem; }
   body:not(.is-immersive) .store-header > .browse-menu { grid-template-columns: 1fr; padding: .8rem 1rem; }
-  body:not(.is-immersive) .browse-menu .year-machine { grid-column: 1; grid-template-columns: 42px minmax(0, 1fr) 42px 50px; width: 100%; }
+  body:not(.is-immersive) .browse-menu .year-machine { grid-column: 1; grid-template-columns: 42px minmax(0, 1fr) minmax(0, 1fr) 42px 50px; width: 100%; }
   body:not(.is-immersive) .browse-menu .normal-filters-toggle { grid-column: 1; justify-content: space-between; }
   body:not(.is-immersive) .normal-settings { grid-template-columns: 1fr; }
   body:not(.is-immersive) .rental-intro { text-align: left; }

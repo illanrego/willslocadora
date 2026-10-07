@@ -859,7 +859,9 @@
     state.year = clampStoreYear(value);
     localStorage.setItem('locadora.year', state.year);
     $('#store-year-input').value = state.year;
+    $('#store-year-select').value = String(state.year);
     $('#immersive-year-input').value = state.year;
+    $('#immersive-year-select').value = String(state.year);
     storeAudio?.setYear(state.year).catch((error) => {
       syncAudioControls('music', false);
       setSettingsStatus(error.message);
@@ -870,6 +872,7 @@
   function stepYear(offset) {
     const input = $('#store-year-input');
     input.value = clampStoreYear(Number(input.value || state.year) + offset);
+    $('#store-year-select').value = input.value;
   }
 
   function selectGenre(index, reload = true) {
@@ -2380,6 +2383,15 @@
     });
     genreSelect.value = String(state.genreIndex);
     immersiveGenreSelect.value = String(state.genreIndex);
+    for (const yearSelect of [$('#store-year-select'), $('#immersive-year-select')]) {
+      for (let year = 2026; year >= 1920; year -= 1) {
+        const option = document.createElement('option');
+        option.value = String(year);
+        option.textContent = String(year);
+        yearSelect.append(option);
+      }
+      yearSelect.value = String(state.year);
+    }
     document.querySelectorAll('[data-locale-toggle]').forEach((button) => {
       button.addEventListener('click', () => {
         state.locale = state.locale === 'pt-BR' ? 'en-US' : 'pt-BR';
@@ -2402,6 +2414,19 @@
     $('#year-form').addEventListener('submit', (event) => {
       event.preventDefault();
       setYear($('#store-year-input').value);
+    });
+    $('#store-year-input').addEventListener('input', (event) => {
+      $('#store-year-select').value = String(event.currentTarget.value);
+    });
+    $('#store-year-select').addEventListener('change', (event) => {
+      $('#store-year-input').value = event.currentTarget.value;
+      setYear(event.currentTarget.value);
+    });
+    $('#immersive-year-input').addEventListener('input', (event) => {
+      $('#immersive-year-select').value = String(event.currentTarget.value);
+    });
+    $('#immersive-year-select').addEventListener('change', (event) => {
+      $('#immersive-year-input').value = event.currentTarget.value;
     });
     genreSelect.addEventListener('change', (event) => selectGenre(Number(event.currentTarget.value)));
     $('#normal-filters-toggle').addEventListener('click', () => setNormalFilters($('#normal-provider-filters').hidden));

@@ -10,9 +10,11 @@ const sessionSupport = readFileSync(require.resolve('../public/session-support.j
 
 test('normal browsing exposes compact browse controls without a title-format selector', () => {
   const header = page.match(/<header id="store-header"[\s\S]*?<\/header>/)?.[0] || '';
+  assert.match(page, /<body class="is-immersive" data-store-mode="immersive">/);
   assert.match(header, /id="year-form"/);
   assert.match(header, /id="year-go"/);
   assert.match(header, /id="genre-select"/);
+  assert.match(header, /id="store-year-select"[^>]*>/);
   assert.match(header, /id="normal-filters-toggle"[^>]*aria-controls="normal-provider-filters"/);
   assert.match(header, /id="normal-provider-filters"[^>]*hidden/);
   assert.match(header, /data-i18n="streamingHint"/);
@@ -20,6 +22,14 @@ test('normal browsing exposes compact browse controls without a title-format sel
   assert.match(header, /id="provider-checkboxes"/);
   assert.match(header, /data-provider-none>[\s\S]*data-i18n="stremioAll">Stremio \(todos\)<\/span>/);
   assert.doesNotMatch(page, /<aside class="aisle-directory"/);
+});
+
+test('the normal year picker supports both a dropdown and direct typing', () => {
+  assert.match(page, /id="store-year-input"[^>]+type="number"/);
+  assert.match(page, /id="store-year-select"[^>]+aria-label="Select store year"/);
+  assert.match(app, /\$\('#store-year-input'\)\.addEventListener\('input'/);
+  assert.match(app, /\$\('#store-year-select'\)\.addEventListener\('change'/);
+  assert.match(css, /\.year-machine select \{/);
 });
 
 

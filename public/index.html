@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/normal-mode.css">
 </head>
-<body>
+<body class="is-immersive" data-store-mode="immersive">
   <a class="skip-link" href="#shelf" data-i18n="skipShelf">Pular para a prateleira</a>
   <div class="store-shell">
     <header id="store-header" class="store-header">
@@ -56,6 +56,9 @@
           <label class="year-label" for="store-year-input" data-i18n="storeYear">Ano da loja</label>
           <button class="year-step" id="year-back" type="button" data-i18n-aria-label="previousYear" aria-label="Ano anterior">−</button>
           <input id="store-year-input" type="number" min="1920" max="2026" step="1" value="1999" inputmode="numeric" autocomplete="off" aria-label="Store year">
+          <select id="store-year-select" aria-label="Select store year">
+            <option value="">Select year</option>
+          </select>
           <button class="year-step" id="year-forward" type="button" data-i18n-aria-label="nextYear" aria-label="Próximo ano">+</button>
           <button id="year-go" type="submit" data-i18n="go">Ir</button>
         </form>
@@ -176,7 +179,10 @@
               </label>
               <label class="immersive-picker immersive-year-picker" for="immersive-year-input">
                 <span data-i18n="year">Ano</span>
-                <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
+                <span class="immersive-year-controls">
+                  <input id="immersive-year-input" type="number" min="1920" max="2026" step="1" inputmode="numeric" aria-label="Immersive store year">
+                  <select id="immersive-year-select" aria-label="Select immersive store year"><option value="">Select year</option></select>
+                </span>
               </label>
             <button id="immersive-go" type="button" data-i18n="go">Ir</button>
           </div>
