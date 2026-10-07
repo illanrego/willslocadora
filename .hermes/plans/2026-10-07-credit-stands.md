@@ -249,6 +249,28 @@ affordance at the end of the cast row.
 - Known limit: `credits.crew` is capped at 24 entries per title by the Worker, so the deep panel is
   truncated for very large crews (v1).
 
+## Addendum 2: sort every stand by year or rating
+
+Owner request: a "sort by" control that applies to every stand — genre aisles and person stands.
+
+- One global preference `state.sort` in `localStorage['locadora.sort']`, values `relevance`
+  (default, today's behaviour), `year` (newest first) and `rating` (highest IMDb/TMDB score first),
+  echoed in the shelf caption and sent on every shelf request.
+- Worker + local bridge: `/v1/shelf` maps `sort` to TMDB `sort_by`
+  (`relevance` -> `popularity.desc`, `year` -> `primary_release_date.desc` / `first_air_date.desc`,
+  `rating` -> `vote_average.desc` **with a `vote_count.gte` floor** so 10-vote titles do not win);
+  `/v1/credit-stand` re-orders the filmography (`relevance` -> today's vote_count/popularity order,
+  `year` -> release date desc, `rating` -> vote_average desc) **before** the candidate window is
+  sliced, so paging stays monotone. Unknown `sort` -> 400 on the Worker, defaulted locally.
+- UI: a `#sort-select` in the 2D browse menu (applied by Ir like genre/year, never on its own) and a
+  third field in the 3D plaque editor (`immersive-shelf.mjs` field list + `plaqueOptions.sortChoices`
+  + the drawn plaque text), both wired to the same `setSort()`; changing it leaves a credit stand the
+  same way genre/year do, and it persists.
+- i18n: `sort`, `sortRelevance`, `sortYear`, `sortRating` in both locales.
+- Tests: worker (each `sort` maps to the right `sort_by`/order and `rating` sets the vote floor;
+  invalid -> 400), local bridge mirror, and UI (control present, `setSort` persists + reloads, the
+  credit-stand path sends `sort`).
+
 ## Risks / open questions
 
 - Ranking by `vote_count` can surface obscure late work for A-list people; acceptable for v1.

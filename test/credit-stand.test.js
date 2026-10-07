@@ -128,6 +128,8 @@ test('applying the browse menu leaves a credit stand instead of pinning the pers
   assert.match(app, /function leaveCreditStand\(\)/);
   assert.match(functionBody(app, 'function applyNormalMenuFilters()'), /leaveCreditStand\(\);/);
   assert.match(functionBody(app, 'function applyImmersiveFilters()'), /if \(yearChanged \|\| genreChanged\) leaveCreditStand\(\);/);
+  // The 3D plaque is the aisle menu there (the DOM panel is clipped to a keyboard fallback).
+  assert.match(app, /onConfigure: \(draft\) => \{[\s\S]*?if \(genreChanged \|\| yearChanged\) leaveCreditStand\(\);/);
   assert.match(functionBody(app, 'function backToAisle()'), /if \(!leaveCreditStand\(\)\) return;/);
 });
 

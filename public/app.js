@@ -1285,8 +1285,14 @@
         ...immersiveVisuals(),
         plaqueOptions: { genres: genres.map(genreLabel), go: t('go'), allYears: t('allYears'), allProviders: state.locale === 'pt-BR' ? 'TODOS' : 'ALL', ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0, genreLabel: t('genre'), yearLabel: t('year') },
         onConfigure: (draft) => {
+          const genreIndex = genres.findIndex((genre) => genreLabel(genre) === draft.genre);
+          const genreChanged = genreIndex !== state.genreIndex;
+          const yearChanged = clampStoreYear(draft.year) !== state.year;
+          // The plaque is the 3D aisle menu: applying it leaves a credit stand the same way the 2D
+          // pickers do, otherwise the shelf stays pinned to the person.
+          if (genreChanged || yearChanged) leaveCreditStand();
           setYear(draft.year, false);
-          selectGenre(genres.findIndex((genre) => genreLabel(genre) === draft.genre), false);
+          selectGenre(genreIndex, false);
           setIgnoreStoreYear(draft.ignoreStoreYear, false);
           loadShelf();
         },
