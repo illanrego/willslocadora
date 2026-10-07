@@ -969,11 +969,20 @@
     const providerChanged = providers.join(',') !== state.providers.join(',');
     const ignoreChanged = ignoreStoreYear !== state.ignoreStoreYear;
     if (!yearChanged && !genreChanged && !providerChanged && !ignoreChanged) return;
+    // Year and genre belong to the aisle; provider and all-years filters stay inside the stand.
+    if (yearChanged || genreChanged) leaveCreditStand();
     if (yearChanged) setYear(year, false);
     if (genreChanged) selectGenre(genreIndex, false);
     if (providerChanged) setProviders(providers, false);
     if (ignoreChanged) setIgnoreStoreYear(ignoreStoreYear, false);
     loadShelf();
+  }
+
+  // The browse menu (genre/year) is the store aisle, so applying it leaves a credit stand.
+  function leaveCreditStand() {
+    if (!state.credit) return false;
+    state.credit = null;
+    return true;
   }
 
   function applyNormalMenuFilters() {
@@ -983,6 +992,7 @@
     const yearChanged = clampStoreYear(year) !== state.year;
     const genreChanged = genreIndex !== state.genreIndex;
     if (!yearChanged && !genreChanged) return;
+    leaveCreditStand();
     if (yearChanged) setYear(year, false);
     if (genreChanged) selectGenre(genreIndex, false);
     loadShelf();
@@ -2513,9 +2523,7 @@
   }
 
   function backToAisle() {
-    if (!state.credit) return;
-    state.credit = null;
-    $('#back-to-aisle').hidden = true;
+    if (!leaveCreditStand()) return;
     loadShelf();
   }
 

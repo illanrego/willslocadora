@@ -123,6 +123,13 @@ test('person and credit-stand surfaces reuse the restrained Locadora chrome', ()
   assert.match(css, /\.back-to-aisle \{/);
 });
 
+test('applying the browse menu leaves a credit stand instead of pinning the person', () => {
+  assert.match(app, /function leaveCreditStand\(\)/);
+  assert.match(functionBody(app, 'function applyNormalMenuFilters()'), /leaveCreditStand\(\);/);
+  assert.match(functionBody(app, 'function applyImmersiveFilters()'), /if \(yearChanged \|\| genreChanged\) leaveCreditStand\(\);/);
+  assert.match(functionBody(app, 'function backToAisle()'), /if \(!leaveCreditStand\(\)\) return;/);
+});
+
 test('the clickable credit index is reachable in both viewers', () => {
   // The 3D inspector draws its credits on the tape texture, so the DOM index must float over the
   // stage instead of landing below a full-height canvas inside an overflow:hidden dialog.
