@@ -93,8 +93,9 @@ test('the empty credit stand offers see-all-streamings without overwriting the s
 
 test('backToAisle clears the credit source and reloads the genre shelf', () => {
   const body = functionBody(app, 'function backToAisle()');
-  assert.match(body, /state\.credit = null;/);
+  assert.match(body, /if \(!leaveCreditStand\(\)\) return;/);
   assert.match(body, /loadShelf\(\);/);
+  assert.match(functionBody(app, 'function leaveCreditStand()'), /state\.credit = null;/);
 });
 
 test('department labels and credit-stand copy exist in both locales', () => {
