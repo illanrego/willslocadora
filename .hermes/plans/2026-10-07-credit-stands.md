@@ -271,6 +271,32 @@ Owner request: a "sort by" control that applies to every stand — genre aisles 
   invalid -> 400), local bridge mirror, and UI (control present, `setSort` persists + reloads, the
   credit-stand path sends `sort`).
 
+## Addendum 3: series as a per-visitor setting, always present on person stands
+
+Owner request: bring TV series back, but as a settings option (each visitor decides), always shown on
+person stands, and labelled on the shelf so a series is recognisable without extra navigation steps.
+
+- Preference `state.series` in `localStorage['locadora.series']` (default off, like the provider and
+  all-years preferences), toggled from the 2D Ajustes dialog and the immersive settings panel; a
+  logged-in per-account flag would need the Supabase profile and is out of scope.
+- `/v1/shelf` accepts `type=all` when the preference is on: the movie and TV discover queries run side
+  by side, **each with its own genre map and date key** (`primary_release_date` / `first_air_date`),
+  candidates are merged and re-sorted by the requested `sort` (discover order is per type, so the merge
+  must sort explicitly), deduped, sliced to 40 with `hasNextStand` from either query. Budget stays
+  2 discover + ≤40 `external_ids` = 42 subrequests. `type=movie|series` behaviour is unchanged and
+  `featured` stays movies-only.
+- Credit stands always request `type=all` regardless of the preference, so a person's TV work is on
+  their stand (Sorkin's Writing: 14 movies vs 18 with series). Undated filtering and the department
+  grouping still apply.
+- Visual label: a small TV icon badge on the 2D case (`.vhs-case`) and in the flat viewer, plus the
+  existing series copy on the tape back (`Feature Presentation` / `Vídeo Case Series` in `vhs-3d.mjs`);
+  the badge carries an accessible name and must not change the card layout or the click target.
+- i18n: `seriesInShelf`, `seriesBadge`, `shelfMixed` (pt/en); existing `series` / `movies` keys are
+  reused for the text labels.
+- Tests: worker (type=all merge order + paging + budget, series genre map and date key), local bridge
+  mirror, UI (toggle persists and drives the request; credit stands always send `all`; badge renders for
+  series titles only).
+
 ## Risks / open questions
 
 - Ranking by `vote_count` can surface obscure late work for A-list people; acceptable for v1.
