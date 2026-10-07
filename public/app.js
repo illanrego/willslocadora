@@ -2221,16 +2221,56 @@
     return groups;
   }
 
-  function renderTitleCredits(title) {
+  // Deep listing behind [mais]: the three title roles plus the crew departments the Worker
+  // allowlists in meta.credits.crew. Directing/Writing/Acting already have their own rows.
+  function titleCreditDeepGroups(title) {
+    const credits = title?.credits;
+    if (!credits || typeof credits !== 'object') return [];
+    const groups = [];
+    const director = creditEntries(credits.director, 'Directing', 'Director');
+    const writer = creditEntries(credits.writer, 'Writing', 'Writer');
+    const cast = creditEntries(credits.cast, 'Acting', '').slice(0, 20);
+    if (director.length) groups.push({ labelKey: 'directedBy', entries: director });
+    if (writer.length) groups.push({ labelKey: 'writtenBy', entries: writer });
+    if (cast.length) groups.push({ labelKey: 'starring', entries: cast });
+    const byDepartment = new Map();
+    for (const entry of creditEntries(credits.crew, '', '')) {
+      if (!entry.department || CREDIT_PRIMARY_DEPARTMENTS.includes(entry.department)) continue;
+      if (!byDepartment.has(entry.department)) byDepartment.set(entry.department, []);
+      byDepartment.get(entry.department).push(entry);
+    }
+    for (const [department, entries] of byDepartment) {
+      groups.push({ labelKey: DEPARTMENT_LABEL_KEYS[department] ? DEPARTMENT_LABEL_KEYS[department] : null, label: departmentLabel(department), entries });
+    }
+    return groups;
+  }
+
+  function renderTitleCredits(title, { deep = false } = {}) {
     const section = document.createElement('section');
     section.className = 'title-credits';
-    const groups = titleCreditGroups(title);
+    if (deep) section.classList.add('title-credits-deep');
+    const groups = deep ? titleCreditDeepGroups(title) : titleCreditGroups(title);
+    if (deep && groups.length) {
+      const header = document.createElement('header');
+      header.className = 'title-credits-header';
+      const heading = document.createElement('h3');
+      heading.className = 'title-credits-title';
+      heading.textContent = t('creditsPanelTitle');
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'credits-panel-close';
+      close.textContent = '×';
+      close.setAttribute('aria-label', t('close'));
+      close.addEventListener('click', () => toggleTitleCreditsPanel(false));
+      header.append(heading, close);
+      section.append(header);
+    }
     for (const group of groups) {
       const row = document.createElement('div');
       row.className = 'title-credits-row';
       const label = document.createElement('span');
       label.className = 'title-credits-label';
-      label.textContent = t(group.labelKey);
+      label.textContent = group.labelKey ? t(group.labelKey) : group.label;
       row.append(label);
       for (const entry of group.entries) {
         const button = document.createElement('button');
@@ -2262,17 +2302,32 @@
         section.append(row);
       }
     }
-    section.hidden = !section.childElementCount;
+    // On-demand only: the panel is appended hidden and shown by the [mais] affordance.
+    section.hidden = true;
     return section;
   }
 
   function syncTitleCredits(detail, title) {
-    // The 3D inspector paints its credits onto the tape texture, so the clickable index floats
-    // over the stage (see #title-detail > .title-credits); the flat no-WebGL viewer hosts the same
-    // chips inside its back cover. Re-homing on every sync keeps that true when the viewer changes.
+    // The 3D inspector paints its credits onto the tape texture and the flat viewer draws its own
+    // chips on the back cover, so this DOM section is only the deep listing opened by [mais];
+    // it is homed under the stage (see #title-detail > .title-credits) or inside the flat back
+    // cover, appended hidden, and never auto-shown.
     const host = detail.querySelector('.flat-vhs-back') || detail;
     detail.querySelector('.title-credits')?.remove();
-    host.append(renderTitleCredits(title));
+    const section = renderTitleCredits(title, { deep: true });
+    section.hidden = true;
+    host.append(section);
+  }
+
+  // [mais]/[more] affordance -> show the deep listing; the close button hides it again.
+  function toggleTitleCreditsPanel(force) {
+    const panel = $('#title-detail .title-credits');
+    if (!panel) return false;
+    const nextHidden = typeof force === 'boolean' ? !force : !panel.hidden;
+    // Nothing to show when the payload carried no credits block.
+    if (!nextHidden && !panel.childElementCount) return false;
+    panel.hidden = nextHidden;
+    return !nextHidden;
   }
 
   function renderPersonSummary() {
@@ -2615,6 +2670,8 @@
         onWatchLater: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'watch_later', { confirm: true }); },
         onFavorite: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'favorite', { confirm: true }); },
         onBlock: () => { if (activeViewerTitle) blockCatalogueTitle(activeViewerTitle, ownerAction); },
+        onCreditPerson: (entry) => openPerson(entry),
+        onMoreCredits: () => toggleTitleCreditsPanel(),
         onClose: () => titleDialog.close(),
       });
       syncTitleOwnerAction();
@@ -2647,6 +2704,8 @@
           onWatchLater: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'watch_later', { confirm: true }); },
           onFavorite: () => { if (activeViewerTitle) saveTitleCollection(activeViewerTitle, 'favorite', { confirm: true }); },
           onBlock: () => { if (activeViewerTitle) blockCatalogueTitle(activeViewerTitle, ownerAction); },
+          onCreditPerson: (entry) => openPerson(entry),
+          onMoreCredits: () => toggleTitleCreditsPanel(),
         });
         syncTitleOwnerAction();
         // The flat back cover exists now, so move the credit chips inside it.

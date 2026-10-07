@@ -658,6 +658,33 @@ dialog.panel-dialog {
 }
 .credit-link:hover, .credit-link:focus-visible { border-color: #ffe178; filter: brightness(1.14); }
 .credit-name { color: var(--cream); font: 700 .72rem/1 Arial, sans-serif; }
+/* Deep credits panel: on demand behind [mais], so the floating look only shows when opened. */
+.title-credits-header { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.title-credits-title { margin: 0; color: var(--yellow); font: 900 .78rem/1.2 "Courier New", monospace; letter-spacing: .1em; text-transform: uppercase; }
+.credits-panel-close {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 .4rem;
+  border: 1px solid #6a5547;
+  border-radius: 3px;
+  color: var(--cream);
+  background: #25384d;
+  cursor: pointer;
+  font: 800 .95rem/1 Arial, sans-serif;
+}
+.credits-panel-close:hover, .credits-panel-close:focus-visible { border-color: #ffe178; filter: brightness(1.14); }
+.credits-panel-toggle {
+  min-height: 30px;
+  padding: .25rem .55rem;
+  border: 1px solid var(--yellow);
+  border-radius: 3px;
+  color: #17120f;
+  background: var(--yellow);
+  cursor: pointer;
+  font: 800 .72rem/1 Arial, sans-serif;
+  text-transform: lowercase;
+}
+.credits-panel-toggle:hover, .credits-panel-toggle:focus-visible { filter: brightness(1.12); }
 
 .back-to-aisle {
   margin-top: .6rem;

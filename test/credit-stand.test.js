@@ -5,6 +5,7 @@ const { readFileSync } = require('node:fs');
 const page = readFileSync(require.resolve('../public/index.html'), 'utf8');
 const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
 const css = readFileSync(require.resolve('../public/styles.css'), 'utf8');
+const flat = readFileSync(require.resolve('../public/vhs-flat.mjs'), 'utf8');
 const { COPY } = require('../public/i18n.js');
 
 function functionBody(source, signature) {
@@ -129,4 +130,56 @@ test('the clickable credit index is reachable in both viewers', () => {
   assert.match(css, /\.flat-vhs-back \.title-credits \{/);
   assert.match(app, /const host = detail\.querySelector\('\.flat-vhs-back'\) \|\| detail;/);
   assert.match(app, /button\.dataset\.personId = entry\.id;/);
+});
+
+test('the deep credits panel is hidden by default and toggled by the [mais] affordance', () => {
+  assert.match(app, /function renderTitleCredits\(title, \{ deep = false \} = \{\}\)/);
+  assert.match(app, /const groups = deep \? titleCreditDeepGroups\(title\) : titleCreditGroups\(title\);/);
+  // Rendered hidden; syncTitleCredits never auto-shows it.
+  assert.match(app, /section\.hidden = true;\n    return section;/);
+  assert.match(app, /const section = renderTitleCredits\(title, \{ deep: true \}\);\n    section\.hidden = true;/);
+  assert.match(app, /function toggleTitleCreditsPanel\(force\)/);
+  assert.match(app, /panel\.hidden = nextHidden;/);
+  // Both viewers drive the panel and the person window through the frozen contract.
+  assert.equal((app.match(/onMoreCredits: \(\) => toggleTitleCreditsPanel\(\)/g) || []).length, 2);
+  assert.equal((app.match(/onCreditPerson: \(entry\) => openPerson\(entry\)/g) || []).length, 2);
+});
+
+test('the deep credits listing adds crew department groups from meta.credits.crew', () => {
+  const body = functionBody(app, 'function titleCreditDeepGroups(title)');
+  assert.match(body, /credits\.crew/);
+  assert.match(body, /creditEntries\(credits\.cast, 'Acting', ''\)\.slice\(0, 20\)/);
+  assert.match(body, /CREDIT_PRIMARY_DEPARTMENTS\.includes\(entry\.department\)/);
+  assert.match(body, /departmentLabel\(department\)/);
+  assert.match(body, /DEPARTMENT_LABEL_KEYS\[department\]/);
+  assert.match(app, /heading\.textContent = t\('creditsPanelTitle'\)/);
+});
+
+test('the flat tape back cover renders clickable credit chips plus a [mais] button', () => {
+  assert.match(flat, /onCreditPerson, onMoreCredits, copy = \{\}/);
+  assert.match(flat, /function creditGroup\(value, fallbackDepartment, fallbackJob\)/);
+  assert.match(flat, /const chip = element\('button', 'credit-link', entry\.name\);/);
+  assert.match(flat, /chip\.dataset\.personId = entry\.id;/);
+  assert.match(flat, /chip\.dataset\.department = entry\.department;/);
+  assert.match(flat, /chip\.dataset\.job = entry\.job;/);
+  assert.match(flat, /chip\.addEventListener\('click', \(\) => onCreditPerson\?\.\(entry\)\);/);
+  assert.match(flat, /creditGroup\(currentTitle\.credits\?\.director, 'Directing', 'Director'\)/);
+  assert.match(flat, /creditGroup\(currentTitle\.credits\?\.cast, 'Acting', ''\)/);
+  assert.match(flat, /button\(copy\.moreCredits \|\| 'mais', 'credit-link credits-panel-toggle', \(\) => onMoreCredits\(\)\)/);
+});
+
+test('moreCredits and creditsPanelTitle exist in both locales', () => {
+  assert.equal(COPY['pt-BR'].moreCredits, 'mais');
+  assert.equal(COPY['pt-BR'].creditsPanelTitle, 'Ficha técnica');
+  assert.equal(COPY['en-US'].moreCredits, 'more');
+  assert.equal(COPY['en-US'].creditsPanelTitle, 'Credits');
+});
+
+test('the deep credits panel reuses the restrained Locadora chrome', () => {
+  assert.match(css, /\.credits-panel-toggle \{/);
+  assert.match(css, /\.credits-panel-close \{/);
+  assert.match(css, /\.title-credits-title \{/);
+  // The floating look is kept for the on-demand deep view; flat chips stay inline.
+  assert.match(css, /#title-detail > \.title-credits \{[\s\S]*?position: fixed;/);
+  assert.match(css, /\.flat-vhs-back \.title-credits \{/);
 });

@@ -206,6 +206,67 @@ function drawBarcode(context, value, x, y, width, height) {
   context.textAlign = 'left';
 }
 
+// Credit rows drawn on the tape cover. Each row maps a `title.credits` group to the entry shape
+// consumed by `openPerson()` in app.js. `fallbackKey` is the legacy name array used when ids are absent.
+const CREDIT_GROUPS = [
+  { key: 'director', label: 'directedBy', fallbackKey: 'director', department: 'Directing', job: 'Director', limit: 4 },
+  { key: 'writer', label: 'writtenBy', fallbackKey: 'writer', department: 'Writing', job: 'Writer', limit: 4 },
+  { key: 'cast', label: 'starring', fallbackKey: 'cast', department: 'Acting', job: 'Acting', limit: 10 },
+];
+
+// Returns the clickable entries for a credit group, or [] when the hydrated ids are missing.
+// Cached payloads carry only name arrays, so any group without ids must use the legacy joined string.
+function creditEntries(title, group) {
+  const source = title?.credits?.[group.key];
+  if (!Array.isArray(source) || !source.length) return [];
+  if (!source.every((entry) => entry && entry.id)) return [];
+  return source.slice(0, group.limit).map((entry) => ({
+    id: String(entry.id),
+    name: String(entry.name || '').trim(),
+    department: group.department,
+    job: group.job,
+  })).filter((entry) => entry.name);
+}
+
+// Draws each name as its own run (x=242, maxWidth 710, lineHeight 27, maxLines 2) and records a
+// texture-space hit rect per name, plus a 1px cream underline as the click affordance.
+function drawCreditRuns(context, entries, x, y, maxWidth, lineHeight, maxLines, regions) {
+  const separator = ', ';
+  const limitX = x + maxWidth;
+  let cursorX = x;
+  let cursorY = y;
+  let line = 1;
+  context.fillStyle = LOCADORA_PALETTE.cream;
+  context.font = '700 20px Arial, sans-serif';
+  for (const entry of entries) {
+    const nameWidth = context.measureText(entry.name).width;
+    const separatorWidth = cursorX > x ? context.measureText(separator).width : 0;
+    if (cursorX > x && cursorX + separatorWidth + nameWidth > limitX) {
+      if (line >= maxLines) break;
+      line += 1;
+      cursorY += lineHeight;
+      cursorX = x;
+    }
+    if (cursorX > x) {
+      context.fillText(separator, cursorX, cursorY);
+      cursorX += context.measureText(separator).width;
+    }
+    context.fillText(entry.name, cursorX, cursorY);
+    regions.push({ x: cursorX, y: cursorY - 20, width: nameWidth, height: lineHeight, entry });
+    context.save();
+    context.globalAlpha = 0.45;
+    context.strokeStyle = LOCADORA_PALETTE.cream;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(cursorX, cursorY + 4);
+    context.lineTo(cursorX + nameWidth, cursorY + 4);
+    context.stroke();
+    context.restore();
+    cursorX += nameWidth;
+  }
+  return { x: cursorX, y: cursorY, line };
+}
+
 function drawBack(context, title, atCounter, posterImage = null, backdropImage = null, copy = {}, providerImages = [], savedCollections = new Set(), showSavedActions = false, showBlockAction = false) {
   context.fillStyle = LOCADORA_PALETTE.ink;
   context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
@@ -282,19 +343,29 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
   context.lineTo(952, 1058);
   context.stroke();
 
-  const credits = [
-    [copy.directedBy, names(title.director, 4, copy.notListed)],
-    [copy.writtenBy, names(title.writer, 4, copy.notListed)],
-    [copy.starring, names(title.cast, 10, copy.notListed)],
-  ];
+  const creditLayout = { regions: [], moreCredits: null };
   let y = 1105;
-  for (const [label, value] of credits) {
+  for (const group of CREDIT_GROUPS) {
     context.fillStyle = LOCADORA_PALETTE.yellow;
     context.font = '900 20px Arial Narrow, sans-serif';
-    context.fillText(label, 72, y);
-    context.fillStyle = LOCADORA_PALETTE.cream;
-    context.font = '700 20px Arial, sans-serif';
-    y = wrappedText(context, value, 242, y, 710, 27, 2) + 12;
+    context.fillText(copy[group.label], 72, y);
+    const entries = creditEntries(title, group);
+    if (entries.length) {
+      const end = drawCreditRuns(context, entries, 242, y, 710, 27, 2, creditLayout.regions);
+      if (group.key === 'cast') {
+        const chipLabel = `[${copy.moreCredits || 'mais'}]`;
+        const chipX = end.x + 12;
+        context.fillStyle = LOCADORA_PALETTE.yellow;
+        context.font = '700 20px Arial, sans-serif';
+        context.fillText(chipLabel, chipX, end.y);
+        creditLayout.moreCredits = { x: chipX, y: end.y - 20, width: context.measureText(chipLabel).width, height: 27 };
+      }
+      y = end.y + 27 + 12;
+    } else {
+      context.fillStyle = LOCADORA_PALETTE.cream;
+      context.font = '700 20px Arial, sans-serif';
+      y = wrappedText(context, names(title[group.fallbackKey], group.limit, copy.notListed), 242, y, 710, 27, 2) + 12;
+    }
   }
 
   context.fillStyle = LOCADORA_PALETTE.cream;
@@ -318,6 +389,7 @@ function drawBack(context, title, atCounter, posterImage = null, backdropImage =
     context.stroke();
   }
   context.globalAlpha = 1;
+  return creditLayout;
 }
 
 function inside(rect, x, y) {
@@ -360,7 +432,7 @@ function drawPoster(context, image, title, logoImage = null) {
   context.fillText(`${title.year || 'YEAR UNKNOWN'} · ${String(title.type || 'VIDEO').toUpperCase()}`, 92, 1366);
 }
 
-export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, savedCollections = [], showSavedActions = false, showBlockAction = false, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onWatchLater, onFavorite, onBlock, onClose, copy, performanceProfile = 'default' }) {
+export function createVhsViewer({ container, title, posterUrl, backdropUrl, logoUrl, atCounter, savedCollections = [], showSavedActions = false, showBlockAction = false, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onWatchLater, onFavorite, onBlock, onCreditPerson, onMoreCredits, onClose, copy, performanceProfile = 'default' }) {
   const labels = { noSynopsis: 'No synopsis was included by this catalogue source.', ...copy };
   const tvPerformance = performanceProfile === 'tv' || performanceProfile === 'tv-low';
   const mobilePerformance = tvPerformance || window.matchMedia('(max-width: 760px), (max-width: 900px) and (pointer: coarse)').matches;
@@ -406,7 +478,13 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
   let currentAtCounter = atCounter;
   let currentSavedCollections = new Set(savedCollections);
   let currentShowBlockAction = showBlockAction;
-  const backCanvas = canvasTexture((context) => drawBack(context, title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions, currentShowBlockAction));
+  let creditRegions = [];
+  let moreCreditsRect = null;
+  function applyCreditLayout(layout) {
+    creditRegions = layout.regions;
+    moreCreditsRect = layout.moreCredits;
+  }
+  const backCanvas = canvasTexture((context) => applyCreditLayout(drawBack(context, title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions, currentShowBlockAction)));
   const backMaterial = new THREE.MeshStandardMaterial({ map: backCanvas.texture, roughness: 0.72 });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(3.82, 5.82), backMaterial);
   back.position.z = -0.236;
@@ -429,7 +507,7 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     if (posterImage) drawPoster(frontContext, posterImage, title, logoImage);
     else drawFront(frontContext, title, labels);
     frontCanvas.texture.needsUpdate = true;
-    drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions, currentShowBlockAction);
+    applyCreditLayout(drawBack(backCanvas.canvas.getContext('2d'), title, currentAtCounter, posterImage, backdropImage, labels, providerImages, currentSavedCollections, showSavedActions, currentShowBlockAction));
     backCanvas.texture.needsUpdate = true;
   }
   function loadAsset(name, url) {
@@ -544,6 +622,8 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
     const actions = [ACTIONS.letterboxd, ACTIONS.imdb, ACTIONS.counter, ACTIONS.availability, ACTIONS.watch];
     if (currentShowBlockAction) actions.push(ACTIONS.block);
     if (showSavedActions) actions.push(ACTIONS.watchLater, ACTIONS.favorite);
+    for (const region of creditRegions) actions.push(region);
+    if (moreCreditsRect) actions.push(moreCreditsRect);
     return actions;
   }
 
@@ -636,6 +716,9 @@ export function createVhsViewer({ container, title, posterUrl, backdropUrl, logo
       if (inside(ACTIONS.counter, x, y)) return onCounter();
       if (inside(ACTIONS.availability, x, y)) return onAvailability();
       if (inside(ACTIONS.watch, x, y)) return onWatch();
+      const credit = creditRegions.find((region) => inside(region, x, y));
+      if (credit) return onCreditPerson?.(credit.entry);
+      if (moreCreditsRect && inside(moreCreditsRect, x, y)) return onMoreCredits?.();
     }
   }
 

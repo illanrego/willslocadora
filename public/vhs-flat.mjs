@@ -20,10 +20,24 @@ function list(value, fallback) {
   return values.map((item) => item.trim()).filter(Boolean).join(', ') || fallback;
 }
 
+// Ids first, names as fallback: the tape cover only renders chips when /v1/title carried the
+// additive credits block, so cached/older payloads keep the plain joined string.
+function creditGroup(value, fallbackDepartment, fallbackJob) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry) => entry && entry.id && entry.name)
+    .map((entry) => ({
+      id: String(entry.id),
+      name: String(entry.name),
+      department: String(entry.department || fallbackDepartment || ''),
+      job: String(entry.job != null && entry.job !== '' ? entry.job : (fallbackJob || '')),
+    }));
+}
+
 export function createFlatVhsViewer({
   container, title, posterUrl, backdropUrl, atCounter, savedCollections = [], showSavedActions = false,
   showBlockAction = false, onCounter, onAvailability, onWatch, onLetterboxd, onImdb, onWatchLater,
-  onFavorite, onBlock, copy = {},
+  onFavorite, onBlock, onCreditPerson, onMoreCredits, copy = {},
 }) {
   const root = element('section', 'flat-vhs-viewer');
   root.tabIndex = 0;
@@ -66,6 +80,17 @@ export function createFlatVhsViewer({
     return button(label, `flat-vhs-action ${className}`.trim(), callback);
   }
 
+  // A clickable name on the cover: same data contract as the app's credit chips.
+  function creditChip(entry) {
+    const chip = element('button', 'credit-link', entry.name);
+    chip.type = 'button';
+    chip.dataset.personId = entry.id;
+    chip.dataset.department = entry.department;
+    chip.dataset.job = entry.job;
+    chip.addEventListener('click', () => onCreditPerson?.(entry));
+    return chip;
+  }
+
   function renderBack() {
     const page = element('article', 'flat-vhs-page flat-vhs-back');
     page.dataset.side = 'back';
@@ -90,12 +115,21 @@ export function createFlatVhsViewer({
 
     const providers = currentTitle.availabilityBR?.providers || [];
     const details = element('dl', 'flat-vhs-details');
-    for (const [label, value] of [
-      [copy.whereToWatchBrazil || 'STREAMINGS · BRASIL', providers.join(' · ') || copy.noProviderListing],
-      [copy.directedBy || 'DIREÇÃO', list(currentTitle.director, copy.notListed)],
-      [copy.writtenBy || 'ROTEIRO', list(currentTitle.writer, copy.notListed)],
-      [copy.starring || 'ELENCO', list(currentTitle.cast, copy.notListed)],
-    ]) details.append(element('dt', '', label), element('dd', '', value));
+    details.append(element('dt', '', copy.whereToWatchBrazil || 'STREAMINGS · BRASIL'), element('dd', '', providers.join(' · ') || copy.noProviderListing));
+    const creditRows = [
+      { label: copy.directedBy || 'DIREÇÃO', entries: creditGroup(currentTitle.credits?.director, 'Directing', 'Director'), text: list(currentTitle.director, copy.notListed) },
+      { label: copy.writtenBy || 'ROTEIRO', entries: creditGroup(currentTitle.credits?.writer, 'Writing', 'Writer'), text: list(currentTitle.writer, copy.notListed) },
+      { label: copy.starring || 'ELENCO', entries: creditGroup(currentTitle.credits?.cast, 'Acting', ''), text: list(currentTitle.cast, copy.notListed), more: true },
+    ];
+    for (const row of creditRows) {
+      details.append(element('dt', '', row.label));
+      const dd = element('dd', '', '');
+      if (row.entries.length) for (const entry of row.entries) dd.append(creditChip(entry));
+      else dd.textContent = row.text;
+      // [mais]: the deep listing lives in the app's on-demand panel, not on the cover.
+      if (row.more && currentTitle.credits && typeof onMoreCredits === 'function') dd.append(button(copy.moreCredits || 'mais', 'credit-link credits-panel-toggle', () => onMoreCredits()));
+      details.append(dd);
+    }
 
     const actions = element('div', 'flat-vhs-actions');
     actions.append(
