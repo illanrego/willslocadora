@@ -24,11 +24,10 @@ test('normal browsing exposes compact browse controls without a title-format sel
   assert.doesNotMatch(page, /<aside class="aisle-directory"/);
 });
 
-test('the normal year picker supports both a dropdown and direct typing', () => {
-  assert.match(page, /id="store-year-input"[^>]+type="number"/);
+test('the normal year picker uses a direct dropdown', () => {
   assert.match(page, /id="store-year-select"[^>]+aria-label="Select store year"/);
-  assert.match(app, /\$\('#store-year-input'\)\.addEventListener\('input'/);
   assert.match(app, /\$\('#store-year-select'\)\.addEventListener\('change'/);
+  assert.doesNotMatch(page, /id="year-back"|id="year-forward"|id="store-year-input"/);
   assert.match(css, /\.year-machine select \{/);
 });
 

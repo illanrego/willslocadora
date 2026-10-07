@@ -858,7 +858,6 @@
   function setYear(value, reload = true) {
     state.year = clampStoreYear(value);
     localStorage.setItem('locadora.year', state.year);
-    $('#store-year-input').value = state.year;
     $('#store-year-select').value = String(state.year);
     $('#immersive-year-input').value = state.year;
     $('#immersive-year-select').value = String(state.year);
@@ -867,12 +866,6 @@
       setSettingsStatus(error.message);
     });
     if (reload) loadShelf();
-  }
-
-  function stepYear(offset) {
-    const input = $('#store-year-input');
-    input.value = clampStoreYear(Number(input.value || state.year) + offset);
-    $('#store-year-select').value = input.value;
   }
 
   function selectGenre(index, reload = true) {
@@ -2409,17 +2402,11 @@
     syncLightingControls();
     syncAudioControls('ambience');
     syncAudioControls('music');
-    $('#year-back').addEventListener('click', () => stepYear(-1));
-    $('#year-forward').addEventListener('click', () => stepYear(1));
     $('#year-form').addEventListener('submit', (event) => {
       event.preventDefault();
-      setYear($('#store-year-input').value);
-    });
-    $('#store-year-input').addEventListener('input', (event) => {
-      $('#store-year-select').value = String(event.currentTarget.value);
+      setYear($('#store-year-select').value);
     });
     $('#store-year-select').addEventListener('change', (event) => {
-      $('#store-year-input').value = event.currentTarget.value;
       setYear(event.currentTarget.value);
     });
     $('#immersive-year-input').addEventListener('input', (event) => {

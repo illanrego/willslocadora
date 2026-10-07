@@ -38,7 +38,7 @@ test('server binds to loopback and serves health plus static app', async (t) => 
 
   const page = await fetch(`http://127.0.0.1:${address.port}/`).then((response) => response.text());
   assert.match(page, /Will's Locadora/);
-  assert.match(page, /id="store-year-input"[^>]+type="number"/);
+  assert.match(page, /id="store-year-select"[^>]+aria-label="Select store year"/);
   assert.match(page, /id="year-go"[^>]+data-i18n="go"[^>]*>Ir<\/button>/);
   assert.match(page, /id="locale-toggle"/);
   assert.match(page, /id="provider-checkboxes"/);
