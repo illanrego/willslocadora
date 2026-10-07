@@ -124,6 +124,14 @@ test('person and credit-stand surfaces reuse the restrained Locadora chrome', ()
   assert.match(css, /\.back-to-aisle \{/);
 });
 
+test('person roles are grouped by department and stands are department-level', () => {
+  assert.match(app, /function personRoleGroups\(roles\)/);
+  assert.match(functionBody(app, 'async function openPerson(seed)'), /personState\.roles = personRoleGroups\(person\.roles\);/);
+  // No job filter travels with a stand: every job of the department loads together.
+  assert.match(functionBody(app, 'function normalizeCreditJob()'), /return '';/);
+  assert.match(functionBody(app, 'async function loadPersonTitles('), /const job = normalizeCreditJob\(department, personState\.role\.job\);/);
+});
+
 test('applying the browse menu leaves a credit stand instead of pinning the person', () => {
   assert.match(app, /function leaveCreditStand\(\)/);
   assert.match(functionBody(app, 'function applyNormalMenuFilters()'), /leaveCreditStand\(\);/);

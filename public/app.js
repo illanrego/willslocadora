@@ -50,6 +50,16 @@
     return SORT_OPTIONS.includes(value) ? value : 'relevance';
   }
 
+  // Year is a person-stand order (a filmography reads well chronologically); a genre aisle keeps
+  // relevance or rating, so the year choice is stripped from that context.
+  function sortOptionsForContext() {
+    return state.credit ? SORT_OPTIONS : SORT_OPTIONS.filter((value) => value !== 'year');
+  }
+
+  function effectiveSort() {
+    return sortOptionsForContext().includes(state.sort) ? state.sort : 'relevance';
+  }
+
   function loadLocalSavedTitles() {
     try {
       const saved = JSON.parse(localStorage.getItem('locadora.savedTitles') || '[]');
@@ -769,7 +779,7 @@
   function immersiveVisuals() {
     const genre = genres[state.genreIndex];
     const providers = state.providers.map((id) => state.providerRegistry.find((provider) => provider.id === id)).filter(Boolean);
-    return { theme: getGenreTheme(genre.theme), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers, ignoreStoreYear: state.ignoreStoreYear, sort: state.sort, sortChoices: SORT_OPTIONS.map((value) => [value, t(SORT_LABEL_KEYS[value])]) };
+    return { theme: getGenreTheme(genre.theme), lighting: { ...state.lighting, color: kelvinToRgb(state.lighting.warmth) }, providers, ignoreStoreYear: state.ignoreStoreYear, sort: effectiveSort(), sortChoices: sortOptionsForContext().map((value) => [value, t(SORT_LABEL_KEYS[value])]) };
   }
 
   async function loadProviderRegistry() {
@@ -928,7 +938,15 @@
 
   function syncSortControls() {
     const select = $('#sort-select');
-    if (select) select.value = state.sort;
+    if (!select) return;
+    const current = effectiveSort();
+    select.replaceChildren(...sortOptionsForContext().map((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = t(SORT_LABEL_KEYS[value]);
+      return option;
+    }));
+    select.value = current;
   }
 
   function setSort(value, reload = true) {
@@ -1307,7 +1325,7 @@
         type: state.type,
         stand: state.stand,
         ...immersiveVisuals(),
-        plaqueOptions: { genres: genres.map(genreLabel), go: t('go'), allYears: t('allYears'), allProviders: state.locale === 'pt-BR' ? 'TODOS' : 'ALL', ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0, genreLabel: t('genre'), yearLabel: t('year'), sort: state.sort, sortChoices: SORT_OPTIONS.map((value) => [value, t(SORT_LABEL_KEYS[value])]), sortLabel: t('sort') },
+        plaqueOptions: { genres: genres.map(genreLabel), go: t('go'), allYears: t('allYears'), allProviders: state.locale === 'pt-BR' ? 'TODOS' : 'ALL', ignoreStoreYear: state.ignoreStoreYear, allowAllYears: state.providers.length > 0, genreLabel: t('genre'), yearLabel: t('year'), sort: effectiveSort(), sortChoices: sortOptionsForContext().map((value) => [value, t(SORT_LABEL_KEYS[value])]), sortLabel: t('sort') },
         onConfigure: (draft) => {
           const genreIndex = genres.findIndex((genre) => genreLabel(genre) === draft.genre);
           const genreChanged = genreIndex !== state.genreIndex;
@@ -1494,7 +1512,9 @@
     const providerNames = { netflix: 'Netflix', 'prime-video': 'Prime Video', max: 'Max', 'disney-plus': 'Disney+', globoplay: 'Globoplay', 'paramount-plus': 'Paramount+', 'apple-tv-plus': 'Apple TV+', mubi: 'MUBI', crunchyroll: 'Crunchyroll' };
     const providerLabel = state.providers.map((id) => providerNames[id]).filter(Boolean).join(' + ');
     const yearLabel = state.ignoreStoreYear ? t('allYears') : `${state.year - 19}–${state.year}`;
-    const sortCaption = `${t('sort')}: ${t(SORT_LABEL_KEYS[state.sort])}`;
+    // The available sort choices follow the context: year is a person-stand order only.
+    syncSortControls();
+    const sortCaption = `${t('sort')}: ${t(SORT_LABEL_KEYS[effectiveSort()])}`;
     const credit = state.credit;
     if (credit) {
       $('#shelf-title').textContent = `${t('creditStand')}: ${credit.name}`;
@@ -1527,8 +1547,8 @@
     try {
       const useCreditStand = Boolean(state.credit);
       const params = useCreditStand
-        ? new URLSearchParams({ person: state.credit.id, department: state.credit.department, job: state.credit.job || '', type: state.type, year: state.year, ignoreStoreYear: String(state.ignoreStoreYear), providers: state.credit.allProviders ? '' : state.providers.join(','), stand, sort: state.sort, locale: state.locale })
-        : new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear), sort: state.sort });
+        ? new URLSearchParams({ person: state.credit.id, department: state.credit.department, job: state.credit.job || '', type: state.type, year: state.year, ignoreStoreYear: String(state.ignoreStoreYear), providers: state.credit.allProviders ? '' : state.providers.join(','), stand, sort: effectiveSort(), locale: state.locale })
+        : new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.type, stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear), sort: effectiveSort() });
       const endpoint = useCreditStand ? '/api/credit-stand' : '/api/shelf';
       const body = await api(`${endpoint}?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
@@ -2212,10 +2232,26 @@
     return key ? t(key) : String(department || '');
   }
 
-  function normalizeCreditJob(department, job) {
-    // The contract filters department=Acting exactly and ignores the job there.
-    if (department === 'Acting') return '';
-    return String(job || '').trim();
+  // Stands are department-level: a person's "Writing" work spreads across several TMDB jobs
+  // (Writer, Screenplay, Story, Original Story, Teleplay, ...) and splitting them stranded titles
+  // behind separate near-empty chips, so every credit entry resolves to the department alone.
+  function normalizeCreditJob() {
+    return '';
+  }
+
+  // Role chips group by department and sum the job counts, so "Roteiro" is one button holding the
+  // person's whole writing output instead of six partial ones.
+  function personRoleGroups(roles) {
+    const byDepartment = new Map();
+    for (const role of Array.isArray(roles) ? roles : []) {
+      const department = String(role?.department || '');
+      if (!department) continue;
+      const entry = byDepartment.get(department) || { department, job: '', count: 0 };
+      entry.count += Number(role.count) || 0;
+      byDepartment.set(department, entry);
+    }
+    return [...byDepartment.values()].sort((a, b) => b.count - a.count
+      || (a.department < b.department ? -1 : a.department > b.department ? 1 : 0));
   }
 
   function creditRoleLabel(credit) {
@@ -2518,7 +2554,7 @@
         personState.name = person.name || personState.name;
         personState.profile = person.profile || personState.profile;
         personState.knownFor = person.knownFor || '';
-        personState.roles = Array.isArray(person.roles) ? person.roles : [];
+        personState.roles = personRoleGroups(person.roles);
         const match = personState.roles.find((role) => role.department === personState.role.department)
           || (personState.role.department ? null : personState.roles[0]);
         if (match) personState.role = { department: match.department, job: normalizeCreditJob(match.department, match.job) };

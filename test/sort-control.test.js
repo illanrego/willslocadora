@@ -16,14 +16,21 @@ function functionBody(source, signature) {
 }
 
 test('the 2D browse menu carries a sort select applied by Ir, never on its own', () => {
-  assert.match(page, /<select id="sort-select" aria-label="Sort by">/);
-  assert.match(page, /<option value="relevance" data-i18n="sortRelevance">/);
-  assert.match(page, /<option value="year" data-i18n="sortYear">/);
-  assert.match(page, /<option value="rating" data-i18n="sortRating">/);
-  assert.match(page, /data-i18n="sort">/);
+  assert.match(page, /<select id="sort-select" aria-label="Sort by" data-i18n-aria-label="sort"><\/select>/);
+  assert.match(page, /<span data-i18n="sort">/);
   // The year machine's Ir button submits the form; the sort select must not self-apply on change.
   assert.match(app, /\$\('#year-form'\)\.addEventListener\('submit'[\s\S]*?applyNormalMenuFilters\(\)/);
   assert.doesNotMatch(app, /\$\('#sort-select'\)\.addEventListener\('change'/);
+});
+
+test('the sort choices follow the context: year is a person-stand order only', () => {
+  assert.match(app, /function sortOptionsForContext\(\) \{\s*return state\.credit \? SORT_OPTIONS : SORT_OPTIONS\.filter\(\(value\) => value !== 'year'\);\s*\}/);
+  assert.match(app, /function effectiveSort\(\) \{\s*return sortOptionsForContext\(\)\.includes\(state\.sort\) \? state\.sort : 'relevance';\s*\}/);
+  // The select is rebuilt from the context on every shelf load, so the option set always matches.
+  const body = functionBody(app, 'function syncSortControls()');
+  assert.match(body, /select\.replaceChildren\(\.\.\.sortOptionsForContext\(\)\.map\(/);
+  assert.match(body, /select\.value = current;/);
+  assert.match(functionBody(app, 'async function loadShelf('), /syncSortControls\(\);/);
 });
 
 test('applyNormalMenuFilters reads the sort select, applies it, and leaves a credit stand', () => {
@@ -44,21 +51,20 @@ test('state.sort persists in localStorage and is re-read on load', () => {
   assert.match(body, /localStorage\.setItem\('locadora\.sort', state\.sort\);/);
   assert.match(body, /syncSortControls\(\);/);
   assert.match(body, /if \(reload\) loadShelf\(\);/);
-  assert.match(functionBody(app, 'function syncSortControls()'), /if \(select\) select\.value = state\.sort;/);
   assert.match(app, /syncProviderControls\(\);\s*syncSortControls\(\);/);
 });
 
-test('loadShelf sends sort on both the shelf and the credit-stand request branches', () => {
+test('loadShelf sends the effective sort on both the shelf and the credit-stand branches', () => {
   const body = functionBody(app, 'async function loadShelf(');
   const creditLine = body.match(/new URLSearchParams\(\{ person:[\s\S]*?\}\)/)?.[0] || '';
   const shelfLine = body.match(/new URLSearchParams\(\{ genre:[\s\S]*?\}\)/)?.[0] || '';
-  assert.match(creditLine, /sort: state\.sort/);
-  assert.match(shelfLine, /sort: state\.sort/);
+  assert.match(creditLine, /sort: effectiveSort\(\)/);
+  assert.match(shelfLine, /sort: effectiveSort\(\)/);
 });
 
 test('the shelf caption shows the active sort for aisles and credit stands', () => {
   const body = functionBody(app, 'async function loadShelf(');
-  assert.match(body, /const sortCaption = `\$\{t\('sort'\)\}: \$\{t\(SORT_LABEL_KEYS\[state\.sort\]\)\}`;/);
+  assert.match(body, /const sortCaption = `\$\{t\('sort'\)\}: \$\{t\(SORT_LABEL_KEYS\[effectiveSort\(\)\]\)\}`;/);
   assert.match(body, /\$\('#shelf-caption'\)\.textContent = `\$\{creditRoleLabel\(credit\)\} · \$\{yearLabel\} · \$\{sortCaption\}`;/);
   assert.match(body, /\$\('#shelf-caption'\)\.textContent = `\$\{t\('aisle'\)\} \$\{aisle\}[\s\S]*?· \$\{sortCaption\}`;/);
 });
@@ -75,10 +81,10 @@ test('the 3D plaque exposes a third sort field wired to the same setSort', () =>
   // Visual refreshes carry the sort value and localized labels.
   assert.match(immersive, /if \(plaqueOptions && Array\.isArray\(nextVisuals\.sortChoices\)\) plaqueOptions\.sortChoices = nextVisuals\.sortChoices;/);
   assert.match(immersive, /if \(typeof nextVisuals\.sort === 'string'\) draft\.sort = nextVisuals\.sort;/);
-  // app.js mounts the plaque with the sort field and applies it through setSort.
-  assert.match(app, /plaqueOptions: \{[\s\S]*?sort: state\.sort, sortChoices: SORT_OPTIONS\.map\(\(value\) => \[value, t\(SORT_LABEL_KEYS\[value\]\)\]\), sortLabel: t\('sort'\) \}/);
+  // app.js mounts the plaque with the context's sort field and applies it through setSort.
+  assert.match(app, /plaqueOptions: \{[\s\S]*?sort: effectiveSort\(\), sortChoices: sortOptionsForContext\(\)\.map\(\(value\) => \[value, t\(SORT_LABEL_KEYS\[value\]\)\]\), sortLabel: t\('sort'\) \}/);
   assert.match(app, /onConfigure: \(draft\) => \{[\s\S]*?const sortChanged = normalizeSort\(draft\.sort\) !== state\.sort;[\s\S]*?if \(genreChanged \|\| yearChanged \|\| sortChanged\) leaveCreditStand\(\);[\s\S]*?setSort\(draft\.sort, false\);/);
-  assert.match(app, /sort: state\.sort, sortChoices: SORT_OPTIONS\.map\(\(value\) => \[value, t\(SORT_LABEL_KEYS\[value\]\)\]\) \}/);
+  assert.match(app, /sort: effectiveSort\(\), sortChoices: sortOptionsForContext\(\)\.map\(\(value\) => \[value, t\(SORT_LABEL_KEYS\[value\]\)\]\) \}/);
 });
 
 test('sort copy exists in both locales', () => {
