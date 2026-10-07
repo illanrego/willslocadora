@@ -131,7 +131,9 @@
       localeToggle.setAttribute('aria-label', t(nextLocale === 'pt-BR' ? 'portuguese' : 'english'));
     });
     $('#genre-select').value = String(state.genreIndex);
-    $('#genre-select').querySelectorAll('option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
+    for (const select of [$('#genre-select'), $('#immersive-genre-select')]) {
+      select.querySelectorAll('option').forEach((option, index) => { option.textContent = genreLabel(genres[index]); });
+    }
     $('#shelf-title').textContent = genreLabel(genres[state.genreIndex]);
     sessionSupport.refreshLocale();
     state.metadata.clear();
@@ -858,6 +860,8 @@
     localStorage.setItem('locadora.year', state.year);
     $('#store-year-input').value = state.year;
     $('#store-year-select').value = String(state.year);
+    $('#immersive-year-input').value = state.year;
+    $('#immersive-year-select').value = String(state.year);
     storeAudio?.setYear(state.year).catch((error) => {
       syncAudioControls('music', false);
       setSettingsStatus(error.message);
@@ -875,6 +879,7 @@
     state.genreIndex = index;
     localStorage.setItem('locadora.genre', index);
     $('#genre-select').value = String(index);
+    $('#immersive-genre-select').value = String(index);
     if (reload) loadShelf();
   }
 
@@ -916,6 +921,23 @@
     localStorage.setItem('locadora.ignoreStoreYear', String(state.ignoreStoreYear));
     syncProviderControls();
     if (reload) loadShelf();
+  }
+
+  function applyImmersiveFilters() {
+    const year = $('#immersive-year-input').value;
+    const genreIndex = Number($('#immersive-genre-select').value);
+    const providers = selectedProviderIds($('#immersive-provider-checkboxes'));
+    const ignoreStoreYear = $('#immersive-ignore-store-year').checked;
+    const yearChanged = clampStoreYear(year) !== state.year;
+    const genreChanged = genreIndex !== state.genreIndex;
+    const providerChanged = providers.join(',') !== state.providers.join(',');
+    const ignoreChanged = ignoreStoreYear !== state.ignoreStoreYear;
+    if (!yearChanged && !genreChanged && !providerChanged && !ignoreChanged) return;
+    if (yearChanged) setYear(year, false);
+    if (genreChanged) selectGenre(genreIndex, false);
+    if (providerChanged) setProviders(providers, false);
+    if (ignoreChanged) setIgnoreStoreYear(ignoreStoreYear, false);
+    loadShelf();
   }
 
   function renderSkeletons() {
@@ -1215,11 +1237,13 @@
         onSwipe: (direction) => { if (direction < 0) goToPreviousStand(); else goToNextStand(); },
       });
       stage.querySelector('.immersive-canvas')?.focus();
+      $('#immersive-browse-panel').classList.add('plaque-keyboard-controls');
       $('#immersive-status').textContent = state.titles.length ? `Stand ${state.stand + 1} · ${Math.min(state.titles.length, 40)} ${t('tapesFound')}` : t('emptyTitle');
       syncImmersiveStandControls();
       hydrateTapeLogos();
     } catch (error) {
       if (token !== immersiveToken) return;
+      $('#immersive-browse-panel').classList.remove('plaque-keyboard-controls');
       setMode('normal');
       $('#shelf-status').textContent = 'O modo 3D não está disponível. Você voltou para a estante 2D.';
     }
@@ -2348,21 +2372,26 @@
 
   function wireEvents() {
     const genreSelect = $('#genre-select');
+    const immersiveGenreSelect = $('#immersive-genre-select');
     genres.forEach((genre, index) => {
-      const option = document.createElement('option');
-      option.value = index;
-      option.textContent = genreLabel(genre);
-      genreSelect.append(option);
+      for (const select of [genreSelect, immersiveGenreSelect]) {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = genreLabel(genre);
+        select.append(option);
+      }
     });
     genreSelect.value = String(state.genreIndex);
-    const yearSelect = $('#store-year-select');
-    for (let year = 2026; year >= 1920; year -= 1) {
-      const option = document.createElement('option');
-      option.value = String(year);
-      option.textContent = String(year);
-      yearSelect.append(option);
+    immersiveGenreSelect.value = String(state.genreIndex);
+    for (const yearSelect of [$('#store-year-select'), $('#immersive-year-select')]) {
+      for (let year = 2026; year >= 1920; year -= 1) {
+        const option = document.createElement('option');
+        option.value = String(year);
+        option.textContent = String(year);
+        yearSelect.append(option);
+      }
+      yearSelect.value = String(state.year);
     }
-    yearSelect.value = String(state.year);
     document.querySelectorAll('[data-locale-toggle]').forEach((button) => {
       button.addEventListener('click', () => {
         state.locale = state.locale === 'pt-BR' ? 'en-US' : 'pt-BR';
@@ -2375,6 +2404,7 @@
     $('#mobile-menu-toggle').addEventListener('click', () => {
       setMobileMenu(!$('#store-header').classList.contains('is-mobile-menu-open'));
     });
+    $('#immersive-year-input').value = state.year;
     syncProviderControls();
     syncLightingControls();
     syncAudioControls('ambience');
@@ -2392,10 +2422,17 @@
       $('#store-year-input').value = event.currentTarget.value;
       setYear(event.currentTarget.value);
     });
+    $('#immersive-year-input').addEventListener('input', (event) => {
+      $('#immersive-year-select').value = String(event.currentTarget.value);
+    });
+    $('#immersive-year-select').addEventListener('change', (event) => {
+      $('#immersive-year-input').value = event.currentTarget.value;
+    });
     genreSelect.addEventListener('change', (event) => selectGenre(Number(event.currentTarget.value)));
     $('#normal-filters-toggle').addEventListener('click', () => setNormalFilters($('#normal-provider-filters').hidden));
     $('#normal-settings-toggle').addEventListener('click', () => setNormalSettings($('#normal-settings').hidden));
     setNormalFilters(!state.providerPreferenceSet);
+    $('#immersive-go').addEventListener('click', applyImmersiveFilters);
     $('#provider-checkboxes').addEventListener('change', handleProviderChange);
     $('#immersive-provider-checkboxes').addEventListener('change', handleProviderChange);
     $('#account-provider-checkboxes').addEventListener('change', handleProviderChange);

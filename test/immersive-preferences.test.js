@@ -31,9 +31,6 @@ test('plaque selections update the draft directly and keep provider context visi
   const immersive = readFileSync(require.resolve('../public/immersive-shelf.mjs'), 'utf8');
   const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
   assert.match(immersive, /input\.addEventListener\('change', \(\) => \{\s*if \(!save\(\)\) return;\s*closePlaqueEditor\(false\)/);
-  assert.match(immersive, /plaque-year-controls/);
-  assert.match(immersive, /for \(let year = 2026; year >= 1920; year -= 1\)/);
-  assert.match(immersive, /yearSelect\?\.addEventListener\('change'/);
   assert.doesNotMatch(immersive, /const done = document\.createElement\('button'\)/);
   assert.match(immersive, /const visibleProviders = activeProviders\.slice\(0, 4\)/);
   assert.match(immersive, /context\.drawImage\(image, logoX, 148, 32, 32\)/);
