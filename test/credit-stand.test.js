@@ -121,3 +121,12 @@ test('person and credit-stand surfaces reuse the restrained Locadora chrome', ()
   assert.match(css, /\.credit-link \{/);
   assert.match(css, /\.back-to-aisle \{/);
 });
+
+test('the clickable credit index is reachable in both viewers', () => {
+  // The 3D inspector draws its credits on the tape texture, so the DOM index must float over the
+  // stage instead of landing below a full-height canvas inside an overflow:hidden dialog.
+  assert.match(css, /#title-detail > \.title-credits \{[\s\S]*?position: fixed;/);
+  assert.match(css, /\.flat-vhs-back \.title-credits \{/);
+  assert.match(app, /const host = detail\.querySelector\('\.flat-vhs-back'\) \|\| detail;/);
+  assert.match(app, /button\.dataset\.personId = entry\.id;/);
+});

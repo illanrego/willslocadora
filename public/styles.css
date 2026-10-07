@@ -628,6 +628,21 @@ dialog.panel-dialog {
   border-radius: 4px;
   background: rgba(16, 24, 39, .5);
 }
+/* 3D inspector: the tape carries the credits as art, so the clickable index floats over the stage. */
+#title-detail > .title-credits {
+  position: fixed;
+  z-index: 6;
+  top: max(.75rem, env(safe-area-inset-top));
+  left: max(.75rem, env(safe-area-inset-left));
+  width: min(560px, calc(100% - 6.5rem));
+  max-height: min(46vh, 320px);
+  margin: 0;
+  overflow: auto;
+  background: rgba(16, 24, 39, .94);
+  box-shadow: 3px 4px 0 rgba(0, 0, 0, .45);
+}
+/* Flat (no-WebGL) viewer: the same chips sit inside the back cover, under the details list. */
+.flat-vhs-back .title-credits { width: auto; margin: .8rem 0 0; background: rgba(16, 24, 39, .72); }
 .title-credits[hidden] { display: none; }
 .title-credits-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .6rem; }
 .title-credits-label { color: var(--yellow); font: 900 .68rem/1.4 "Courier New", monospace; letter-spacing: .08em; text-transform: uppercase; }

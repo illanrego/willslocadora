@@ -2267,10 +2267,12 @@
   }
 
   function syncTitleCredits(detail, title) {
-    const current = detail.querySelector('.title-credits');
-    const next = renderTitleCredits(title);
-    if (current) current.replaceWith(next);
-    else detail.append(next);
+    // The 3D inspector paints its credits onto the tape texture, so the clickable index floats
+    // over the stage (see #title-detail > .title-credits); the flat no-WebGL viewer hosts the same
+    // chips inside its back cover. Re-homing on every sync keeps that true when the viewer changes.
+    const host = detail.querySelector('.flat-vhs-back') || detail;
+    detail.querySelector('.title-credits')?.remove();
+    host.append(renderTitleCredits(title));
   }
 
   function renderPersonSummary() {
@@ -2647,6 +2649,8 @@
           onBlock: () => { if (activeViewerTitle) blockCatalogueTitle(activeViewerTitle, ownerAction); },
         });
         syncTitleOwnerAction();
+        // The flat back cover exists now, so move the credit chips inside it.
+        syncTitleCredits(detail, title);
       } catch (fallbackError) {
         stage.classList.add('vhs-stage-error');
         const notice = document.createElement('p'); notice.textContent = `The tape could not be loaded: ${fallbackError.message || error.message}`;
