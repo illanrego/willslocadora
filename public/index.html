@@ -505,7 +505,10 @@
   <dialog id="person-dialog" class="panel-dialog person-dialog" aria-labelledby="person-dialog-heading">
     <form method="dialog" class="panel-header">
       <div><span class="eyebrow" data-i18n="creditStand">Estante</span><h2 id="person-dialog-heading" data-i18n="creditsOf">Filmografia de</h2></div>
-      <button class="dialog-close" value="close" aria-label="Fechar" data-i18n-aria-label="close">×</button>
+      <div class="person-header-actions">
+        <button id="person-view-stand" class="account-action" type="button" data-i18n="viewAsStand" disabled>Ver como estante</button>
+        <button class="dialog-close" value="close" aria-label="Fechar" data-i18n-aria-label="close">×</button>
+      </div>
     </form>
     <section class="person-card">
       <img id="person-photo" class="person-photo" alt="" loading="lazy" hidden>
@@ -518,7 +521,6 @@
     <p id="person-status" class="panel-copy" role="status" aria-live="polite"></p>
     <div id="person-titles" class="counter-list"></div>
     <div class="person-actions">
-      <button id="person-view-stand" class="account-action" type="button" data-i18n="viewAsStand" disabled>Ver como estante</button>
       <form method="dialog" class="person-close-form"><button class="account-action account-secondary-action" value="close" data-i18n="close">Fechar</button></form>
     </div>
   </dialog>
