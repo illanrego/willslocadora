@@ -49,6 +49,15 @@ body:not(.is-immersive) .year-machine select { min-height: 40px; height: 40px; m
 body:not(.is-immersive) .year-machine button { padding: .45rem; }
 body:not(.is-immersive) .browse-menu .normal-filters-toggle { grid-column: 3; order: 0; min-height: 40px; }
 body:not(.is-immersive) .normal-provider-filters { grid-column: 1 / -1; width: 100%; }
+/* Keep the three 2D menu controls on one line: the year machine is declared in column 2
+   but follows the col-3 toggle in the DOM, so auto-placement bumps it to row 2 and the
+   year picker drops out of line with the genre picker. Pin the rows instead. */
+@media (min-width: 681px) {
+  body:not(.is-immersive) .browse-menu .browse-select,
+  body:not(.is-immersive) .browse-menu .year-machine,
+  body:not(.is-immersive) .browse-menu .normal-filters-toggle { grid-row: 1; }
+  body:not(.is-immersive) .browse-menu .normal-provider-filters { grid-row: 2; }
+}
 body:not(.is-immersive) .normal-settings { background: #203958; border-top: 1px dashed #ffffff36; border-bottom: 0; }
 body:not(.is-immersive) .normal-settings .audio-setting { background: #203958; }
 body:not(.is-immersive) .rental-intro { margin: 0; padding: .72rem 1rem; color: #22180c; background: var(--yellow); border: 0; text-align: center; font: 800 .72rem/1.4 "Courier New", monospace; letter-spacing: .04em; }
