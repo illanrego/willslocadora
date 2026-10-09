@@ -148,6 +148,37 @@ test('local TMDB client pages a credit stand at 40 titles', async () => {
   assert.equal(second.hasNextStand, false);
 });
 
+function mixedCreditFixture() {
+  return {
+    id: 138, name: 'Mixed', known_for_department: 'Acting', profile_path: '/mixed.jpg',
+    combined_credits: {
+      cast: [
+        { id: 801, media_type: 'movie', title: 'Movie One', release_date: '1990-01-01', vote_count: 100, popularity: 10 },
+        { id: 802, media_type: 'tv', name: 'Show One', first_air_date: '2005-01-01', vote_count: 300, popularity: 30 },
+        { id: 803, media_type: 'movie', title: 'Movie Two', release_date: '1995-01-01', vote_count: 200, popularity: 20 },
+        { id: 804, media_type: 'tv', name: 'Show Two', first_air_date: '2000-01-01', vote_count: 400, popularity: 40 },
+      ],
+      crew: [],
+    },
+  };
+}
+
+test('local TMDB client orders a credit stand with a person movies before their series', async () => {
+  const client = createTmdbClient({ apiKey: 'test-key', fetchImpl: stub({ personData: mixedCreditFixture() }) });
+  const base = { person: '138', department: 'Acting', type: 'all', year: 2020, ignoreStoreYear: true };
+
+  // Every movie precedes every series; each group keeps the requested sort internally.
+  const relevance = await client.personCreditStand({ ...base, sort: 'relevance' });
+  assert.deepEqual(relevance.titles.map((title) => title.id), ['tmdb:803', 'tmdb:801', 'tmdb:804', 'tmdb:802']);
+
+  const year = await client.personCreditStand({ ...base, sort: 'year' });
+  assert.deepEqual(year.titles.map((title) => title.id), ['tmdb:803', 'tmdb:801', 'tmdb:802', 'tmdb:804']);
+
+  // A single-type stand is unchanged: only movies, still in the requested order.
+  const movieOnly = await client.personCreditStand({ ...base, type: 'movie', sort: 'relevance' });
+  assert.deepEqual(movieOnly.titles.map((title) => title.id), ['tmdb:803', 'tmdb:801']);
+});
+
 test('local server exposes person and credit-stand routes with Worker-shaped validation', async (t) => {
   const client = createTmdbClient({ apiKey: 'test-key', fetchImpl: stub({ personData: tarantinoFixture() }) });
   const server = createServer({ catalogue: { listSources: () => [], tmdbClient: client } });

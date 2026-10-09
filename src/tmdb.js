@@ -25,6 +25,10 @@ const TMDB_TV_GENRE_NAMES = Object.freeze({
 const PREFERRED_PROVIDER_IDS = Object.freeze({ 'Amazon Prime Video': 119 });
 // Rating sorts on discover need a vote-count floor so low-vote titles do not win; mirrors the Worker.
 const RATING_VOTE_FLOOR = 200;
+// A merged (type=all) stand is movie-first: up to 30 movies from two discover pages, then up to 10
+// series from one page, always after the movies. Mirrors the Worker.
+const MERGED_MOVIE_CAP = 30;
+const MERGED_SERIES_CAP = 10;
 
 function normalizeLocale(locale) {
   return SUPPORTED_LOCALES.has(locale) ? locale : 'pt-BR';
@@ -108,35 +112,6 @@ function shelfSortBy(sort, dateKey) {
   if (sort === 'year') return `${dateKey}.desc`;
   if (sort === 'rating') return 'vote_average.desc';
   return 'popularity.desc';
-}
-
-// Explicit total order for a merged movie+TV candidate pool (type=all). Discover sorts each type on
-// its own, so merging without re-sorting interleaves the two lists wrongly. Mirrors the Worker's
-// comparator.
-function mergedShelfCompare(a, b, sort) {
-  const dateA = String(a.title.release_date || a.title.first_air_date || '');
-  const dateB = String(b.title.release_date || b.title.first_air_date || '');
-  if (sort === 'year') {
-    if (dateA !== dateB) return dateA < dateB ? 1 : -1;
-    const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
-    if (popularity) return popularity;
-    return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
-  }
-  if (sort === 'rating') {
-    const rating = (Number(b.title.vote_average) || 0) - (Number(a.title.vote_average) || 0);
-    if (rating) return rating;
-    const votes = (Number(b.title.vote_count) || 0) - (Number(a.title.vote_count) || 0);
-    if (votes) return votes;
-    const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
-    if (popularity) return popularity;
-    return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
-  }
-  const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
-  if (popularity) return popularity;
-  const votes = (Number(b.title.vote_count) || 0) - (Number(a.title.vote_count) || 0);
-  if (votes) return votes;
-  if (dateA !== dateB) return dateA < dateB ? 1 : -1;
-  return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
 }
 
 function isSelfCharacter(character) {
@@ -272,9 +247,10 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     const requestedLocale = normalizeLocale(locale);
     const selectedProviderIds = [...new Set(providerIds.map(Number).filter(Number.isInteger))];
     const names = providerNames.length ? providerNames : [providerName];
-    // `all` runs the movie and TV discover queries side by side, each with its own genre map/date key.
-    const tmdbTypes = type === 'all' ? ['movie', 'tv'] : [type === 'series' ? 'tv' : 'movie'];
-    const loadType = async (tmdbType) => {
+    // Each `loadType` fetch already carries its own genre map and date key. A single-type shelf takes
+    // the same `stand * 2 + 1` / `+ 2` page stride the Worker uses; the merged `all` shelf gives the
+    // movie block those two pages and the series block one tv page.
+    const loadType = async (tmdbType, pageNumbers) => {
       let ids = selectedProviderIds;
       if (!ids.length && providerName) {
         const provider = await providerId(tmdbType, providerName, requestedLocale);
@@ -299,30 +275,36 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
         if (genreIds.length) query.set('with_genres', genreIds.join('|'));
         return request(`/discover/${tmdbType}?${query}`, requestedLocale);
       };
-      // Single-type shelves fetch two pages (20 each) to fill one stand; the merged `all` shelf
-      // fetches one page per type so both lists stay inside the same two-discover budget.
-      const firstPage = Math.max(1, type === 'all' ? Number(page) + 1 : Number(page) * 2 + 1);
-      const pageNumbers = type === 'all' ? [firstPage] : [firstPage, firstPage + 1];
       const pages = await Promise.all(pageNumbers.map(fetchPage));
       const publicType = tmdbType === 'tv' ? 'series' : 'movie';
       return pages.flatMap((result) => (result.results || []).map((title) => ({ tmdbType, publicType, title })));
     };
-    const groups = await Promise.all(tmdbTypes.map(loadType));
-    let candidates;
-    if (type === 'all') {
-      // Explicit re-sort: discover ordering is per type, so a bare merge would interleave wrongly.
-      const merged = groups.flat().sort((a, b) => mergedShelfCompare(a, b, sort));
+    const dedupeCandidates = (results) => {
       const seen = new Set();
-      candidates = [];
-      for (const candidate of merged) {
+      const unique = [];
+      for (const candidate of results) {
         const key = `${candidate.publicType}:${candidate.title.id}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        candidates.push(candidate);
-        if (candidates.length >= 40) break;
+        unique.push(candidate);
       }
+      return unique;
+    };
+    let candidates;
+    if (type === 'all') {
+      // Movies are the priority: up to MERGED_MOVIE_CAP from two discover pages, then up to
+      // MERGED_SERIES_CAP series from one page, always after every movie. No cross-type re-sort.
+      const firstMoviePage = Math.max(1, Number(page) * 2 + 1);
+      const [movieResults, tvResults] = await Promise.all([
+        loadType('movie', [firstMoviePage, firstMoviePage + 1]),
+        loadType('tv', [Math.max(1, Number(page) + 1)]),
+      ]);
+      const movies = dedupeCandidates(movieResults).slice(0, MERGED_MOVIE_CAP);
+      candidates = [...movies, ...dedupeCandidates(tvResults).slice(0, MERGED_SERIES_CAP)];
     } else {
-      candidates = groups[0] || [];
+      const tmdbType = type === 'series' ? 'tv' : 'movie';
+      const firstPage = Math.max(1, Number(page) * 2 + 1);
+      candidates = await loadType(tmdbType, [firstPage, firstPage + 1]);
     }
     const imdbIds = await mapWithConcurrency(candidates, async (candidate) => {
       try {
@@ -385,6 +367,10 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     const total = deduped.length;
     // Reorder the filmography before the window is sliced so paging stays monotone for every sort.
     let ordered = sortCredits(deduped, sort);
+    // Movies are the priority of a credit stand too: group the two media types (movies first), each
+    // group keeping the requested sort. A single-type stand holds one media type, so this is a no-op.
+    ordered = [...ordered.filter((entry) => normalizedCreditType(entry.item.media_type) === 'movie'),
+      ...ordered.filter((entry) => normalizedCreditType(entry.item.media_type) === 'series')];
     if (!ignoreStoreYear) {
       const span = providers.length ? 19 : 4;
       ordered = ordered.filter((entry) => {

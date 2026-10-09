@@ -417,7 +417,7 @@ test('fetchStoreShelf requests the next catalogue pages for a later stand', asyn
   assert.deepEqual(titles.map((item) => item.id), ['h-100', 'h-150']);
 });
 
-test('TMDB merges movie and TV discovery for a mixed type=all provider shelf', async () => {
+test('TMDB puts movies first in a mixed type=all provider shelf', async () => {
   const requests = [];
   const client = createTmdbClient({
     apiKey: 'test-key',
@@ -440,20 +440,20 @@ test('TMDB merges movie and TV discovery for a mixed type=all provider shelf', a
 
   const titles = await client.discoverProviderShelf({ year: 2010, genres: ['Sci-Fi'], type: 'all', providerIds: [8], providerNames: ['Netflix'], page: 0, sort: 'year' });
 
-  // Merged and re-sorted across both types by release date (newest first).
+  // Movies stay ahead of series, each block in its own discover (release-date desc) order; the movie
+  // block ran short of 30, so the series block fills in.
   assert.deepEqual(titles.map((title) => [title.id, title.type]), [
-    ['tmdb:601', 'series'], ['tmdb:501', 'movie'], ['tmdb:502', 'movie'], ['tmdb:602', 'series'],
+    ['tmdb:501', 'movie'], ['tmdb:502', 'movie'], ['tmdb:601', 'series'], ['tmdb:602', 'series'],
   ]);
   assert.deepEqual(titles[0].genres, ['Sci-Fi']);
 
-  // One discover page per type, each with its own genre map and date key.
+  // Two movie discover pages plus one tv page, each with its own genre map and date key.
   const discover = requests.filter((url) => url.pathname.startsWith('/3/discover/'));
-  assert.equal(discover.length, 2);
-  const movieDiscover = discover.find((url) => url.pathname === '/3/discover/movie');
+  assert.equal(discover.length, 3);
+  const movieDiscover = discover.filter((url) => url.pathname === '/3/discover/movie');
   const tvDiscover = discover.find((url) => url.pathname === '/3/discover/tv');
-  assert.equal(movieDiscover.searchParams.get('page'), '1');
-  assert.equal(movieDiscover.searchParams.get('sort_by'), 'primary_release_date.desc');
-  assert.equal(movieDiscover.searchParams.get('with_genres'), '878');
+  assert.deepEqual(movieDiscover.map((url) => url.searchParams.get('page')).sort(), ['1', '2']);
+  assert.ok(movieDiscover.every((url) => url.searchParams.get('sort_by') === 'primary_release_date.desc' && url.searchParams.get('with_genres') === '878'));
   assert.equal(tvDiscover.searchParams.get('page'), '1');
   assert.equal(tvDiscover.searchParams.get('sort_by'), 'first_air_date.desc');
   assert.equal(tvDiscover.searchParams.get('with_genres'), '10765');

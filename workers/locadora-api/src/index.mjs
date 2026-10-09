@@ -4,10 +4,15 @@ const TMDB_ROOT = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_HOST = 'image.tmdb.org';
 const CATALOGUE_POLICY_KEY = 'catalogue-policy-v1';
 const MAX_TITLES = 40;
+// A merged (type=all) stand is movie-first: the movie block takes up to MERGED_MOVIE_CAP titles from
+// two discover pages, then up to MERGED_SERIES_CAP series follow it. Series are strictly an overflow
+// block after the movies, never interleaved with them.
+const MERGED_MOVIE_CAP = 30;
+const MERGED_SERIES_CAP = 10;
 // Part of every edge cache key: bump it when a response shape or ordering changes, so a deploy
 // stops serving the previous behaviour from cache instead of waiting out the TTL (a day for most
 // endpoints).
-const CACHE_SCHEMA = 3;
+const CACHE_SCHEMA = 4;
 const LOCALES = new Set(['pt-BR', 'en-US']);
 // Departments surfaced as credit-stand roles. Kept in sync with the frozen contract.
 const CREDIT_DEPARTMENTS = new Set(['Acting', 'Directing', 'Writing', 'Camera', 'Editing', 'Visual Effects', 'Sound', 'Art', 'Production', 'Music', 'Costume & Make-Up', 'Lighting']);
@@ -327,6 +332,11 @@ async function creditStand(filters, env, fetchImpl, cataloguePolicy, ctx) {
   // Reorder the whole filmography BEFORE the candidate window is sliced so every stand page reads
   // from the same monotone order and paging never repeats or skips a title.
   let ordered = sortCredits(deduped, sort);
+  // Movies are the priority of a credit stand too: group the two media types (movies first) instead
+  // of leaving them interleaved, each group keeping the requested sort internally. A single-type
+  // stand holds one media type, so this leaves type=movie / type=series byte-identical.
+  ordered = [...ordered.filter((entry) => normalizedCreditType(entry.item.media_type) === 'movie'),
+    ...ordered.filter((entry) => normalizedCreditType(entry.item.media_type) === 'series')];
   if (!ignoreStoreYear) {
     const span = providers.length ? 19 : 4;
     ordered = ordered.filter((entry) => {
@@ -417,45 +427,18 @@ function createTmdb(env, fetchImpl) {
   return { request };
 }
 
-// Explicit total order for a merged movie+TV candidate pool. Discover already sorts each type on
-// its own, so merging without re-sorting interleaves the two lists wrongly. Mirrors sortCredits'
-// shape: the requested key first, then stable tie-breakers ending on TMDB id asc.
-function mergedShelfCompare(a, b, sort) {
-  const dateA = String(a.title.release_date || a.title.first_air_date || '');
-  const dateB = String(b.title.release_date || b.title.first_air_date || '');
-  if (sort === 'year') {
-    if (dateA !== dateB) return dateA < dateB ? 1 : -1;
-    const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
-    if (popularity) return popularity;
-    return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
-  }
-  if (sort === 'rating') {
-    const rating = (Number(b.title.vote_average) || 0) - (Number(a.title.vote_average) || 0);
-    if (rating) return rating;
-    const votes = (Number(b.title.vote_count) || 0) - (Number(a.title.vote_count) || 0);
-    if (votes) return votes;
-    const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
-    if (popularity) return popularity;
-    return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
-  }
-  const popularity = (Number(b.title.popularity) || 0) - (Number(a.title.popularity) || 0);
-  if (popularity) return popularity;
-  const votes = (Number(b.title.vote_count) || 0) - (Number(a.title.vote_count) || 0);
-  if (votes) return votes;
-  if (dateA !== dateB) return dateA < dateB ? 1 : -1;
-  return (Number(a.title.id) || 0) - (Number(b.title.id) || 0);
-}
-
-// `type=all`: run the movie and TV discover queries side by side, each with its own genre map and
-// date key, merge the candidates, explicitly re-sort them (discover ordering is per type), dedupe
-// by `type:tmdbId`, then slice to MAX_TITLES. One discover page per type plus at most 40
-// `external_ids` lookups keeps the merged path inside the same 42-subrequest budget as the
-// single-type shelf, and no per-title availability lookup is spent here.
+// `type=all`: movies are the priority of a stand. The movie block takes TWO discover pages (the same
+// `stand * 2 + 1` / `+ 2` stride the single-type shelf uses) up to MERGED_MOVIE_CAP titles; the
+// series block (one tv page, `stand + 1`) then follows, capped at MERGED_SERIES_CAP so a full stand
+// is up to 40 titles. Each block keeps its own discover order — already the requested sort — so no
+// cross-type re-sort is needed. Three discover pages plus at most 40 `external_ids` lookups = 43
+// subrequests, under the Workers free-plan cap of 50; no per-title availability lookup is spent here.
 async function shelfAll(filters, env, fetchImpl, cataloguePolicy) {
   const tmdb = createTmdb(env, fetchImpl);
   const providerIds = filters.providers.map((id) => PROVIDERS_BY_ID.get(id).tmdbProviderId).sort((a, b) => a - b);
-  const page = filters.stand + 1;
-  const loadType = async (tmdbType) => {
+  const firstMoviePage = filters.stand * 2 + 1;
+  const tvPage = filters.stand + 1;
+  const loadPage = async (tmdbType, page) => {
     const genreMap = tmdbType === 'tv' ? TV_GENRES : MOVIE_GENRES;
     const genreIds = [...new Set(filters.genres.map((genre) => genreMap[genre]).filter(Boolean))];
     const dateKey = tmdbType === 'tv' ? 'first_air_date' : 'primary_release_date';
@@ -474,18 +457,27 @@ async function shelfAll(filters, env, fetchImpl, cataloguePolicy) {
     const hasMore = Number.isInteger(totalPages) && totalPages > 0 ? currentPage < totalPages : results.length >= 20;
     return { results, hasMore };
   };
-  const [movie, tv] = await Promise.all([loadType('movie'), loadType('tv')]);
-  const merged = [...movie.results, ...tv.results].sort((a, b) => mergedShelfCompare(a, b, filters.sort));
-  const seen = new Set();
-  const unique = [];
-  for (const candidate of merged) {
-    const publicType = candidate.tmdbType === 'tv' ? 'series' : 'movie';
-    const key = `${publicType}:${candidate.title.id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    unique.push(candidate);
-  }
-  const selected = unique.slice(0, MAX_TITLES);
+  const [movieFirst, movieSecond, tv] = await Promise.all([
+    loadPage('movie', firstMoviePage),
+    loadPage('movie', firstMoviePage + 1),
+    loadPage('tv', tvPage),
+  ]);
+  const dedupe = (results) => {
+    const seen = new Set();
+    const unique = [];
+    for (const candidate of results) {
+      const publicType = candidate.tmdbType === 'tv' ? 'series' : 'movie';
+      const key = `${publicType}:${candidate.title.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(candidate);
+    }
+    return unique;
+  };
+  const movies = dedupe([...movieFirst.results, ...movieSecond.results]).slice(0, MERGED_MOVIE_CAP);
+  // Movies take their up-to-30 slots first; the series block then follows, up to MERGED_SERIES_CAP
+  // more (a full stand is up to 40 titles), always after every movie.
+  const selected = [...movies, ...dedupe(tv.results).slice(0, MERGED_SERIES_CAP)];
   const imdbIds = await mapWithConcurrency(selected, async (candidate) => {
     try { return (await tmdb.request(`/${candidate.tmdbType}/${candidate.title.id}/external_ids`)).imdb_id || ''; } catch { return ''; }
   });
@@ -501,7 +493,7 @@ async function shelfAll(filters, env, fetchImpl, cataloguePolicy) {
       availabilityBR: { link: '', providers: selectedNames, subscriptionProviders: selectedNames },
     }];
   });
-  return { titles, hasNextStand: movie.hasMore || tv.hasMore };
+  return { titles, hasNextStand: movieFirst.hasMore || movieSecond.hasMore || tv.hasMore };
 }
 
 async function shelf(filters, env, fetchImpl, cataloguePolicy) {
