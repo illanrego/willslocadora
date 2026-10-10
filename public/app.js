@@ -3033,7 +3033,9 @@
       window.requestAnimationFrame(() => openCatalogSearch(true));
     });
     $('#counter-open').addEventListener('click', openBasket);
-    $('#catalog-search-open-counter').addEventListener('click', openCatalogSearch);
+    $('#catalog-search-open').addEventListener('click', () => openCatalogSearch());
+    $('#immersive-catalog-search-open').addEventListener('click', () => openCatalogSearch());
+    $('#catalog-search-open-counter').addEventListener('click', () => openCatalogSearch());
     $('#immersive-basket-open').addEventListener('click', openBasket);
     $('#take-basket-counter').addEventListener('click', takeBasketToCounter);
     $('#account-return-counter').addEventListener('click', openReturnDesk);

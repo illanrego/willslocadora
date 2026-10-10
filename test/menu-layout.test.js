@@ -5,8 +5,10 @@ const { readFileSync } = require('node:fs');
 const page = readFileSync(require.resolve('../public/index.html'), 'utf8');
 const app = readFileSync(require.resolve('../public/app.js'), 'utf8');
 const css = readFileSync(require.resolve('../public/styles.css'), 'utf8');
+const normalCss = readFileSync(require.resolve('../public/normal-mode.css'), 'utf8');
 const balcony = readFileSync(require.resolve('../public/balcony.mjs'), 'utf8');
 const sessionSupport = readFileSync(require.resolve('../public/session-support.js'), 'utf8');
+const { COPY } = require('../public/i18n.js');
 
 test('normal browsing exposes compact browse controls without a title-format selector', () => {
   const header = page.match(/<header id="store-header"[\s\S]*?<\/header>/)?.[0] || '';
@@ -31,6 +33,39 @@ test('the normal year picker uses a direct dropdown applied by the Go button', (
   assert.match(app, /\$\('#year-form'\)\.addEventListener\('submit'[\s\S]*?applyNormalMenuFilters\(\)/);
   assert.doesNotMatch(page, /id="year-back"|id="year-forward"|id="store-year-input"|id="immersive-year-input"/);
   assert.match(css, /\.year-machine select \{/);
+});
+
+test('the 2D browse row assigns separate columns while the 3D browse menu stays flex', () => {
+  assert.match(normalCss, /\.store-header > \.browse-menu \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto minmax\(220px, 260px\) auto;/);
+  assert.match(normalCss, /\.browse-menu \.browse-select:not\(\.browse-sort-select\) \{ grid-column: 1; \}/);
+  assert.doesNotMatch(normalCss, /\.browse-menu \.browse-select \{[^}]*grid-column: 1;/);
+  assert.match(normalCss, /\.browse-menu \.browse-sort-select \{ grid-column: 2; width: max-content; \}/);
+  assert.match(normalCss, /\.browse-menu \.year-machine \{ grid-column: 3;/);
+  assert.match(normalCss, /\.browse-menu \.normal-filters-toggle \{ grid-column: 4;/);
+  assert.match(normalCss, /@media \(min-width: 681px\) \{[\s\S]*\.browse-menu \.browse-select,[\s\S]*\.browse-menu \.year-machine,[\s\S]*\.browse-menu \.normal-filters-toggle \{ grid-row: 1; \}/);
+  assert.match(normalCss, /@media \(max-width: 680px\) \{[\s\S]*\.browse-menu \.browse-select,[\s\S]*\.browse-menu \.year-machine,[\s\S]*\.browse-menu \.normal-filters-toggle \{ grid-column: 1; grid-row: auto; order: 0; \}/);
+  assert.match(normalCss, /\.browse-menu \.browse-sort-select \{ width: 100%; \}/);
+  assert.match(css, /\.browse-menu \{ display: flex; flex-wrap: wrap;/);
+  const browseMenu = page.match(/<div class="browse-menu"[\s\S]*?<div id="normal-provider-filters"/)?.[0] || '';
+  const controls = ['id="genre-select"', 'id="sort-select"', 'id="normal-filters-toggle"', 'id="year-form"'];
+  assert.ok(controls.every((control) => browseMenu.includes(control)));
+  const positions = controls.map((control) => browseMenu.indexOf(control));
+  assert.ok(positions.every((position, index) => index === 0 || position > positions[index - 1]));
+});
+
+test('home search entries use the shared accessible search dialog in both locales', () => {
+  const headerActions = page.match(/<nav class="header-actions"[^>]*>[\s\S]*?<\/nav>/)?.[0] || '';
+  const immersiveActions = page.match(/<nav class="immersive-menu-actions"[^>]*>[\s\S]*?<\/nav>/)?.[0] || '';
+  assert.match(headerActions, /<button id="catalog-search-open"[^>]*type="button"[^>]*data-i18n="searchTitles">Buscar título<\/button>/);
+  assert.match(immersiveActions, /<button id="immersive-catalog-search-open"[^>]*type="button"[^>]*data-i18n="searchTitles">Buscar título<\/button>/);
+  assert.doesNotMatch(page.match(/<details id="immersive-browse-panel"[\s\S]*?<\/details>/)?.[0] || '', /immersive-catalog-search-open/);
+  assert.match(app, /\$\('#catalog-search-open'\)\.addEventListener\('click', \(\) => openCatalogSearch\(\)\)/);
+  assert.match(app, /\$\('#immersive-catalog-search-open'\)\.addEventListener\('click', \(\) => openCatalogSearch\(\)\)/);
+  assert.match(app, /\$\('#catalog-search-open-counter'\)\.addEventListener\('click', \(\) => openCatalogSearch\(\)\)/);
+  assert.match(app, /function openCatalogSearch\(preserve = false\) \{[\s\S]*catalogSearchDialog\.showModal\(\);[\s\S]*\$\('#catalog-search-input'\)\.focus\(\);/);
+  assert.match(css, /\.immersive-hud\.is-collapsed \.immersive-menu-actions > :not\(#immersive-hud-toggle\) \{ display: none; \}/);
+  assert.equal(COPY['pt-BR'].searchTitles, 'Buscar título');
+  assert.equal(COPY['en-US'].searchTitles, 'Search titles');
 });
 
 
@@ -176,7 +211,7 @@ test('rental and return use separate Balcão windows', () => {
   assert.match(returnsDialog, /balcony-rented-list/);
   assert.match(app, /function openRentalDesk\(\) \{[\s\S]*if \(!\$\('#balcony-dialog'\)\.open\) \$\('#balcony-dialog'\)\.showModal\(\);\s*\}/);
   assert.match(app, /function openReturnWindow\(message = ''\)/);
-  assert.match(app, /\$\('#catalog-search-open-counter'\)\.addEventListener\('click', openCatalogSearch\)/);
+  assert.match(app, /\$\('#catalog-search-open-counter'\)\.addEventListener\('click', \(\) => openCatalogSearch\(\)\)/);
   assert.match(app, /window\.requestAnimationFrame\(openReturnWindow\)/);
 });
 
