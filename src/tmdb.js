@@ -9,6 +9,8 @@ const SUPPORTED_LOCALES = new Set(['pt-BR', 'en-US']);
 const CREDIT_DEPARTMENTS = new Set(['Acting', 'Directing', 'Writing', 'Camera', 'Editing', 'Visual Effects', 'Sound', 'Art', 'Production', 'Music', 'Costume & Make-Up', 'Lighting']);
 const CREDIT_WRITER_JOBS = ['Writer', 'Screenplay', 'Story', 'Teleplay'];
 const SELF_CHARACTERS = new Set(['Self', 'Himself', 'Herself']);
+// Person search returns a short, fixed list — mirrors the Worker's SEARCH_PEOPLE_MAX.
+const SEARCH_PEOPLE_MAX = 8;
 const TMDB_MOVIE_GENRES = Object.freeze({
   Action: 28, Adventure: 12, Animation: 16, Comedy: 35, Crime: 80, Documentary: 99, Drama: 18,
   Family: 10751, Fantasy: 14, Horror: 27, Mystery: 9648, Romance: 10749, 'Sci-Fi': 878, Thriller: 53,
@@ -122,6 +124,13 @@ function isSelfCharacter(character) {
 function brazilFlatrate(details) {
   const br = details?.results?.BR || {};
   return { link: typeof br.link === 'string' ? br.link : '', flatrate: Array.isArray(br.flatrate) ? br.flatrate : [] };
+}
+
+// `known_for_department` is free-form on TMDB; map it into the credit-stand allowlist so a client
+// can call /api/credit-stand directly, with unknown values falling back to Acting. Mirrors the Worker.
+function creditDepartment(department) {
+  const value = String(department || '');
+  return CREDIT_DEPARTMENTS.has(value) ? value : 'Acting';
 }
 
 // cast entries carry no TMDB department/job, so they are normalized to Acting/Acting.
@@ -358,6 +367,24 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     return buildPersonProfile(data, id);
   }
 
+  // Person search: the same free-text input as the title search, listing TMDB people (portrait,
+  // name, department) in TMDB's own order. Mirrors the Worker's /v1/person-search.
+  async function searchPeople(query, locale = 'pt-BR') {
+    if (!apiKey) throw new Error('TMDB_API_KEY is required');
+    const data = await request(`/search/person?${new URLSearchParams({ query, include_adult: 'false' })}`, normalizeLocale(locale));
+    const people = (Array.isArray(data.results) ? data.results : [])
+      .filter((person) => /^[1-9][0-9]*$/.test(String(person?.id || '')))
+      .slice(0, SEARCH_PEOPLE_MAX)
+      .map((person) => ({
+        id: String(person.id),
+        name: person.name || 'Untitled',
+        profile: imageUrl(person.profile_path, 'w185'),
+        knownFor: person.known_for_department || '',
+        department: creditDepartment(person.known_for_department),
+      }));
+    return { query, people };
+  }
+
   async function personCreditStand({ person, department, job = '', type = 'movie', year, ignoreStoreYear = true, providers = [], stand = 0, locale = 'pt-BR', sort = 'relevance' }) {
     if (!apiKey) throw new Error('TMDB_API_KEY is required');
     const requestedLocale = normalizeLocale(locale);
@@ -423,6 +450,7 @@ function createTmdbClient({ apiKey = '', fetchImpl = fetch } = {}) {
     discoverYearHits,
     personProfile,
     personCreditStand,
+    searchPeople,
     async enrich(title, locale = 'pt-BR') {
       if (!apiKey) return title;
       const requestedLocale = normalizeLocale(locale);

@@ -4,6 +4,8 @@ const TMDB_ROOT = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_HOST = 'image.tmdb.org';
 const CATALOGUE_POLICY_KEY = 'catalogue-policy-v1';
 const MAX_TITLES = 40;
+// Person search returns a short, fixed list — it feeds a pick-one dialog, not a browsable shelf.
+const SEARCH_PEOPLE_MAX = 8;
 // A merged (type=all) stand is movie-first: the movie block takes up to MERGED_MOVIE_CAP titles from
 // two discover pages, then up to MERGED_SERIES_CAP series follow it. Series are strictly an overflow
 // block after the movies, never interleaved with them.
@@ -192,6 +194,14 @@ function buildRoles(cast, crew) {
   return [...counts.values()].sort((a, b) => b.count - a.count
     || (a.department < b.department ? -1 : a.department > b.department ? 1 : 0)
     || (a.job < b.job ? -1 : a.job > b.job ? 1 : 0));
+}
+
+// `known_for_department` is free-form on TMDB. Map it into the credit-stand allowlist so a client
+// can call /v1/credit-stand directly with the department a person-search hit returns; anything the
+// allowlist does not know (empty, "Camera and Electrical", ...) falls back to Acting.
+function creditDepartment(department) {
+  const value = String(department || '');
+  return CREDIT_DEPARTMENTS.has(value) ? value : 'Acting';
 }
 
 function buildPersonProfile(data, id) {
@@ -395,6 +405,13 @@ function validPerson(url) {
   return { id, locale };
 }
 
+function validPersonSearch(url) {
+  const query = (url.searchParams.get('q') || '').trim();
+  const locale = url.searchParams.get('locale') || 'pt-BR';
+  if (query.length < 2 || query.length > 80 || !LOCALES.has(locale)) return null;
+  return { query, locale };
+}
+
 function validCreditStand(url) {
   const personId = url.searchParams.get('person') || '';
   const department = url.searchParams.get('department') || '';
@@ -553,6 +570,24 @@ async function searchCatalogue({ query, locale }, env, fetchImpl, cataloguePolic
   return { query: value, titles: unique.slice(0, 12) };
 }
 
+// People mode for the home title search: the same free-text input looks up TMDB people and lists
+// them (portrait, name, department) so one can open a person window. TMDB's own order is kept.
+async function searchPeople({ query, locale }, env, fetchImpl) {
+  const tmdb = createTmdb(env, fetchImpl);
+  const data = await tmdb.request(`/search/person?${new URLSearchParams({ query, include_adult: 'false' })}`, locale);
+  const people = (Array.isArray(data.results) ? data.results : [])
+    .filter((person) => /^[1-9][0-9]*$/.test(String(person?.id || '')))
+    .slice(0, SEARCH_PEOPLE_MAX)
+    .map((person) => ({
+      id: String(person.id),
+      name: person.name || 'Untitled',
+      profile: imageUrl(person.profile_path, 'w185'),
+      knownFor: person.known_for_department || '',
+      department: creditDepartment(person.known_for_department),
+    }));
+  return { query, people };
+}
+
 async function titleMeta({ type, id, locale }, env, fetchImpl, cataloguePolicy) {
   if (!['movie', 'series'].includes(type) || !/^[a-zA-Z0-9:_-]+$/.test(id) || !LOCALES.has(locale)) throw new Error('Invalid title metadata request');
   const tmdb = createTmdb(env, fetchImpl);
@@ -666,6 +701,14 @@ export function createLocadoraWorker({ fetchImpl = fetch } = {}) {
         if (url.pathname === '/v1/search') {
           return await edgeCached(url, ['q', 'locale'], policy, ctx, async () => {
             const result = await searchCatalogue({ query: url.searchParams.get('q') || '', locale: url.searchParams.get('locale') || 'pt-BR' }, env, fetchImpl, cataloguePolicy);
+            return json(result, 200, { 'cache-control': browserAndEdgeCache(900, 3600, 86400) });
+          });
+        }
+        if (url.pathname === '/v1/person-search') {
+          const filters = validPersonSearch(url);
+          if (!filters) return json({ error: 'Invalid person search' }, 400, policy.headers);
+          return await edgeCached(url, ['q', 'locale'], policy, ctx, async () => {
+            const result = await searchPeople(filters, env, fetchImpl);
             return json(result, 200, { 'cache-control': browserAndEdgeCache(900, 3600, 86400) });
           });
         }

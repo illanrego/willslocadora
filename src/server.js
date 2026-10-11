@@ -1,8 +1,8 @@
 'use strict';
 
-// Public-API dev parity: /api/person and /api/credit-stand mirror the public Worker's
-// TMDB-backed person/credit-stand endpoints for local development only. They do not use
-// or extend the legacy Stremio catalogue path (the local catalogue itself is unchanged).
+// Public-API dev parity: /api/person, /api/credit-stand, and /api/person-search mirror the public
+// Worker's TMDB-backed person/credit-stand/person-search endpoints for local development only. They
+// do not use or extend the legacy Stremio catalogue path (the local catalogue itself is unchanged).
 
 const fs = require('node:fs');
 const http = require('node:http');
@@ -154,6 +154,14 @@ function createServer({ catalogue, posterFetcher = safeFetchImage, watchFetcher 
         if (!/^[1-9][0-9]*$/.test(id) || !['pt-BR', 'en-US'].includes(locale)) return sendJson(response, 400, { error: 'Invalid person request' });
         if (!catalogue.tmdbClient?.enabled) return sendJson(response, 502, { error: 'Catalogue service is not configured' });
         return sendJson(response, 200, { person: await catalogue.tmdbClient.personProfile(id, locale) });
+      }
+      if (url.pathname === '/api/person-search') {
+        if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });
+        const query = (url.searchParams.get('q') || '').trim();
+        const locale = url.searchParams.get('locale') || 'pt-BR';
+        if (query.length < 2 || query.length > 80 || !['pt-BR', 'en-US'].includes(locale)) return sendJson(response, 400, { error: 'Invalid person search' });
+        if (!catalogue.tmdbClient?.enabled) return sendJson(response, 502, { error: 'Catalogue service is not configured' });
+        return sendJson(response, 200, await catalogue.tmdbClient.searchPeople(query, locale));
       }
       if (url.pathname === '/api/credit-stand') {
         if (request.method !== 'GET') return sendJson(response, 405, { error: 'Method not allowed' });

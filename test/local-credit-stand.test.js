@@ -356,3 +356,81 @@ test('local server accepts and forwards a mixed type=all shelf request', async (
   assert.equal(unknown.status, 200);
   assert.equal(requested[1].type, 'movie');
 });
+
+// --- Person search (Addendum 4) ---------------------------------------------
+
+function peopleSearchStub(results) {
+  return async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === '/3/search/person') {
+      assert.equal(url.searchParams.get('include_adult'), 'false');
+      return { ok: true, json: async () => ({ results }) };
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  };
+}
+
+test('local TMDB client searches people and maps known_for_department into the allowlist', async () => {
+  const client = createTmdbClient({
+    apiKey: 'test-key',
+    fetchImpl: peopleSearchStub([
+      { id: 1243, name: 'Woody Allen', known_for_department: 'Directing', profile_path: '/woody.jpg' },
+      { id: 1244, name: 'Gaffer Person', known_for_department: 'Camera and Electrical', profile_path: null },
+    ]),
+  });
+  const body = await client.searchPeople('woody allen', 'pt-BR');
+
+  assert.equal(body.query, 'woody allen');
+  assert.deepEqual(body.people, [
+    { id: '1243', name: 'Woody Allen', profile: 'https://image.tmdb.org/t/p/w185/woody.jpg', knownFor: 'Directing', department: 'Directing' },
+    { id: '1244', name: 'Gaffer Person', profile: '', knownFor: 'Camera and Electrical', department: 'Acting' },
+  ]);
+});
+
+test('local TMDB client caps person search at eight people in TMDB order', async () => {
+  const client = createTmdbClient({
+    apiKey: 'test-key',
+    fetchImpl: peopleSearchStub(Array.from({ length: 12 }, (_, index) => ({ id: 2000 + index, name: `Person ${index}`, known_for_department: 'Acting' }))),
+  });
+  const body = await client.searchPeople('person', 'en-US');
+  assert.equal(body.people.length, 8);
+  assert.deepEqual(body.people.map((person) => person.id), ['2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007']);
+});
+
+test('local server exposes a person-search route with Worker-shaped validation', async (t) => {
+  const client = createTmdbClient({
+    apiKey: 'test-key',
+    fetchImpl: peopleSearchStub([{ id: 1243, name: 'Woody Allen', known_for_department: 'Directing', profile_path: '/woody.jpg' }]),
+  });
+  const server = createServer({ catalogue: { listSources: () => [], tmdbClient: client } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const ok = await fetch(`${base}/api/person-search?q=%20woody%20allen%20&locale=pt-BR`);
+  assert.equal(ok.status, 200);
+  const body = await ok.json();
+  assert.equal(body.query, 'woody allen');
+  assert.deepEqual(body.people, [
+    { id: '1243', name: 'Woody Allen', profile: 'https://image.tmdb.org/t/p/w185/woody.jpg', knownFor: 'Directing', department: 'Directing' },
+  ]);
+
+  for (const query of ['q=a', 'q=', `q=${'x'.repeat(81)}`, 'q=matrix&locale=fr-FR']) {
+    const response = await fetch(`${base}/api/person-search?${query}`);
+    assert.equal(response.status, 400, query);
+    assert.deepEqual(await response.json(), { error: 'Invalid person search' });
+  }
+  assert.equal((await fetch(`${base}/api/person-search?q=matrix`, { method: 'POST' })).status, 405);
+});
+
+test('local server reports an unconfigured person-search bridge without leaking a secret', async (t) => {
+  const server = createServer({ catalogue: { listSources: () => [], tmdbClient: { enabled: false } } });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/person-search?q=woody`);
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: 'Catalogue service is not configured' });
+});

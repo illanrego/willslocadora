@@ -882,6 +882,22 @@
     sessionSupport.openDonation();
   }
 
+  // A person result row: portrait, name, department, and one action that opens the existing person
+  // window (openPerson), which then offers the filmography and "Ver como estante".
+  function renderPersonSearchResult(person, results) {
+    const item = document.createElement('article'); item.className = 'counter-item';
+    const open = () => { if (catalogSearchDialog.open) catalogSearchDialog.close(); openPerson({ id: String(person.id), name: person.name, department: person.department, profile: person.profile }); };
+    const image = document.createElement('img'); image.alt = ''; image.src = person.profile ? window.locadoraPosterUrl(person.profile) : COVER_PLACEHOLDER_URL; image.addEventListener('error', () => { image.src = COVER_PLACEHOLDER_URL; }, { once: true });
+    const text = document.createElement('div'); const name = document.createElement('strong'); name.textContent = person.name; const meta = document.createElement('span'); meta.textContent = departmentLabel(person.department); text.append(name, meta);
+    const actions = document.createElement('div'); actions.className = 'return-choices';
+    const view = document.createElement('button'); view.type = 'button'; view.id = `search-person-${person.id}`; view.textContent = state.locale === 'pt-BR' ? 'Ver ficha' : 'View profile';
+    view.addEventListener('click', open);
+    makeTitleClickable(image, `${state.locale === 'pt-BR' ? 'Abrir ficha de' : 'Open profile for'} ${person.name}`, open);
+    makeTitleClickable(name, `${state.locale === 'pt-BR' ? 'Abrir ficha de' : 'Open profile for'} ${person.name}`, open);
+    actions.append(view);
+    item.append(image, text, actions); results.append(item);
+  }
+
   async function searchCatalog() {
     const input = $('#catalog-search-input');
     const query = input.value.trim();
@@ -889,8 +905,17 @@
     const results = $('#catalog-search-results');
     results.replaceChildren();
     if (query.length < 2) { status.textContent = state.locale === 'pt-BR' ? 'Digite ao menos duas letras.' : 'Type at least two letters.'; return; }
+    // The people switch turns the same input into a person lookup; with it off the title search is
+    // unchanged. Loading / count / empty / error statuses mirror the title branch.
+    const peopleMode = Boolean($('#catalog-search-people')?.checked);
     status.textContent = state.locale === 'pt-BR' ? 'Consultando o catálogo…' : 'Searching the catalogue…';
     try {
+      if (peopleMode) {
+        const { people = [] } = await api(`/api/person-search?${new URLSearchParams({ q: query, locale: state.locale })}`);
+        status.textContent = people.length ? `${people.length} ${t('peopleFound')}` : t('noPeopleFound');
+        people.forEach((person) => renderPersonSearchResult(person, results));
+        return;
+      }
       const { titles = [] } = await api(`/api/search?${new URLSearchParams({ q: query, locale: state.locale })}`);
       status.textContent = titles.length ? (state.locale === 'pt-BR' ? `${titles.length} fita(s) encontrada(s).` : `${titles.length} tape(s) found.`) : (state.locale === 'pt-BR' ? 'Nenhuma fita encontrada.' : 'No tapes found.');
       titles.forEach((title) => {

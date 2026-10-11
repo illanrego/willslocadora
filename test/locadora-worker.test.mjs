@@ -833,3 +833,62 @@ test('public worker reports a next stand from the tv query when the movie query 
   assert.equal(body.hasNextStand, true);
 });
 
+// --- Person search (Addendum 4) ---------------------------------------------
+
+function peopleSearchStub({ results = [], requests = [] } = {}) {
+  return async (input) => {
+    const url = new URL(input);
+    requests.push(url);
+    assert.equal(url.pathname, '/3/search/person');
+    assert.equal(url.searchParams.get('include_adult'), 'false');
+    return Response.json({ results });
+  };
+}
+
+test('public worker searches people and maps known_for_department into the credit-stand allowlist', async () => {
+  const requests = [];
+  const worker = createLocadoraWorker({ fetchImpl: peopleSearchStub({ results: [
+    { id: 1243, name: 'Woody Allen', known_for_department: 'Directing', profile_path: '/woody.jpg' },
+    { id: 1244, name: 'Gaffer Person', known_for_department: 'Camera and Electrical', profile_path: null },
+    { id: 1245, name: 'An Actor', known_for_department: 'Acting' },
+  ], requests }) });
+
+  // Surrounding whitespace in the query is trimmed before it reaches TMDB.
+  const response = await worker.fetch(new Request('https://api.example/v1/person-search?q=%20woody%20allen%20&locale=pt-BR', { headers: { origin: 'https://will.github.io' } }), env, context());
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'public, max-age=900, s-maxage=3600, stale-if-error=86400');
+  assert.equal(response.headers.get('access-control-allow-origin'), 'https://will.github.io');
+
+  const body = await response.json();
+  assert.equal(body.query, 'woody allen');
+  assert.equal(requests[0].searchParams.get('query'), 'woody allen');
+  assert.equal(requests[0].searchParams.get('language'), 'pt-BR');
+  assert.equal(requests[0].searchParams.get('api_key'), 'test-key');
+  assert.deepEqual(body.people, [
+    { id: '1243', name: 'Woody Allen', profile: 'https://image.tmdb.org/t/p/w185/woody.jpg', knownFor: 'Directing', department: 'Directing' },
+    { id: '1244', name: 'Gaffer Person', profile: '', knownFor: 'Camera and Electrical', department: 'Acting' },
+    { id: '1245', name: 'An Actor', profile: '', knownFor: 'Acting', department: 'Acting' },
+  ]);
+});
+
+test('public worker caps person search at eight people in TMDB order', async () => {
+  const results = Array.from({ length: 12 }, (_, index) => ({ id: 2000 + index, name: `Person ${index}`, known_for_department: 'Acting' }));
+  const worker = createLocadoraWorker({ fetchImpl: peopleSearchStub({ results }) });
+  const response = await worker.fetch(new Request('https://api.example/v1/person-search?q=person&locale=en-US'), env, context());
+  const body = await response.json();
+  assert.equal(body.people.length, 8);
+  assert.deepEqual(body.people.map((person) => person.id), ['2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007']);
+});
+
+test('public worker rejects invalid person search queries before calling TMDB', async () => {
+  let calls = 0;
+  const worker = createLocadoraWorker({ fetchImpl: async () => { calls += 1; throw new Error('not needed'); } });
+  for (const query of ['q=a', 'q=', `q=${'x'.repeat(81)}`, 'q=matrix&locale=fr-FR']) {
+    const response = await worker.fetch(new Request(`https://api.example/v1/person-search?${query}`), env, context());
+    assert.equal(response.status, 400, query);
+    assert.deepEqual(await response.json(), { error: 'Invalid person search' });
+  }
+  assert.equal(calls, 0);
+});
+
+
