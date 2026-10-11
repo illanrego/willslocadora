@@ -1037,6 +1037,12 @@
   function leaveCreditStand() {
     if (!state.credit) return false;
     state.credit = null;
+    // A stand turns all-years on by design, but a genre shelf cannot ask for all-years without
+    // streamings selected (the catalogue API rejects that pair), so drop it back to the store year.
+    if (!state.providers.length) {
+      state.ignoreStoreYear = false;
+      localStorage.setItem('locadora.ignoreStoreYear', 'false');
+    }
     return true;
   }
 
@@ -1569,7 +1575,7 @@
       const useCreditStand = Boolean(state.credit);
       const params = useCreditStand
         ? new URLSearchParams({ person: state.credit.id, department: state.credit.department, job: state.credit.job || '', type: 'all', year: state.year, ignoreStoreYear: String(state.ignoreStoreYear), providers: state.credit.allProviders ? '' : state.providers.join(','), stand, sort: effectiveSort(), locale: state.locale })
-        : new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.series ? 'all' : 'movie', stand, providers: state.providers.join(','), ignoreStoreYear: String(state.ignoreStoreYear), sort: effectiveSort() });
+        : new URLSearchParams({ genre: genre.genres.join(','), year: state.year, type: state.series ? 'all' : 'movie', stand, providers: state.providers.join(','), ignoreStoreYear: String(state.providers.length > 0 && state.ignoreStoreYear), sort: effectiveSort() });
       const endpoint = useCreditStand ? '/api/credit-stand' : '/api/shelf';
       const body = await api(`${endpoint}?${params}`, { signal: controller.signal });
       if (state.request !== controller) return;
@@ -2600,9 +2606,11 @@
       profile: personState.profile || '',
       allProviders: false,
     };
-    // Credit stands ignore the store year by default; the all-years control is the toggle to respect it.
+    // Credit stands ignore the store year by default; the all-years control is the toggle to respect
+    // it. Persist that only for a visitor who actually has streamings selected, otherwise a later
+    // genre shelf would request all-years without providers and the catalogue API rejects that pair.
     state.ignoreStoreYear = true;
-    localStorage.setItem('locadora.ignoreStoreYear', 'true');
+    if (state.providers.length) localStorage.setItem('locadora.ignoreStoreYear', 'true');
     syncProviderControls();
     // Leave the inspector cleanly so the stand is visible; do not let a close handler reopen it.
     inspectionOrigin = null;

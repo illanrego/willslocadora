@@ -132,6 +132,16 @@ test('person roles are grouped by department and stands are department-level', (
   assert.match(functionBody(app, 'async function loadPersonTitles('), /const job = normalizeCreditJob\(department, personState\.role\.job\);/);
 });
 
+test('leaving a credit stand cannot leave a genre shelf asking for all-years without streamings', () => {
+  const leave = functionBody(app, 'function leaveCreditStand()');
+  assert.match(leave, /if \(!state\.providers\.length\) \{/);
+  assert.match(leave, /state\.ignoreStoreYear = false;/);
+  // Entering a stand must not persist all-years for a visitor with no streamings selected.
+  assert.match(functionBody(app, 'function applyCreditStand()'), /if \(state\.providers\.length\) localStorage\.setItem\('locadora\.ignoreStoreYear', 'true'\);/);
+  // Defence in depth: the genre request never sends the pair the catalogue API rejects.
+  assert.match(functionBody(app, 'async function loadShelf('), /ignoreStoreYear: String\(state\.providers\.length > 0 && state\.ignoreStoreYear\)/);
+});
+
 test('applying the browse menu leaves a credit stand instead of pinning the person', () => {
   assert.match(app, /function leaveCreditStand\(\)/);
   assert.match(functionBody(app, 'function applyNormalMenuFilters()'), /leaveCreditStand\(\);/);
