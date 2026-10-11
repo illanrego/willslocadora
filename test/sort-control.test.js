@@ -88,6 +88,12 @@ test('the 3D plaque exposes a third sort field wired to the same setSort', () =>
   assert.match(app, /sort: effectiveSort\(\), sortChoices: sortOptionsForContext\(\)\.map\(\(value\) => \[value, t\(SORT_LABEL_KEYS\[value\]\)\]\) \}/);
 });
 
+test('the 3D plaque year field is a dropdown like the genre', () => {
+  assert.match(immersive, /const input = document\.createElement\('select'\);/);
+  assert.match(immersive, /for \(let year = 2026; year >= 1920; year -= 1\) \{/);
+  assert.doesNotMatch(immersive, /input\.type = 'number'/);
+});
+
 test('sort copy exists in both locales', () => {
   for (const locale of ['pt-BR', 'en-US']) {
     for (const key of ['sort', 'sortRelevance', 'sortYear', 'sortRating']) {
