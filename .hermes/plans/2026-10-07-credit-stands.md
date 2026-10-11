@@ -297,6 +297,36 @@ person stands, and labelled on the shelf so a series is recognisable without ext
   mirror, UI (toggle persists and drives the request; credit stands always send `all`; badge renders for
   series titles only).
 
+## Addendum 4: person search (title search gets a people mode)
+
+Owner request: the home title search gains a switch so the same input can look up **people** instead of
+titles — typing "woody allen" with the switch on must list the works that person is credited in, not
+titles whose name matches.
+
+- Worker (`workers/locadora-api/src/index.mjs`), new endpoint
+  `GET /v1/person-search?q=<2..80>&locale=pt-BR|en-US` →
+  `{ "query": "woody allen", "people": [ { "id": "1243", "name": "Woody Allen",
+     "profile": "https://image.tmdb.org/t/p/w185/…" | "", "knownFor": "Directing",
+     "department": "Directing" } ] }` — TMDB `/search/person`, capped at 8, in TMDB's own order.
+  `department` is `known_for_department` mapped into the allowlist already used by credit stands
+  (unknown values fall back to `Acting`), so a client can call `/v1/credit-stand` directly with it.
+  Validation mirrors the other endpoints (query trimmed, 2–80 characters, locale allowlist) and the
+  route is edge-cached like `/v1/search` with the key params `['q', 'locale']`. A brand-new route needs
+  no `CACHE_SCHEMA` bump.
+- Web (`public/`): the catalogue search dialog (`#catalog-search-dialog`, opened from the header, the
+  immersive HUD and the Counter) gains a people switch (`#catalog-search-people`, labelled from i18n).
+  With it off the dialog behaves exactly as today. With it on, submitting calls `/api/person-search`
+  and lists people (portrait, name, department label) instead of titles; picking one opens the existing
+  person window through `openPerson({ id, name, department, profile })`, which already shows their
+  filmography and the "Ver como estante" action. Empty/error states mirror the title search.
+- i18n (both locales): `searchPeople`, `peopleFound`, `noPeopleFound`.
+- Desktop (`src/locadora-app`): the same feature, ported after the web version ships — a native
+  `fetch_public_person_search` command with the same validation, a normalizer for the payload, the same
+  switch in its `TitleSearch` panel, and person results that open the existing `PersonView`.
+- Tests: worker (validation, mapping incl. the department fallback, cap, cache headers, 400s); web (the
+  switch exists and is wired, the request hits the person endpoint, i18n in both locales); desktop
+  (normalizer bounds, the switch, the request shape).
+
 ## Risks / open questions
 
 - Ranking by `vote_count` can surface obscure late work for A-list people; acceptable for v1.
